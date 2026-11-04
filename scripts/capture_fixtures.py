@@ -1,6 +1,8 @@
 """Record small, trimmed real responses into tests/fixtures (run from a machine that reaches TSETMC).
 
     uv run python scripts/capture_fixtures.py
+
+The contract tests (every tool, end to end, offline) have their own recordings: scripts/record_contract.py.
 """
 
 from __future__ import annotations
