@@ -890,7 +890,8 @@ class Bourse:
         total = len(series)
         series = series[-_clamp(limit, 1, MAX_ROWS):]
         if events and series:  # only events after the first returned row change the values shown
-            events = [e for e in events if e["date"] > series[0]["date"]]
+            first_day = series[0].get("date") or series[0]["from"]  # aggregated bars carry from/to instead of one date
+            events = [e for e in events if e["date"] > first_day]
         return {
             "instrument": inst.brief(),
             "adjusted": adjusted,

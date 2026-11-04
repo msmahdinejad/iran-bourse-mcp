@@ -64,6 +64,11 @@ COLS_OPTION = (*COLS_FUTURE, "notional_value")
 COLS_LIMITS = (*_IDENT, "side", "price", "volume", "orders", "value", "counter_volume", "one_sided")
 COLS_CAP = (*_IDENT, "market_cap", "market_cap_yesterday", "change", "change_pct")
 COLS_SECTOR = ("rank", "sector_code", "sector", "market_cap", "trades", "volume", "value", "value_share_pct")
+COLUMN_SETS = {  # the catalogue names a list's columns by set, so 69 entries do not repeat them
+    "ranked": COLS_RANKED, "movers": COLS_MOVERS, "gap": COLS_GAP, "fund": COLS_FUND, "future": COLS_FUTURE,
+    "option": COLS_OPTION, "limits": COLS_LIMITS, "cap": COLS_CAP, "sector": COLS_SECTOR,
+}
+_SET_OF = {columns: name for name, columns in COLUMN_SETS.items()}
 
 
 @dataclass(frozen=True)
@@ -245,7 +250,7 @@ def flow_title(flow: int | None) -> str | None:
 
 
 def catalogue(flow: int | str | None = None, group: str | None = None) -> dict:
-    """What can be asked: every list with its title, valid flows, ranking column and the columns it returns."""
+    """What can be asked: every list with its title, valid flows (the first is the default), ranking column and column set."""
     wanted = parse_flow(flow)
     if group is not None and group not in GROUPS:
         raise ValueError(f"Unknown group '{group}'. Groups: {', '.join(GROUPS)}.")
@@ -255,19 +260,22 @@ def catalogue(flow: int | str | None = None, group: str | None = None) -> dict:
             continue
         entry: dict[str, Any] = {
             "name": d.name, "group": d.group, "title": d.title_fa, "description": d.title_en,
-            "flows": list(d.flows), "default_flow": d.types[0][0] if d.family != FAMILY_SECTORS else None,
-            "sorted_by": d.sort, "columns": [c for c in d.columns if c not in _IDENT],
+            "flows": list(d.flows), "columns": _SET_OF[d.columns],
         }
+        if d.sort:
+            entry["sorted_by"] = d.sort
         if d.note:
             entry["note"] = d.note
         lists.append(entry)
     if wanted is not None and not lists:
         raise ValueError(f"No list answers for flow {wanted}. Flows with lists: {', '.join(str(f) for f in sorted({f for d in CATALOGUE for f in d.flows}))}.")
+    used = dict.fromkeys(e["columns"] for e in lists)
     return {
         "count": len(lists),
         "lists": lists,
+        "column_sets": {name: [c for c in COLUMN_SETS[name] if c not in _IDENT] for name in used},
         "flows": {str(f): FLOW_TITLES.get(f, "?") for f in sorted({f for d in CATALOGUE for f in d.flows})},
-        "usage": "top_lists(list_name='price_gainers', flow=1, limit=20). The exchange's own type names (PClosingTop, Block ...) work as list names too.",
+        "usage": "top_lists(list_name='price_gainers', flow=1, limit=20). Without a flow, the first flow of the list is used. Every row has rank; instrument lists add symbol, name and ins_code. The exchange's own type names (PClosingTop, Block ...) work as list names too.",
         "notes": [
             "Rankings are computed by the exchange and refresh every few seconds in the session; outside it they show the last session.",
             "Prices and values are in rial; volume is in shares (contracts for derivatives).",

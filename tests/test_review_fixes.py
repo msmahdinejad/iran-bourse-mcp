@@ -259,3 +259,8 @@ async def test_price_history_tool_aggregates_and_validates_granularity():
     assert monthly["returned"] >= 1 and "period" in monthly["rows"][0]
     with pytest.raises(InputError, match="granularity"):
         await b.price_history("فولاد", granularity="hourly")
+
+
+async def test_adjusted_price_history_can_be_aggregated():
+    out = await bourse_with(MarketApi()).price_history("فولاد", adjusted=True, granularity="monthly")
+    assert out["adjusted"] is True and out["rows"] and "period" in out["rows"][0]

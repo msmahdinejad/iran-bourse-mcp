@@ -19,7 +19,7 @@ and subscription dates. Those are in Codal letters (``codal_filings`` with ``tit
 Two quirks of the share-count table are handled so an agent is not misled:
 
 * On Bourse price-adjustment days the exchange temporarily puts the share count *back* to the old figure and restores
-  the new one 1 to 8 days later (a pair of opposite rows, 200+ of them). These are bookkeeping, not capital reductions;
+  the new one 1 to 8 days later (a pair of opposite rows; 198 pairs in the Bourse table). These are bookkeeping, not capital reductions;
   they are folded into the matching price adjustment and counted as ``hidden_roundtrip_rows``.
 * Rights instruments (symbols ending in ح) appear with 0 shares before or after their life; they are reported as
   ``rights_symbol`` events, not as capital changes.

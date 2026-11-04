@@ -3,11 +3,11 @@
 Sources (all on cdn.tsetmc.com/api, plus one optional gateway feed):
 
 * ``Supervision/GetSupervisionListBySourceID/{source}/{listType}`` -> ``supervision``. ``source`` 1 = Bourse,
-  2 = Fara Bourse. ``listType`` is the exchange's own supervision status, named like its site does
-  (tsetmc.com "ناظر" tabs): **1 مشمول فرآیند تعلیق** (subject to the suspension process: still trading, duties overdue),
+  2 = Fara Bourse. ``listType`` is the exchange's own supervision status, named like the three boxes of its
+  supervision page: **1 مشمول فرآیند تعلیق** (subject to the suspension process: still trading, duties overdue),
   **2 معامله تحت احتیاط** (trading under caution) and **3 تعلیق شده** (suspended). Each row carries the symbol and the
-  reasons as HTML (``<br>`` separated Persian lines); the list rows have no date. ``listType`` 0 returns every
-  supervised symbol with empty reasons (344 on the Bourse) and is not used here.
+  reasons as HTML (``<br>`` separated Persian lines); the list rows have no date. ``listType`` 0 answered with 344
+  Bourse symbols, none of them on lists 1 or 3, all with empty reasons; it is undocumented and not used here.
 * ``Supervision/GetSupervisionByInsCode/{ins}`` -> one symbol's status, reasons and ``insertionDateTime`` (the
   date it was set); empty strings for a symbol that is not supervised.
 * ``MarketData/GetInstrumentStateTop/{n}`` -> ``instrumentState``: the market-wide change log of the order-entry /
@@ -51,7 +51,7 @@ SUPERVISION_LISTS: dict[int, tuple[str, str, str]] = {
     1: ("subject_to_suspension", "مشمول فرآیند تعلیق",
         "Suspension process started: the symbol still trades, but the disclosure duties listed in `reasons` are overdue and the exchange will suspend it if they stay unmet."),
     2: ("cautionary", "معامله تحت احتیاط",
-        "Trading under caution: a warning flag. The symbol is tradable; read `reasons` before relying on its price."),
+        "Trading under caution: a warning flag set by the exchange. The status itself does not stop trading, but the symbol can still be halted for other reasons: check symbol_history."),
     3: ("suspended", "تعلیق شده",
         "Suspended: trading is halted until the reasons are resolved. These symbols are normally missing from the live market-watch feed."),
 }

@@ -43,8 +43,10 @@ def test_catalogue_output_and_filters():
     full = T.catalogue()
     assert full["count"] == len(T.CATALOGUE) and full["lists"][0]["name"] == "most_active"
     gainers = next(e for e in full["lists"] if e["name"] == "price_gainers")
-    assert gainers["flows"] == [1, 2, 11, 12] and gainers["default_flow"] == 1 and gainers["sorted_by"] == "close_pct desc"
-    assert "rank" not in gainers["columns"] and "close_pct" in gainers["columns"]
+    assert gainers["flows"] == [1, 2, 11, 12] and gainers["sorted_by"] == "close_pct desc" and gainers["columns"] == "movers"
+    assert "rank" not in full["column_sets"]["movers"] and "close_pct" in full["column_sets"]["movers"]
+    assert set(full["column_sets"]) == set(T.COLUMN_SETS) and "sorted_by" not in next(e for e in full["lists"] if e["name"] == "rights")
+    assert len(str(full)) < 20_000  # one discovery call should stay cheap
     assert full["flows"]["27"].endswith("(P1)") and full["flows"]["11"] == "بازار اول بورس"
     assert any("HTTP 500" in n for n in full["notes"])
     derivatives = T.catalogue(flow="derivatives", group="queues")
@@ -280,8 +282,11 @@ def test_catalogue_columns_mirror_the_rows(fx):
         "price_gainers": ("toplists_trade_gainers", "tradeTop"), "largest_bids": ("toplists_limits_buy", "bestLimitsTop"),
         "market_cap_gainers": ("toplists_cap_top", "marketCap"), "sectors_by_value": ("toplists_sectors", "sectorTop"),
     }
-    listed = {e["name"]: e for e in T.catalogue()["lists"]}
+    full = T.catalogue()
+    listed = {e["name"]: e for e in full["lists"]}
     for name, (fixture, key) in samples.items():
         keys = list(shaped(fx, fixture, key, name)["rows"][0])
-        # the catalogue lists every column but the identity ones (rank, symbol, name, ins_code)
-        assert listed[name]["columns"] == [c for c in keys if c not in ("rank", "symbol", "name", "ins_code")]
+        # the catalogue names a column set; it lists every column but the identity ones (rank, symbol, name, ins_code)
+        assert full["column_sets"][listed[name]["columns"]] == [c for c in keys if c not in ("rank", "symbol", "name", "ins_code")]
+    only = T.catalogue(group="queues")
+    assert set(only["column_sets"]) == {"limits"}
