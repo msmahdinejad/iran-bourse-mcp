@@ -143,7 +143,7 @@ def run_main(argv, capsys):
 def test_main_tools_lists_everything(capsys):
     code, out, _ = run_main(["tools", "--json"], capsys)
     names = {t["name"] for t in json.loads(out)}
-    assert code == 0 and {"quote", "trade_summary", "codal_filings"} <= names and len(names) == 28
+    assert code == 0 and {"quote", "trade_summary", "codal_filings"} <= names and len(names) >= 30
 
 
 def test_main_call_runs_a_tool_without_network(capsys):

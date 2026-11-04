@@ -34,6 +34,8 @@ Tehran Stock Exchange (TSETMC / بورس تهران و فرابورس) and Codal
 How to work:
 - Symbols are Persian (فولاد، خودرو، وبملت). Persian/Arabic letter variants (ی/ي, ک/ك) are both fine.
 - Start with symbol_overview for a stock; use market_watch / top_movers for the whole market.
+- To find stocks that satisfy conditions (volume spikes, price patterns over past days, real-money flow, valuation,
+  queues), write a filter for screen_stocks instead of paging through market_watch. screener_reference lists fields.
 - Prices and values are in RIAL. Dates accept Gregorian (2026-11-03) or Jalali (1405/08/12).
 - The market trades Saturday-Wednesday 09:00-12:30 Tehran time. Outside that, data is the last session.
 - Anything marked *estimate*/*estimated* is derived by this server, not published by the exchange.
@@ -160,6 +162,41 @@ async def market_snapshot(
 ) -> dict:
     """End-of-day table for every instrument on a past date (تاریخچه کل بازار در یک روز)."""
     return await svc().market_snapshot(date, sort_by, limit, security_type)
+
+
+@tool()
+async def screen_stocks(
+    filter: Annotated[
+        str | None,
+        Field(
+            description="Condition checked for every stock, e.g. \"volume > 2 * avg(volume, 20) and close_pct > 1\". "
+            "Today: last close open high low yesterday last_pct close_pct volume value(rial) trades pe eps market_cap bid_volume "
+            "ask_volume at_upper_limit buy_queue real_net_value real_buyer_power industry symbol. Past days: close[1] (yesterday), "
+            "avg(volume, 20), highest(high, 10), count(close_pct > 0, 5), all(close_pct < 0, 3). Operators: and or not, has(industry, 'بانک'), "
+            "5B = 5 billion rial. All fields and functions: screener_reference."
+        ),
+    ] = None,
+    preset: Annotated[str | None, Field(description="Ready-made filter, e.g. volume_surge, smart_money, breakout_20d, buy_queue (screener_reference lists them). ANDed with filter.")] = None,
+    market: Market = None,
+    security_type: Annotated[str | None, Field(description="Substring of the security type, default 'سهام' (stocks)")] = "سهام",
+    industry: Annotated[str | None, Field(description="Industry name substring, e.g. 'بانک'")] = None,
+    columns: Annotated[list[str] | None, Field(description="Expressions to show, optionally 'expr as label'. Default: symbol, last, close_pct, volume, value plus the fields and window values the filter uses.")] = None,
+    sort: Annotated[str | None, Field(description="Expression to sort by, e.g. 'volume / avg(volume, 20)'. Default: the preset's, else value.")] = None,
+    descending: bool | None = None,
+    limit: Annotated[int, Field(ge=1, le=300)] = 30,
+    include_untraded: Annotated[bool, Field(description="Also consider symbols with no trades today")] = False,
+    adjusted: Annotated[bool, Field(description="Adjust past prices for capital increases and dividends so close[5] is comparable with close")] = True,
+) -> dict:
+    """Stock screener (فیلتر نویسی): the filter box of tsetmc.com driven by an expression. Returns only the stocks that pass your condition right now, using today's live values plus up to 60 past trading days (close[1], avg(volume, 20), count(close_pct > 0, 3)) and real/legal money flow, in one call with a validated, safe expression (nothing is executed)."""
+    return await svc().screen_stocks(filter, preset, market, security_type, industry, columns, sort, descending, limit, include_untraded, adjusted)
+
+
+@tool()
+async def screener_reference(
+    topic: Annotated[str, Field(description="overview (default), fields, functions, presets, syntax, examples or all")] = "overview",
+) -> dict:
+    """Fields, functions, ready-made presets and examples for screen_stocks filters. Call it when a filter is rejected or you need a field name."""
+    return await svc().screener_reference(topic)
 
 
 @tool()
@@ -360,6 +397,18 @@ def daily_market_report() -> str:
         "top_movers (gainers, losers, buy_queue, sell_queue, real_inflow, real_outflow) and index_contributors. "
         "Cover index level and breadth, strongest and weakest industries, queue pressure, where real-person "
         "money moved, and the symbols driving the index. Be concise and numeric."
+    )
+
+
+@mcp.prompt()
+def find_stocks(criteria: str) -> str:
+    """Turn a plain-language description into a screen_stocks filter, run it and verify the hits."""
+    return (
+        f"Find Iranian stocks matching: {criteria}\n"
+        "Translate it into a screen_stocks filter (call screener_reference if unsure of a field name; prices are in rial, "
+        "'5B' means five billion rial; yesterday is close[1]; averages use avg(field, days)). Prefer a preset when one fits. "
+        "State the exact filter you used, run it, then check the top 3-5 hits with symbol_overview or real_legal_flow before "
+        "reporting. If nothing matches, relax the thresholds one by one and say which one mattered. Not investment advice."
     )
 
 

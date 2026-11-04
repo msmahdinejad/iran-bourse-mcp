@@ -7,7 +7,7 @@ import datetime as dt
 import time
 from typing import Any
 
-from . import shape
+from . import screener, shape
 from .api import CODAL_SITE, TseApi
 from .client import Http, NotAvailable, UpstreamError
 from .dates import (
@@ -153,7 +153,7 @@ class Bourse:
             "industry_indices": [] if only_selected else industries,
         }
 
-    async def market_watch(
+    async def _watch_universe(
         self,
         market: str | None = None,
         security_type: str | None = None,
@@ -161,13 +161,8 @@ class Bourse:
         board: str | None = None,
         min_value: float = 0,
         only_traded: bool = True,
-        sort_by: str = "value",
-        descending: bool = True,
-        limit: int = 50,
-        detail: str = "compact",
-    ) -> dict:
-        if sort_by not in shape.WATCH_SORT_KEYS:
-            raise InputError(f"sort_by must be one of {sorted(shape.WATCH_SORT_KEYS)}")
+    ) -> tuple[int, list[dict]]:
+        """Shaped market-watch rows after the common universe filters; returns (all rows, kept rows)."""
         rows = [shape.shape_watch_row(r) for r in await self.api.market_watch()]
         total = len(rows)
 
@@ -186,6 +181,24 @@ class Bourse:
             and (r["value"] or 0) >= min_value
             and (not only_traded or (r["volume"] or 0) > 0)
         ]
+        return total, rows
+
+    async def market_watch(
+        self,
+        market: str | None = None,
+        security_type: str | None = None,
+        industry: str | None = None,
+        board: str | None = None,
+        min_value: float = 0,
+        only_traded: bool = True,
+        sort_by: str = "value",
+        descending: bool = True,
+        limit: int = 50,
+        detail: str = "compact",
+    ) -> dict:
+        if sort_by not in shape.WATCH_SORT_KEYS:
+            raise InputError(f"sort_by must be one of {sorted(shape.WATCH_SORT_KEYS)}")
+        total, rows = await self._watch_universe(market, security_type, industry, board, min_value, only_traded)
         key = shape.WATCH_SORT_KEYS[sort_by]
         rows.sort(key=lambda r: (r[key] is None, -(r[key] or 0) if descending else (r[key] or 0)))
         matched = len(rows)
@@ -297,6 +310,169 @@ class Bourse:
             for r in rows[:limit]
         ]
         return {"kind": kind, "count": len(out), "rows": out, "note": "real_* values are estimates: net real volume x symbol VWAP." if kind.startswith("real") else None}
+
+    # ------------------------------------------------------------------ screener
+    async def _trading_day_tables(self, today: int, depth: int) -> list[tuple[int, list[dict]]]:
+        """End-of-day market tables of the ``depth`` trading days before ``today`` (newest first).
+
+        Thursday and Friday are skipped without a request; other non-trading days (public holidays) come back
+        empty or nearly empty and are skipped after the fact, so a few extra tables may be fetched around holidays.
+        """
+        found: list[tuple[int, list[dict]]] = []
+        cursor, budget = to_date(today), depth * 2 + 30
+        while len(found) < depth and budget > 0:
+            batch: list[int] = []
+            while len(batch) < max(depth - len(found), 3) and budget > 0:
+                cursor -= dt.timedelta(days=1)
+                budget -= 1
+                if cursor.weekday() not in (3, 4):  # Thursday, Friday
+                    batch.append(from_date(cursor))
+            results = await asyncio.gather(*(self.api.prices_on_day(d) for d in batch), return_exceptions=True)
+            for deven, rows in zip(batch, results, strict=True):
+                if isinstance(rows, NotAvailable):
+                    continue
+                if isinstance(rows, Exception):
+                    raise rows
+                if sum(1 for r in rows if r.get("zTotTran")) >= 20 and len(found) < depth:
+                    found.append((deven, rows))
+        found.sort(key=lambda item: item[0], reverse=True)
+        return found
+
+    async def screener_reference(self, topic: str = "overview") -> dict:
+        try:
+            return screener.reference(topic)
+        except screener.FilterError as exc:
+            raise InputError(str(exc)) from exc
+
+    async def screen_stocks(
+        self,
+        filter: str | None = None,  # noqa: A002 - public tool argument name
+        preset: str | None = None,
+        market: str | None = None,
+        security_type: str | None = "سهام",
+        industry: str | None = None,
+        columns: list[str] | None = None,
+        sort: str | None = None,
+        descending: bool | None = None,
+        limit: int = 30,
+        include_untraded: bool = False,
+        adjusted: bool = True,
+    ) -> dict:
+        started = time.monotonic()
+        try:
+            chosen = screener.preset(preset) if preset else None
+            has_filter = bool(filter and filter.strip())
+            if not has_filter and chosen is None:
+                raise InputError('Give a filter (e.g. "volume > 2 * avg(volume, 20) and close_pct > 1"), a preset, or both. See screener_reference.')
+            sources = ([chosen.filter] if chosen else []) + ([filter] if has_filter else [])
+            conditions = [screener.compile_filter(text) for text in sources]
+            custom_sort = bool(sort and sort.strip())
+            sort_text = sort.strip() if custom_sort else (chosen.sort if chosen else "value")
+            sort_key = screener.compile_expression(sort_text)
+            if descending is None:
+                descending = chosen.descending if chosen and not custom_sort else True
+            labelled: list[tuple[str, screener.Compiled]] = []
+            for spec in columns or []:
+                body, label = spec.rsplit(" as ", 1) if " as " in spec else (spec, spec)
+                labelled.append((label.strip() or body.strip(), screener.compile_expression(body)))
+        except screener.FilterError as exc:
+            raise InputError(str(exc)) from exc
+
+        if not labelled:
+            labelled = [(name, screener.compile_expression(name)) for name in ("symbol", "last", "close_pct", "volume", "value")]
+            shown = {label for label, _ in labelled}
+            order_of = [f.name for f in screener.FIELDS]
+            for name in sorted({n for c in conditions for n in c.fields}, key=order_of.index):
+                spec = next(f for f in screener.FIELDS if f.name == name)
+                if name not in shown and spec.kind != "text" and len(labelled) < 12:
+                    labelled.append((name, screener.compile_expression(name)))
+                    shown.add(name)
+            for condition in conditions:  # the aggregate/lagged terms of the filter, as evidence for each hit
+                for text, fn in condition.evidence[:4]:
+                    if text not in shown and len(labelled) < 16:
+                        labelled.append((text, screener.Compiled(text, fn, "num", condition.lookback, False, frozenset())))
+                        shown.add(text)
+        elif labelled[0][0] != "symbol":
+            labelled.insert(0, ("symbol", screener.compile_expression("symbol")))
+
+        everything = [*conditions, sort_key, *(c for _, c in labelled)]
+        depth = max(c.lookback for c in everything)
+        need_flows = any(c.uses_flows for c in everything)
+
+        (total, universe), overview = await asyncio.gather(
+            self._watch_universe(market, security_type, industry, None, 0, not include_untraded),
+            self.api.market_overview(1),
+        )
+        today = int(overview.get("marketActivityDEven") or from_date(tehran_now().date()))
+        tables, flows = await asyncio.gather(
+            self._trading_day_tables(today, depth) if depth else _just([]),
+            self._client_flows_by_instrument() if need_flows else _just({}),
+        )
+
+        wanted = {r["instrument_id"] for r in universe}
+        by_instrument: dict[str, list[dict]] = {i: [] for i in wanted}
+        missing_day: dict[str, Any] = {}
+        for _, rows in tables:
+            present = {r.get("instrumentID"): r for r in rows if r.get("instrumentID") in wanted}
+            for iid, bucket in by_instrument.items():
+                raw = present.get(iid)
+                bucket.append(screener.build_history_day(raw) if raw else missing_day)
+
+        matched: list[screener.Ctx] = []
+        for row in universe:
+            today_values = screener.build_today(row, flows.get(row["instrument_id"]) if need_flows else None)
+            days = by_instrument.get(row["instrument_id"], [])
+            if adjusted and days:
+                days = [dict(d) for d in days]
+                screener.adjust_history(today_values.get("yesterday"), days)
+            ctx = screener.Ctx(today_values, days)
+            if all(screener.passes(c, ctx) for c in conditions):
+                matched.append(ctx)
+
+        keyed = []
+        for ctx in matched:
+            value = sort_key.fn(ctx, 0)
+            keyed.append((None if value is None else (int(value) if isinstance(value, bool) else value), ctx))
+        present_rows = [item for item in keyed if item[0] is not None]
+        absent_rows = [item for item in keyed if item[0] is None]
+        try:
+            present_rows.sort(key=lambda item: item[0], reverse=bool(descending))
+        except TypeError as exc:
+            raise InputError("The sort expression must give numbers (or text) for every row.") from exc
+        ordered = [ctx for _, ctx in present_rows + absent_rows]
+        limit = _clamp(limit, 1, 300)
+        out = [{label: screener.tidy(c.fn(ctx, 0)) for label, c in labelled} for ctx in ordered[:limit]]
+
+        now = tehran_now()
+        notes: list[str] = []
+        if is_session_hours(now):
+            notes.append("The session is still open: today's volume, value, trades and real/legal flows are partial, so ratios to past averages are understated.")
+        if depth and len(tables) < depth:
+            notes.append(f"Only {len(tables)} of the {depth} requested past trading days were available; rows lacking history do not match history conditions.")
+        if need_flows:
+            notes.append("real_* values come from the exchange's client-type table; *_value fields are estimated as net volume x vwap.")
+        if not ordered:
+            notes.append("No instrument matched. Loosen a threshold, or check field names with screener_reference.")
+        return {
+            "filter": " and ".join(f"({c.text})" for c in conditions),
+            "preset": chosen.name if chosen else None,
+            "universe": {"instruments": len(universe), "of_total_in_watch": total, "market": market, "security_type": security_type, "industry": industry},
+            "as_of": {"date": fmt_date(today), "jdate": jdate(today), "session_open": is_session_hours(now)},
+            "history": {
+                "trading_days_loaded": len(tables),
+                "from": fmt_date(tables[-1][0]) if tables else None,
+                "to": fmt_date(tables[0][0]) if tables else None,
+                "adjusted_for_capital_changes": bool(adjusted and tables),
+            },
+            "matched": len(ordered),
+            "returned": len(out),
+            "sorted_by": sort_text,
+            "descending": bool(descending),
+            "rows": out,
+            "units": "prices and values in rial, volumes in shares, percentages in percent",
+            "notes": notes,
+            "elapsed_seconds": round(time.monotonic() - started, 2),
+        }
 
     async def industry_summary(self, market: str | None = None, limit: int = 15) -> dict:
         watch = await self.market_watch(market=market, security_type="سهام", only_traded=True, limit=700, detail="full")
@@ -810,6 +986,10 @@ class Bourse:
 
 
 # ---------------------------------------------------------------------- module helpers
+async def _just(value: Any) -> Any:
+    return value
+
+
 def _hms(text: str | None) -> int:
     return int(ascii_digits((text or "00:00:00").replace(":", "")))
 
