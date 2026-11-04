@@ -142,6 +142,12 @@ class TseApi:
     async def messages_flow(self, flow: int, top: int) -> list[dict]:
         return await self._cdn(f"/Msg/GetMsgByFlow/{flow}/{top}", "msg", SHORT) or []
 
+    async def market_watch_all(self) -> list[dict]:
+        """The exchange's own market-watch feed (what tsetmc.com's table and filter box run on): every instrument, 5-level book."""
+        query = "market=0&industrialGroup=&showTraded=false&withBestLimits=true&hEven=0&RefID=0"
+        data = await self.http.get_json(f"{CDN}/ClosingPrice/GetMarketWatch?{query}", ttl=LIVE * 2)
+        return (data or {}).get("marketwatch", []) if isinstance(data, dict) else []
+
     # -- TSE gateway ---------------------------------------------------------------------
     async def market_watch(self) -> list[dict]:
         data = await self.http.get_json(

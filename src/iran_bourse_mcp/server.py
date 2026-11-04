@@ -113,17 +113,17 @@ async def indices(
 @tool()
 async def market_watch(
     market: Market = None,
-    security_type: Annotated[str | None, Field(description="Substring filter on the exchange's security type. The gateway's watch lists ordinary shares (سهام عادی) of Bourse and Fara Bourse; funds and bonds are in market_snapshot.")] = None,
+    security_type: Annotated[str | None, Field(description="Type of instrument: 'stock' (default, سهام), 'fund' (صندوق), 'bond', 'option', 'future', 'rights', 'commodity', 'base' (بازار پایه) or 'all'; a Persian substring such as 'صندوق' works too.")] = "سهام",
     industry: Annotated[str | None, Field(description="Industry name substring, e.g. 'فلزات', 'بانک'")] = None,
-    board: Annotated[str | None, Field(description="Board substring, e.g. 'اول', 'دوم', 'نوآفرین'")] = None,
+    board: Annotated[str | None, Field(description="Board substring, e.g. 'اول', 'دوم', 'پایه'")] = None,
     min_value: Annotated[float, Field(description="Minimum traded value in rial")] = 0,
     only_traded: bool = True,
     sort_by: Annotated[str, Field(description="last_pct, close_pct, value, volume, trades, market_cap, pe, effect_on_index")] = "value",
     descending: bool = True,
     limit: Annotated[int, Field(ge=1, le=700)] = 50,
-    detail: Annotated[str, Field(description="'compact' (default) or 'full' (every field incl. best bid/ask, limits, EPS)")] = "compact",
+    detail: Annotated[str, Field(description="'compact' (default) or 'full' (every field incl. best bid/ask, limits, EPS, base volume, NAV)")] = "compact",
 ) -> dict:
-    """Whole-market screen (دیده‌بان بازار) of ordinary shares on Bourse and Fara Bourse: filter, sort and page through ~600 symbols in one call."""
+    """Whole-market table (دیده‌بان بازار) of the exchange's own feed: about 3,700 instruments (shares, base market, funds, bonds, options, futures, rights, commodities) on Bourse and Fara Bourse, filtered, sorted and paged in one call. To find instruments by conditions use screen_stocks."""
     return await svc().market_watch(market, security_type, industry, board, min_value, only_traded, sort_by, descending, limit, detail)
 
 
@@ -134,7 +134,7 @@ async def top_movers(
         Field(description="gainers, losers, value, volume, trades, buy_queue, sell_queue, real_inflow, real_outflow, real_buyer_power"),
     ] = "gainers",
     market: Market = None,
-    security_type: Annotated[str | None, Field(description="Substring filter, default 'سهام' (stocks)")] = "سهام",
+    security_type: Annotated[str | None, Field(description="'stock' (default, سهام), 'fund', 'option', 'bond', 'all' ...")] = "سهام",
     limit: Annotated[int, Field(ge=1, le=100)] = 20,
 ) -> dict:
     """Ranked lists: top gainers/losers, most traded, buy/sell queues (صف خرید/فروش, confirmed against each symbol's real order book; about 10 s on a strong day), real-person money inflow/outflow (ورود/خروج پول حقیقی), buyer power."""
@@ -178,7 +178,7 @@ async def screen_stocks(
     ] = None,
     preset: Annotated[str | None, Field(description="Ready-made filter, e.g. volume_surge, smart_money, breakout_20d, buy_queue (screener_reference lists them). ANDed with filter.")] = None,
     market: Market = None,
-    security_type: Annotated[str | None, Field(description="Substring of the security type, default 'سهام' (stocks)")] = "سهام",
+    security_type: Annotated[str | None, Field(description="Instrument type: 'stock' (default, سهام), 'fund' (صندوق, has nav and nav_premium_pct), 'option', 'future', 'bond', 'rights', 'commodity', 'base' or 'all'")] = "سهام",
     industry: Annotated[str | None, Field(description="Industry name substring, e.g. 'بانک'")] = None,
     columns: Annotated[list[str] | None, Field(description="Expressions to show, optionally 'expr as label'. Default: symbol, last, close_pct, volume, value plus the fields and window values the filter uses.")] = None,
     sort: Annotated[str | None, Field(description="Expression to sort by, e.g. 'volume / avg(volume, 20)'. Default: the preset's, else value.")] = None,

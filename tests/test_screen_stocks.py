@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from test_service_market import watch_row
 
+from iran_bourse_mcp.client import NotAvailable
 from iran_bourse_mcp.service import Bourse, InputError
 
 TODAY = 20261104  # a Wednesday
@@ -46,6 +47,9 @@ class ScreenApi:
 
     async def market_watch(self):
         return WATCH
+
+    async def market_watch_all(self):
+        raise NotAvailable("exchange feed unavailable in this test")
 
     async def market_overview(self, flow):
         return {"marketActivityDEven": TODAY}

@@ -39,6 +39,9 @@ class MarketApi:
     async def market_watch(self):
         return WATCH
 
+    async def market_watch_all(self):
+        raise NotAvailable("exchange feed unavailable in this test")
+
     async def market_overview(self, flow):
         return {"marketActivityDEven": 20261104, "marketState": "F", "marketStateTitle": "بسته", "indexLastValue": 100.0,
                 "indexChange": 1.0, "marketActivityZTotTran": 5, "marketActivityQTotCap": 1e12, "marketActivityQTotTran": 10,

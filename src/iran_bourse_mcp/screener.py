@@ -99,8 +99,19 @@ FIELDS: tuple[Field, ...] = (
     # valuation (today only)
     _f("pe", "num", "ratio", "P/E", "Price / earnings (null when loss-making).", aliases=("p_e",)),
     _f("eps", "num", "rial", "EPS", "Earnings per share, rial."),
-    _f("market_cap", "num", "rial", "ارزش بازار", "Market capitalisation, rial."),
+    _f("market_cap", "num", "rial", "ارزش بازار", "Market capitalisation: closing price x shares outstanding, rial.", aliases=("mv", "market_value")),
     _f("index_effect", "num", "points", "تاثیر در شاخص", "Contribution to the total index, in index points.", aliases=("effect_on_index",)),
+    # instrument facts (today only)
+    _f("base_volume", "num", "shares", "حجم مبنا", "Base volume (the exchange's reference volume; 1 for nearly every symbol).", aliases=("bvol", "bv")),
+    _f("shares", "num", "count", "تعداد سهام", "Shares outstanding (units for funds).", aliases=("z",)),
+    _f("nav", "num", "rial", "NAV ابطال صندوق", "Fund redemption NAV per unit; empty for non-funds.", aliases=("predtran",)),
+    _f("nav_premium_pct", "num", "%", "حباب صندوق", "(last / nav - 1) x 100 for funds: positive means trading above redemption NAV."),
+    _f("open_interest", "num", "contracts", "موقعیت‌های باز", "Open interest of options and futures.", aliases=("buyop",)),
+    _f("sector_code", "num", "code", "کد گروه صنعت", "Industry-group code of the exchange.", aliases=("cs",)),
+    _f("type_code", "num", "code", "کد نوع ابزار", "The exchange's instrument-type code, e.g. 300 shares, 305 fund, 311 option."),
+    _f("last_update", "num", "HHMMSS", "زمان آخرین بروزرسانی", "Time this row was last updated, e.g. 123000."),
+    _f("bid_volume_5", "num", "shares", "حجم ۵ سطر خرید", "Total volume of the five best bids."),
+    _f("ask_volume_5", "num", "shares", "حجم ۵ سطر فروش", "Total volume of the five best asks."),
     # derived price shape (today only)
     _f("gap_pct", "num", "%", "گپ بازگشایی", "(open / yesterday - 1) x 100."),
     _f("range_pct", "num", "%", "دامنه نوسان روز", "(high - low) / yesterday x 100."),
@@ -122,6 +133,14 @@ FIELDS: tuple[Field, ...] = (
     _f("real_buyer_power", "num", "ratio", "قدرت خریدار حقیقی", "Average real buy size / average real sell size (>1: buyers are bigger).", flows=True, aliases=("buyer_power",)),
     _f("real_buy_share", "num", "%", "سهم خرید حقیقی", "Real-person share of all buy volume, percent.", flows=True),
     _f("real_sell_share", "num", "%", "سهم فروش حقیقی", "Real-person share of all sell volume, percent.", flows=True),
+)
+
+_LEVEL_SPECS = (("pd", "rial", "bid price", "قیمت خرید"), ("qd", "shares", "bid volume", "حجم خرید"), ("zd", "count", "bid orders", "تعداد خریدار"),
+                ("po", "rial", "ask price", "قیمت فروش"), ("qo", "shares", "ask volume", "حجم فروش"), ("zo", "count", "ask orders", "تعداد فروشنده"))
+FIELDS += tuple(  # five-level order book; level 1 is bid_price, bid_volume ... above (pd1 and friends are their aliases)
+    _f(f"{code}{n}", "num", unit, f"{fa}، سطر {n}", f"Order-book level {n}: {en}.")
+    for n in range(2, 6)
+    for code, unit, en, fa in _LEVEL_SPECS
 )
 
 _BY_NAME: dict[str, Field] = {}
@@ -184,6 +203,20 @@ def build_today(row: dict, flow: dict | None = None) -> dict[str, Any]:
     }
     if out["range_pct"] is not None:
         out["range_pct"] *= 100
+    out.update(
+        base_volume=row.get("base_volume"), shares=row.get("shares"), nav=row.get("nav"), open_interest=row.get("open_interest"),
+        sector_code=_num(row.get("sector_code")), type_code=row.get("type_code"), last_update=row.get("last_update"),
+        nav_premium_pct=_pct(last, row.get("nav")) if row.get("nav") else None,
+    )
+    book = row.get("book") or []
+    if book:
+        keys = {"pd": "bid_price", "qd": "bid_volume", "zd": "bid_orders", "po": "ask_price", "qo": "ask_volume", "zo": "ask_orders"}
+        for n, level in enumerate(book[:5], start=1):
+            if n > 1:
+                for code, key in keys.items():
+                    out[f"{code}{n}"] = level.get(key)
+        out["bid_volume_5"] = sum(level.get("bid_volume") or 0 for level in book[:5])
+        out["ask_volume_5"] = sum(level.get("ask_volume") or 0 for level in book[:5])
     if flow:
         buy_i, sell_i = _num(flow.get("buy_I_Volume")) or 0.0, _num(flow.get("sell_I_Volume")) or 0.0
         buy_n, sell_n = _num(flow.get("buy_N_Volume")) or 0.0, _num(flow.get("sell_N_Volume")) or 0.0

@@ -7,6 +7,7 @@ import datetime as dt
 import time
 from typing import Any
 
+from . import market as marketfeed
 from . import screener, shape
 from .api import CODAL_SITE, TseApi
 from .client import Http, NotAvailable, UpstreamError
@@ -71,6 +72,7 @@ class Bourse:
         self.http = http or Http()
         self.api = TseApi(self.http)
         self.resolver = Resolver(self.api)
+        self.market_source = "tsetmc"
 
     async def aclose(self) -> None:
         await self.http.aclose()
@@ -153,29 +155,45 @@ class Bourse:
             "industry_indices": [] if only_selected else industries,
         }
 
+    async def _market_rows(self) -> tuple[list[dict], str]:
+        """Every instrument as a shaped row, from the exchange's market-watch feed (about 3,700 rows).
+
+        If that feed is unavailable the TSE gateway's 582 ordinary shares are used instead, and the source says so.
+        """
+        try:
+            feed = await self.api.market_watch_all()
+        except (NotAvailable, UpstreamError):
+            feed = []
+        if not feed:
+            return [shape.shape_watch_row(r) for r in await self.api.market_watch()], "tse-gateway"
+        static, gateway = await asyncio.gather(self.api.static_data(), self.api.market_watch(), return_exceptions=True)
+        industries = {} if isinstance(static, Exception) else marketfeed.industry_names(static)
+        extras = {} if isinstance(gateway, Exception) else {g.get("instrumentId"): marketfeed.gateway_extras(g) for g in gateway}
+        return [marketfeed.shape_market_row(r, industries=industries, gateway=extras.get(r.get("insID"))) for r in feed], "tsetmc"
+
     async def _watch_universe(
         self,
-        market: str | None = None,
+        market_name: str | None = None,
         security_type: str | None = None,
         industry: str | None = None,
         board: str | None = None,
         min_value: float = 0,
         only_traded: bool = True,
     ) -> tuple[int, list[dict]]:
-        """Shaped market-watch rows after the common universe filters; returns (all rows, kept rows)."""
-        rows = [shape.shape_watch_row(r) for r in await self.api.market_watch()]
+        """Shaped market rows after the common universe filters; returns (all rows, kept rows)."""
+        rows, self.market_source = await self._market_rows()
         total = len(rows)
 
         def contains(haystack: str | None, needle: str | None) -> bool:
             return needle is None or match_key(needle) in match_key(haystack)
 
-        if market:
-            want_fara = _flow(market) == 2
-            rows = [r for r in rows if ("فرابورس" in (r["market"] or "")) == want_fara]
+        if market_name:
+            want_fara = _flow(market_name) == 2
+            rows = [r for r in rows if bool(r["fara"] if "fara" in r else "فرابورس" in (r["market"] or "")) == want_fara]
         rows = [
             r
             for r in rows
-            if contains(r["security_type"], security_type)
+            if marketfeed.security_type_matches(r["security_type"], security_type)
             and contains(r["industry"], industry)
             and contains(r["board"], board)
             and (r["value"] or 0) >= min_value
@@ -186,7 +204,7 @@ class Bourse:
     async def market_watch(
         self,
         market: str | None = None,
-        security_type: str | None = None,
+        security_type: str | None = "سهام",
         industry: str | None = None,
         board: str | None = None,
         min_value: float = 0,
@@ -205,7 +223,9 @@ class Bourse:
         rows = rows[: _clamp(limit, 1, 700)]
         if detail != "full":
             rows = [_compact_watch(r) for r in rows]
-        return {"total_instruments": total, "matched": matched, "returned": len(rows), "sorted_by": sort_by, "rows": rows, "units": "rial"}
+        else:
+            rows = [{k: v for k, v in r.items() if k != "book"} for r in rows]
+        return {"total_instruments": total, "source": self.market_source, "matched": matched, "returned": len(rows), "sorted_by": sort_by, "rows": rows, "units": "rial"}
 
     async def _instrument_index(self) -> dict[str, str]:
         """instrumentId (as used by the TSE gateway) -> insCode (as used by the cdn API).
@@ -227,11 +247,15 @@ class Bourse:
         self._index_cache = (time.monotonic() + 6 * 3600, index)
         return index
 
-    async def _client_flows_by_instrument(self) -> dict[str, dict]:
-        """instrumentId -> raw client-type row, joined through the daily price table."""
-        index, flows = await asyncio.gather(self._instrument_index(), self.api.client_type_all())
+    async def _client_flows_by_instrument(self, rows: list[dict] | None = None) -> dict[str, dict]:
+        """instrumentId -> raw client-type row. Rows from the exchange feed carry their insCode; gateway rows are joined through the daily table."""
+        flows = await self.api.client_type_all()
+        by_code = {str(f["insCode"]): f for f in flows}
+        if rows is not None and all(r.get("ins_code") for r in rows):
+            return {r["instrument_id"]: by_code[r["ins_code"]] for r in rows if r["ins_code"] in by_code}
+        index = await self._instrument_index()
         by_ins = {v: k for k, v in index.items()}
-        return {by_ins[str(f["insCode"])]: f for f in flows if str(f.get("insCode")) in by_ins}
+        return {by_ins[code]: f for code, f in by_code.items() if code in by_ins}
 
     async def _confirm_queues(self, rows: list[dict], side: str) -> list[dict]:
         """Fetch the real order book of limit-locked candidates and keep genuine queues.
@@ -240,10 +264,11 @@ class Bourse:
         so queue presence and size come from BestLimits. On a strong day about 200 symbols sit at the upper limit, so this makes up to
         that many calls (cached, six in flight): expect around ten seconds.
         """
-        index = await self._instrument_index()
+        index = await self._instrument_index() if any(not r.get("ins_code") for r in rows) else {}
+        code_of = lambda r: r.get("ins_code") or index.get(r["instrument_id"])  # noqa: E731
         flag = "at_upper_limit" if side == "buy" else "at_lower_limit"
-        candidates = sorted((r for r in rows if r[flag] and index.get(r["instrument_id"])), key=lambda r: r["value"] or 0, reverse=True)[:QUEUE_CANDIDATES]
-        books = await asyncio.gather(*(self.api.best_limits(index[r["instrument_id"]]) for r in candidates), return_exceptions=True)
+        candidates = sorted((r for r in rows if r[flag] and code_of(r)), key=lambda r: r["value"] or 0, reverse=True)[:QUEUE_CANDIDATES]
+        books = await asyncio.gather(*(self.api.best_limits(code_of(r)) for r in candidates), return_exceptions=True)
         wanted = "buy_queue" if side == "buy" else "sell_queue"
         out = []
         for row, book in zip(candidates, books, strict=True):
@@ -275,7 +300,7 @@ class Bourse:
         elif kind in ("buy_queue", "sell_queue"):
             rows = await self._confirm_queues(rows, "buy" if kind == "buy_queue" else "sell")
         else:
-            flows = await self._client_flows_by_instrument()
+            flows = await self._client_flows_by_instrument(rows)
             enriched = []
             for r in rows:
                 f = flows.get(r["instrument_id"])
@@ -406,7 +431,7 @@ class Bourse:
         today = int(overview.get("marketActivityDEven") or from_date(tehran_now().date()))
         tables, flows = await asyncio.gather(
             self._trading_day_tables(today, depth) if depth else _just([]),
-            self._client_flows_by_instrument() if need_flows else _just({}),
+            self._client_flows_by_instrument(universe) if need_flows else _just({}),
         )
 
         wanted = {r["instrument_id"] for r in universe}
