@@ -13,31 +13,14 @@ import json
 import time
 from pathlib import Path
 
+from tool_groups import FA, GROUPS
+
 from iran_bourse_mcp import __version__, clients
 from iran_bourse_mcp.server import mcp
 from iran_bourse_mcp.service import Bourse
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
-GROUPS = {
-    "Market": ["market_status", "market_overview", "indices", "market_watch", "top_movers", "industry_summary", "index_contributors", "market_snapshot", "market_holder_moves", "supervisor_messages"],
-    "Symbol": ["search_symbol", "symbol_overview", "quote", "order_book", "order_book_history", "trades", "trade_summary", "price_history", "real_legal_flow", "shareholders", "shareholder_history", "shareholder_portfolio", "corporate_actions", "symbol_statistics", "etf_nav"],
-    "Codal": ["codal_filings", "codal_company"],
-    "Help": ["glossary"],
-}
-# Persian one-liners for the website's tool explorer
-FA = {
-    "market_status": "وضعیت بازار", "market_overview": "نمای کلی بازار", "indices": "شاخص‌ها و شاخص صنایع",
-    "market_watch": "دیده‌بان کل بازار با فیلتر و مرتب‌سازی", "top_movers": "بیشترین رشد/ریزش، صف خرید و فروش، ورود پول حقیقی",
-    "industry_summary": "خلاصه گروه‌های صنعتی", "index_contributors": "بیشترین تأثیر بر شاخص", "market_snapshot": "جدول پایان روز کل بازار",
-    "market_holder_moves": "جابه‌جایی سهامداران عمده", "supervisor_messages": "پیام ناظر", "search_symbol": "جستجوی نماد",
-    "symbol_overview": "پرونده کامل نماد در یک فراخوانی", "quote": "قیمت لحظه‌ای با درصد تغییر درست", "order_book": "عمق بازار و صف",
-    "order_book_history": "تاریخچه عمق بازار و بازه‌های صف", "trades": "ریز معاملات", "trade_summary": "خلاصه ریز معاملات، VWAP و بزرگ‌ترین معاملات",
-    "price_history": "تاریخچه قیمت (تعدیل‌شده)", "real_legal_flow": "حقیقی و حقوقی، سرانه و قدرت خریدار", "shareholders": "سهامداران عمده",
-    "shareholder_history": "تاریخچه سهامداران", "shareholder_portfolio": "پرتفوی یک سهامدار", "corporate_actions": "افزایش سرمایه و تعدیل",
-    "symbol_statistics": "آمارهای نماد", "etf_nav": "حباب صندوق نسبت به NAV", "codal_filings": "اطلاعیه‌های کدال با لینک PDF و اکسل",
-    "codal_company": "اطلاعات ناشر کدال", "glossary": "واژه‌نامه بازار",
-}
 
 
 def schema_of(tool) -> dict:

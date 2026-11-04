@@ -7,8 +7,8 @@ import datetime as dt
 import time
 from typing import Any
 
+from . import derivatives, screener, shape
 from . import market as marketfeed
-from . import screener, shape
 from .api import CODAL_SITE, TseApi
 from .client import Http, NotAvailable, UpstreamError
 from .dates import (
@@ -493,7 +493,7 @@ class Bourse:
         if not ordered:
             notes.append("No instrument matched. Loosen a threshold, or check field names with screener_reference.")
         return {
-            "filter": " and ".join(f"({c.text})" for c in conditions),
+            "filter": " and ".join(f"({text.strip()})" for text in sources),
             "preset": chosen.name if chosen else None,
             "universe": {"instruments": len(universe), "of_total_in_watch": total, "market": market, "security_type": security_type, "industry": industry},
             "as_of": {"date": fmt_date(today), "jdate": jdate(today), "session_open": is_session_hours(now)},
@@ -990,6 +990,42 @@ class Bourse:
         }
 
     # ------------------------------------------------------------------ Codal
+    # ------------------------------------------------------------------ derivatives (options, futures)
+    async def option_chain(
+        self,
+        underlying: str | None = None,
+        expiry: str | None = None,
+        market: str | None = None,
+        option_type: str | None = None,
+        moneyness: str | None = None,
+        min_volume: float = 0,
+        min_open_interest: float = 0,
+        strike_window_pct: float | None = None,
+        sort_by: str | None = None,
+        limit: int | None = None,
+    ) -> dict:
+        try:
+            flow = derivatives.option_flow(market)
+        except ValueError as exc:
+            raise InputError(str(exc)) from exc
+        rows = await self.api.option_market_watch(flow)
+        try:
+            return derivatives.option_chain(
+                rows, underlying, expiry, market=market, option_type=option_type, moneyness=moneyness, min_volume=min_volume,
+                min_open_interest=min_open_interest, strike_window_pct=strike_window_pct, sort_by=sort_by, limit=limit,
+            )
+        except ValueError as exc:
+            raise InputError(str(exc)) from exc
+
+    async def futures_market(
+        self, underlying: str | None = None, sort_by: str | None = None, limit: int | None = None, descending: bool | None = None
+    ) -> dict:
+        rows = await self.api.future_market_watch()
+        try:
+            return derivatives.futures_market(rows, underlying, sort_by=sort_by, descending=descending, limit=limit)
+        except ValueError as exc:
+            raise InputError(str(exc)) from exc
+
     async def codal_filings(
         self,
         symbol: str | None = None,

@@ -157,6 +157,15 @@ class TseApi:
         data = await self.http.get_json(f"{CDN}/ClosingPrice/GetMarketWatch?{query}", ttl=LIVE * 2)
         return (data or {}).get("marketwatch", []) if isinstance(data, dict) else []
 
+    # -- derivatives (options and futures) -----------------------------------------------
+    async def option_market_watch(self, flow: int = 0) -> list[dict]:
+        """Option chain rows, one per strike/expiry pair with the call and the put side by side. flow 0 = all, 1 = Bourse, 2 = Fara Bourse."""
+        return await self._cdn(f"/Instrument/GetInstrumentOptionMarketWatch/{int(flow)}", "instrumentOptMarketWatch", SHORT) or []
+
+    async def future_market_watch(self) -> list[dict]:
+        """Futures (آتی) with open interest and the underlying's prices."""
+        return await self._cdn("/Instrument/GetInstrumentFutureMarketWatch/0", "instrumentFtMarketWatch", LIVE * 2) or []
+
     # -- TSE gateway ---------------------------------------------------------------------
     async def market_watch(self) -> list[dict]:
         data = await self.http.get_json(
