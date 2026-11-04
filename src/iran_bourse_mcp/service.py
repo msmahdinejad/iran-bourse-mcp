@@ -7,7 +7,7 @@ import datetime as dt
 import time
 from typing import Any
 
-from . import calendar_events, derivatives, screener, shape, status, toplists
+from . import calendar_events, commodity, derivatives, energy, screener, shape, status, toplists
 from . import funds as fundmod
 from . import indices as indexmod
 from . import market as marketfeed
@@ -1226,6 +1226,118 @@ class Bourse:
             return derivatives.futures_market(rows, underlying, sort_by=sort_by, descending=descending, limit=limit)
         except ValueError as exc:
             raise InputError(str(exc)) from exc
+
+    # ------------------------------------------------------------------ commodity and energy exchanges
+    async def commodity_market(
+        self,
+        view: str = "trades",
+        date: str | None = None,
+        to_date: str | None = None,
+        group: str | None = None,
+        product: str | None = None,
+        traded_only: bool = True,
+        sort_by: str | None = None,
+        limit: int | None = None,
+    ) -> dict:
+        """IME physical market. Upstream: ``ime_daily`` (latest-session lookup, only without a date), then ``ime_trades`` for the trades view or
+        ``ime_rings`` + ``ime_markets`` + ``ime_daily`` + ``ime_usd_rate`` for the summary view."""
+        try:
+            request = commodity.plan(view, date, to_date, group, product, traded_only, sort_by, limit)
+        except ValueError as exc:  # DateError is one
+            raise InputError(str(exc)) from exc
+        resolved = request.start is None
+        recent: list[dict] = []
+        if resolved:
+            first, last = commodity.recent_window(tehran_now().date())
+            recent = await self.api.ime_daily(first, last)
+            day = commodity.latest_session(recent)
+            if day is None:
+                raise InputError("IME published no physical-market session in the last two weeks. Pass date (Gregorian 2026-11-04 or Jalali 1405/08/13) for an older day.")
+            start = end = day
+        else:
+            start, end = request.start or 0, request.end or request.start or 0
+        if request.view == "trades":
+            rows = await self.api.ime_trades(jdate(start) or "", jdate(end) or "", request.main_cat)
+            return commodity.shape_trades(rows, request, start, end, resolved=resolved)
+        rings = await self.api.ime_rings(jdate(start) or "", jdate(end) or "")
+        markets = await self.api.ime_markets(jdate(start) or "", jdate(end) or "")
+        if resolved:
+            daily = commodity.daily_upto(recent, end)
+        else:
+            first, last = commodity.chart_window(end) if start == end else (jdate(start) or "", jdate(end) or "")
+            daily = await self.api.ime_daily(first, last)
+        try:
+            usd = await self.api.ime_usd_rate()
+        except UpstreamError:  # a nicety: the summary stands without it
+            usd = []
+        return commodity.shape_summary(rings, markets, daily, usd, start, end, resolved=resolved)
+
+    async def energy_market(
+        self,
+        view: str = "trades",
+        market: str | None = None,
+        date: str | None = None,
+        to_date: str | None = None,
+        product: str | None = None,
+        auction_id: int | None = None,
+        traded_only: bool = True,
+        sort_by: str | None = None,
+        limit: int | None = None,
+    ) -> dict:
+        """Iran Energy Exchange. Upstream, one host (``webapi.iee.ir``): trades -> ``iee_physical_trades`` / ``iee_power_trades`` (one call each, the
+        latest-session lookup reuses the same call over a week); offers -> ``iee_physical_offers`` / ``iee_power_offers``; auction -> ``iee_auction`` +
+        ``iee_auction_trades``; overview -> ``iee_markets_today`` + ``iee_physical_glance`` + ``iee_power_glance``."""
+        try:
+            request = energy.plan(view, market, date, to_date, product, auction_id, traded_only, sort_by, limit)
+        except ValueError as exc:
+            raise InputError(str(exc)) from exc
+        if request.view == "trades":
+            return await self._energy_trades(request)
+        if request.view == "offers":
+            raw: dict[str, list[dict]] = {}
+            more: list[str] = []
+            fetchers = {"physical": self.api.iee_physical_offers, "power": self.api.iee_power_offers}
+            for market_name in request.markets:  # one after the other: the exchange is slow and shared
+                envelope = await fetchers[market_name]()
+                raw[market_name] = envelope.get("results") or []
+                if ((envelope.get("pagedMetaData") or [{}])[0]).get("hasNext") and not any(energy.is_held(r) for r in raw[market_name]):
+                    more.append(market_name)  # a page of nothing but upcoming auctions: there may be more behind it
+            return energy.shape_offers(raw, request, more=more)
+        if request.view == "auction":
+            auction_id_ = request.auction_id or 0
+            try:
+                envelope = await self.api.iee_auction(auction_id_)
+            except NotAvailable as exc:  # unknown ids answer HTTP 400
+                raise InputError(f"The exchange has no auction {auction_id_}. Take auction_id from a row of view='trades' or view='offers'.") from exc
+            results = envelope.get("results") or []
+            if not results:
+                raise InputError(f"The exchange has no auction {auction_id_}. Take auction_id from a row of view='trades' or view='offers'.")
+            trades = (await self.api.iee_auction_trades(auction_id_)).get("results") or []
+            return energy.shape_auction(results[0], trades)
+        today = await self.api.iee_markets_today()
+        physical = await self.api.iee_physical_glance()
+        power = await self.api.iee_power_glance()
+        return energy.shape_overview(today.get("results") or [], physical.get("results") or [], power.get("results") or [])
+
+    async def _energy_trades(self, request: energy.EnergyRequest) -> dict:
+        fetchers = {"physical": self.api.iee_physical_trades, "power": self.api.iee_power_trades}
+        resolved = request.start is None
+        if resolved:
+            first, last = energy.recent_window(tehran_now().date())
+        else:
+            first, last = jdate(request.start) or "", jdate(request.end or request.start) or ""
+        raw: dict[str, list[dict]] = {}
+        truncated: list[str] = []
+        for market_name in request.markets:
+            envelope = await fetchers[market_name](first, last)
+            raw[market_name] = envelope.get("results") or []
+            if ((envelope.get("pagedMetaData") or [{}])[0]).get("hasNext"):
+                truncated.append(market_name)
+        if resolved:
+            start = end = energy.latest_day(row for rows in raw.values() for row in rows) or from_date(tehran_now().date())
+        else:
+            start, end = request.start or 0, request.end or request.start or 0
+        return energy.shape_trades(raw, request, start, end, resolved=resolved, truncated=truncated)
 
     async def codal_filings(
         self,

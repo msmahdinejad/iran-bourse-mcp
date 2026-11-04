@@ -40,6 +40,9 @@ How to work:
 - For the exchange's own rankings (برترین‌ها: block trades, rights, ETFs, options, queues, industries) use top_lists; for who is
   halted use trading_status; for capital increases and price adjustments by date use capital_calendar; option_chain and
   futures_market cover the derivatives market.
+- The commodity and energy exchanges: commodity_market (Iran Mercantile Exchange physical market: steel, copper, petrochemicals,
+  cement; trades and roll-ups) and energy_market (Iran Energy Exchange: oil, gas and petrochemical auctions, electricity). Their traded
+  boards (certificates, forwards, funds, futures) are in top_lists and market_watch.
 - Prices and values are in RIAL. Dates accept Gregorian (2026-11-03) or Jalali (1405/08/12).
 - The market trades Saturday-Wednesday 09:00-12:30 Tehran time. Outside that, data is the last session.
 - Anything marked *estimate*/*estimated* is derived by this server, not published by the exchange.
@@ -465,6 +468,37 @@ async def futures_market(
 ) -> dict:
     """Futures (آتی) of the Tehran derivatives market (about 16 contracts): last and close price, bid/ask, volume, value, open interest, expiry and days left, plus the basis against the underlying - absolute, percent and an annualised estimate (formula in the notes). Contracts that did not trade today show no price and no basis."""
     return await svc().futures_market(underlying, sort_by, limit, descending)
+
+
+@tool()
+async def commodity_market(
+    view: Annotated[str, Field(description="'trades' (default): the session's offers and contracts, one row per symbol. 'summary': IME's own roll-ups by ring and market, one row per session, and its dollar rate.")] = "trades",
+    date: Date = None,
+    to_date: DateBound = None,
+    group: Annotated[str | None, Field(description="Main group: 1 industrial صنعتی (metals, steel, copper, aluminium, cement), 2 agricultural کشاورزی, 3 petrochemical پتروشیمی, 4 mining معدنی, 5 oil products فرآورده‌های نفتی, 6 real estate; a name or fragment works too. Omit for all. Applies to view='trades'.")] = None,
+    product: Annotated[str | None, Field(description="Fragment of the product, symbol, producer or supplier name, e.g. 'میلگرد', 'مس', 'قیر', 'فولاد مبارکه'. Applies to view='trades'.")] = None,
+    traded_only: Annotated[bool, Field(description="True (default): only rows that traded. False also lists offers that found no buyer (null prices).")] = True,
+    sort_by: Annotated[str | None, Field(description="value (default), volume, price, demand, offered or name")] = None,
+    limit: Annotated[int | None, Field(ge=1, le=100, description="Maximum rows to return (default 20) (max 100)")] = None,
+) -> dict:
+    """Iran Mercantile Exchange physical market (بورس کالای ایران: steel, copper, aluminium, zinc, cement, petrochemicals, oil products, bitumen, agricultural goods), straight from ime.co.ir. view='trades' lists a session's offers and contracts: product, producer, hall (تالار), contract type (cash نقدی, forward سلف, credit نسیه; matching مچینگ), delivery date, offered / demand / traded tons, weighted-average closing price with low, high and base price in RIAL PER KILOGRAM, and value in RIAL, with totals by hall and contract type and the top products by value. view='summary' gives IME's roll-ups: value and traded / offered tons per ring, traded value per market (physical, futures, options, financial, certificates), one row per session and IME's dollar rate. Units are in the key names (volume_tons, price_rial_per_kg, value_rial). Without a date the latest session is used; IME trades Saturday to Wednesday, so Thursday and Friday are empty. The trades list leaves out the sub-market and is smaller than the summary: never add them. The exchange-traded boards (gold and saffron certificates, standard forwards, commodity funds, futures) are in top_lists (commodity group) and market_watch (security_type='commodity')."""
+    return await svc().commodity_market(view, date, to_date, group, product, traded_only, sort_by, limit)
+
+
+@tool()
+async def energy_market(
+    view: Annotated[str, Field(description="'trades' (default): auction results. 'offers': announced auctions. 'auction': one auction by auction_id, with terms, buy and sell orders and trades. 'overview': is it trading, and today's totals.")] = "trades",
+    market: Annotated[str | None, Field(description="'physical' (oil products, gas, petrochemicals, industrial gases) or 'power' (electricity). Omit for both. Applies to trades and offers.")] = None,
+    date: Date = None,
+    to_date: DateBound = None,
+    product: Annotated[str | None, Field(description="Fragment of the product, description, supplier or symbol, e.g. 'گاز مایع', 'نیتروژن', 'برق سبز', 'شازند'. Applies to trades and offers.")] = None,
+    auction_id: Annotated[int | None, Field(ge=1, description="Auction number (the auction_id of a trades or offers row). Required for view='auction'.")] = None,
+    traded_only: Annotated[bool, Field(description="True (default): only auctions that traded. False also lists auctions that ended without a trade.")] = True,
+    sort_by: Annotated[str | None, Field(description="value (default), volume, name or time")] = None,
+    limit: Annotated[int | None, Field(ge=1, le=100, description="Maximum rows to return (default 20) (max 100)")] = None,
+) -> dict:
+    """Iran Energy Exchange (بورس انرژی ایران, IRENEX): physical auctions (liquefied gas, solvents, CSO, hexane, liquid nitrogen and other oil, gas and petrochemical products; domestic and international rings) and the electricity market (standard, free and green power contracts), from the exchange's own site (iee.ir). view='trades' gives each auction's result: product, supplier, ring and destination, contract type, offered / demand / traded volume, base and average price and the exchange's value in RIAL; view='offers' the announced auctions; view='auction' one auction's terms, price units, buy and sell order levels and trades; view='overview' whether the market is open and today's traded value. Units differ by product and are spelled out per row: tonne auctions in rial are priced per KILOGRAM, dollar auctions per TONNE, premium auctions as a premium on a reference price, electricity in kW of capacity over the delivery period with kwh the energy and the price per kWh (see price_basis and totals.volume_by_unit; volumes of different units are never added). Without a date the latest session is used; the exchange trades Saturday to Wednesday. The traded boards (electricity forwards and base-load contracts, capacity and energy-saving certificates, energy futures) are in top_lists (energy group)."""
+    return await svc().energy_market(view, market, date, to_date, product, auction_id, traded_only, sort_by, limit)
 
 
 @tool()

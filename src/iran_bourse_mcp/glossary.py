@@ -55,6 +55,54 @@ TERMS: dict[str, dict[str, str]] = {
     "ناظر بازار": {"en": "market supervisor", "meaning": "Official messages from the exchange supervisor about symbols (restrictions, notices)."},
     "بازار اول / دوم": {"en": "first / second board", "meaning": "Board (تابلو) classification of listed companies; see board in the identity."},
     "ریال": {"en": "Rial", "meaning": "All prices and values returned by this server are in Rial (1 Toman = 10 Rial)."},
+    "بورس کالا": {
+        "en": "Iran Mercantile Exchange (IME)",
+        "meaning": "The commodity exchange: steel, copper, aluminium, cement, petrochemicals, oil products and agricultural goods are traded physically in halls (تالار), next to gold and saffron certificates, standard forwards, commodity funds and futures. commodity_market reads its physical market; the listed instruments are in top_lists (commodity group).",
+    },
+    "بورس انرژی": {
+        "en": "Iran Energy Exchange (IRENEX)",
+        "meaning": "The exchange for oil, gas and petrochemical products and for electricity, traded by auction. energy_market reads its auctions; the listed instruments (electricity forwards, capacity and energy-saving certificates, energy futures) are in top_lists (energy group).",
+    },
+    "گواهی سپرده کالایی": {
+        "en": "commodity deposit certificate",
+        "meaning": "A tradable receipt for a commodity held in an accredited warehouse (gold, silver, saffron, cement, steel, agricultural goods). It trades like a share, in rial per certificate, and its holder can take delivery (تحویل) of the goods. See top_lists (commodity_certificates) and market_watch with security_type='commodity'.",
+    },
+    "نقدی / سلف / نسیه": {
+        "en": "cash / forward / credit (contract types)",
+        "meaning": "The contract type of a commodity trade: نقدی is paid and delivered within days, سلف (salaf, forward) is paid now for delivery on a later date, نسیه is delivered now and paid later. «سلف موازی استاندارد» are standardised forwards listed as tradable symbols (top_lists: standard_salaf).",
+    },
+    "مچینگ": {
+        "en": "matching contract",
+        "meaning": "A deal where a buyer's and a seller's orders were matched against each other (contract types «نقدی (مچینگ)» and «سلف (مچینگ)» on the IME) rather than bought from a fixed offer. commodity_market shows offered_tons 0 for them.",
+    },
+    "عرضه": {
+        "en": "offer / auction",
+        "meaning": "A seller's offer of a volume at a base price (قیمت پایه) in a hall or ring. On the Energy Exchange every offer is an auction with an id (auction_id); it ends in trades or in «توقف مازاد عرضه» (halted on surplus supply).",
+    },
+    "تقاضا": {
+        "en": "demand",
+        "meaning": "The volume buyers ordered (demand_tons / demand_volume). Demand above the offered volume (عرضه) means the offer was oversubscribed.",
+    },
+    "تحویل": {
+        "en": "delivery",
+        "meaning": "When and where the goods are handed over (delivery_date, delivery_place). For electricity the delivery period (daily, weekly, monthly) fixes the hours the contract covers, so kwh = kW of capacity x hours.",
+    },
+    "قرارداد آتی": {
+        "en": "futures contract",
+        "meaning": "An agreement to buy or sell an underlying at a fixed price on a later date, settled daily through the clearing house. futures_market covers the Tehran derivatives market; the energy futures of the Energy Exchange are in top_lists (energy_futures).",
+    },
+    "کشف پریمیوم": {
+        "en": "premium discovery",
+        "meaning": "An auction where buyers bid a premium (or a discount, when negative) over the exchange's reference price instead of a price. In energy_market the avg_price of such a row is the premium, not a price; price_basis says so.",
+    },
+    "بار پایه": {
+        "en": "base-load electricity",
+        "meaning": "An electricity contract for a constant capacity (kW) in every hour of the delivery period. The volume is kW of capacity over the delivery period, not energy; energy_market gives the energy as kwh.",
+    },
+    "برق سبز / برق آزاد": {
+        "en": "green / free-market electricity",
+        "meaning": "Two electricity markets of the Energy Exchange: green electricity (برق سبز) from renewable plants, and free-market electricity (برق آزاد), priced by the auction instead of a regulated tariff. Both are auctions with an auction_id in energy_market.",
+    },
 }
 
 

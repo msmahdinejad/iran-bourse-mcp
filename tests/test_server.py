@@ -14,6 +14,7 @@ EXPECTED = {
     "price_history", "real_legal_flow", "shareholders", "shareholder_history", "shareholder_portfolio",
     "corporate_actions", "symbol_statistics", "etf_nav", "codal_filings", "codal_company", "glossary",
     "screen_stocks", "screener_reference", "option_chain", "futures_market", "top_lists", "capital_calendar", "trading_status", "index_history", "index_constituents", "fund_ranking",
+    "commodity_market", "energy_market",
 }
 
 
@@ -42,6 +43,16 @@ async def test_every_tool_is_documented_and_read_only(tools):
             destructive = getattr(annotations, "destructiveHint", getattr(annotations, "destructive_hint", None))
             assert read_only is True, t.name
             assert destructive is False, t.name
+
+
+async def test_exchange_tools_state_their_units_and_describe_every_parameter(tools):
+    by_name = {t.name: t for t in tools}
+    assert "RIAL PER KILOGRAM" in by_name["commodity_market"].description and "volume_tons" in by_name["commodity_market"].description
+    assert "KILOGRAM" in by_name["energy_market"].description and "kW of capacity" in by_name["energy_market"].description
+    for name in ("commodity_market", "energy_market"):
+        schema = getattr(by_name[name], "inputSchema", None) or by_name[name].input_schema
+        assert all("description" in prop for prop in schema["properties"].values()), name
+        assert "required" not in schema or not schema["required"], name  # every argument is optional: the default view works with none
 
 
 async def test_symbol_parameters_are_described(tools):
