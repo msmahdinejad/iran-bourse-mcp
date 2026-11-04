@@ -129,6 +129,11 @@ def shape_market_row(raw: dict, *, industries: dict[str, str] | None = None, gat
     levels = [_level(book, n) for n in range(1, 6)]
     best_bid, best_ask = levels[0], levels[0]
     bid_volume, ask_volume = _f(best_bid.get("qmd")) or 0.0, _f(best_ask.get("qmo")) or 0.0
+    def live_volume(side_price: str, side_volume: str, ok) -> float:  # volume that can trade today (inside the price limits)
+        return sum(_f(lv.get(side_volume)) or 0.0 for lv in levels if (_f(lv.get(side_price)) or 0.0) and ok(_f(lv.get(side_price)) or 0.0))
+
+    live_asks = live_volume("pmo", "qmo", lambda p: not upper or p <= upper)
+    live_bids = live_volume("pmd", "qmd", lambda p: not lower or p >= lower)
     traded = trades > 0
     limited = bool(upper and lower and upper != lower)  # TAL rows have equal limits
     at_upper = bool(traded and limited and last is not None and last >= upper)
@@ -162,8 +167,8 @@ def shape_market_row(raw: dict, *, industries: dict[str, str] | None = None, gat
         "price_limits": {"upper": upper, "lower": lower},
         "at_upper_limit": at_upper,
         "at_lower_limit": at_lower,
-        "buy_queue_probable": bool(at_upper and bid_volume and not ask_volume),
-        "sell_queue_probable": bool(at_lower and ask_volume and not bid_volume),
+        "buy_queue_probable": bool(at_upper and bid_volume and (_f(best_bid.get("pmd")) or 0) >= (upper or 0) and not live_asks),
+        "sell_queue_probable": bool(at_lower and ask_volume and (_f(best_ask.get("pmo")) or 0) <= (lower or 0) and not live_bids),
         "best_bid": {"price": _f(best_bid.get("pmd")) or None, "volume": _i(bid_volume) or None, "orders": _i(best_bid.get("zmd")) or None},
         "best_ask": {"price": _f(best_ask.get("pmo")) or None, "volume": _i(ask_volume) or None, "orders": _i(best_ask.get("zmo")) or None},
         "pe": pe or None,

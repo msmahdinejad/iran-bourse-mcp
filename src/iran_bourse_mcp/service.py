@@ -775,6 +775,7 @@ class Bourse:
         to_date: str | None = None,
         limit: int = 250,
         adjusted: bool = False,
+        granularity: str = "daily",
     ) -> dict:
         inst = await self._inst(symbol)
         raw = await self.api.daily_prices(inst.ins_code)
@@ -784,6 +785,10 @@ class Bourse:
             series = [r for r in series if int(r["date"].replace("-", "")) >= start]
         if end:
             series = [r for r in series if int(r["date"].replace("-", "")) <= end]
+        try:
+            series = shape.aggregate_prices(series, granularity)
+        except ValueError as exc:
+            raise InputError(str(exc)) from exc
         total = len(series)
         series = series[-_clamp(limit, 1, MAX_ROWS):]
         if events and series:  # only events after the first returned row change the values shown
@@ -821,7 +826,10 @@ class Bourse:
                 "days_with_real_inflow": sum(1 for n in net if n > 0),
                 "days_with_real_outflow": sum(1 for n in net if n < 0),
             }
-        out["units"] = "value in rial, volume in shares"
+        out["units"] = (
+            "value in rial, volume in shares. history rows are published by the exchange; latest_session values are estimated "
+            "(net volume x VWAP) because the live table has volumes and counts only"
+        )
         return out
 
     async def _client_type_rows(self, ins: str, days: int) -> list[dict]:
@@ -963,7 +971,8 @@ class Bourse:
             rows = await self.api.messages_for(inst.ins_code)
             label: Any = inst.brief()
         else:
-            rows = await self.api.messages_flow(_flow(market), limit)
+            # the exchange lists a few pinned old notices first, so asking for exactly `limit` rows loses recent ones
+            rows = await self.api.messages_flow(_flow(market), min(max(limit * 3, 30), 200))
             label = {"market": market}
         rows = sorted(rows, key=lambda r: (r.get("dEven") or 0, r.get("hEven") or 0), reverse=True)[:limit]
         return {"scope": label, "messages": [shape.shape_message(r, full_text=full_text) for r in rows]}

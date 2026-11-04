@@ -180,3 +180,23 @@ async def test_cache_respects_a_byte_budget():
     await http.get_json(f"{URL}/huge", ttl=60)
     assert f"j:{URL}/huge" not in http._cache  # larger than half the budget: never cached
     await http.aclose()
+
+
+@respx.mock
+async def test_rate_limiting_is_reported_as_such_and_the_host_is_left_alone_for_a_while(monkeypatch):
+    route = respx.get(URL).mock(return_value=httpx.Response(429))
+    http = Http()
+    with pytest.raises(UpstreamError, match=r"Rate-limited by cdn\.tsetmc\.com.*not an Iranian-IP problem") as err:
+        await http.get_json(URL)
+    assert err.value.status == 429 and "Iranian IP address" not in str(err.value) and route.call_count == 4
+    # the cooldown makes the next call (any path on that host) fail at once, without touching the network
+    with pytest.raises(UpstreamError, match="rate-limiting this client"):
+        await http.get_json("https://cdn.tsetmc.com/api/other")
+    assert route.call_count == 4
+    other_host = respx.get("https://webgw.tse.ir/x").mock(return_value=httpx.Response(200, json={"ok": 2}))
+    assert await http.get_json("https://webgw.tse.ir/x") == {"ok": 2} and other_host.called  # other hosts are unaffected
+    real = client_module.time.monotonic()
+    monkeypatch.setattr(client_module.time, "monotonic", lambda: real + client_module.RATE_LIMIT_COOLDOWN + 1)
+    respx.get("https://cdn.tsetmc.com/api/other").mock(return_value=httpx.Response(200, json={"ok": 3}))
+    assert await http.get_json("https://cdn.tsetmc.com/api/other") == {"ok": 3}  # and the host is retried after the cooldown
+    await http.aclose()

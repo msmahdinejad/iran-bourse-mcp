@@ -9,6 +9,7 @@ import os
 import time
 from collections import OrderedDict
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -22,6 +23,7 @@ USER_AGENT = (
 )
 
 RETRY_STATUS = {403, 408, 425, 429, 502, 503, 504}
+RATE_LIMIT_COOLDOWN = 60.0  # seconds a host that answered HTTP 429 is left alone, so optional calls fail fast instead of piling up
 
 NETWORK_HINT = (
     "TSETMC and Codal mostly serve Iranian IP addresses. Run this server on a machine in Iran "
@@ -58,6 +60,7 @@ class Http:
         self._sem = asyncio.Semaphore(concurrency)
         self._cache: OrderedDict[str, tuple[float, Any, int]] = OrderedDict()
         self._cache_bytes = 0
+        self._cooldown: dict[str, float] = {}  # host -> monotonic time until which it is rate-limiting us
         self._max_cache = max_cache_entries
         self._max_cache_bytes = max_cache_bytes
         self._transport = transport
@@ -119,6 +122,16 @@ class Http:
         if cached is not None:
             return cached
 
+        host = urlsplit(url).netloc
+        waiting = self._cooldown.get(host, 0.0) - time.monotonic()
+        if waiting > 0:
+            raise UpstreamError(
+                f"{host} is rate-limiting this client (HTTP 429). Not asking again for about {int(waiting) + 1} s; "
+                "retry later and avoid parallel requests.",
+                status=429,
+                url=url,
+            )
+
         client = self._get_client()
         last_error: Exception | None = None
         for attempt in range(retries):
@@ -154,6 +167,14 @@ class Http:
                 )
             raise UpstreamError(f"HTTP {status} from {url}", status=status, url=url)
 
+        if isinstance(last_error, UpstreamError) and last_error.status == 429:
+            self._cooldown[host] = time.monotonic() + RATE_LIMIT_COOLDOWN
+            raise UpstreamError(
+                f"Rate-limited by {host} (HTTP 429) after {retries} tries. Wait a minute or two and avoid parallel requests; "
+                "this is a request-rate limit, not an Iranian-IP problem.",
+                status=429,
+                url=url,
+            )
         if isinstance(last_error, UpstreamError) and last_error.status == 403:
             raise UpstreamError(f"HTTP 403 from {url}. {NETWORK_HINT}", status=403, url=url)
         if isinstance(last_error, UpstreamError) and last_error.status and last_error.status >= 500:

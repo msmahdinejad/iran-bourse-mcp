@@ -294,11 +294,12 @@ async def price_history(
     symbol: Symbol,
     from_date: DateBound = None,
     to_date: DateBound = None,
-    limit: Annotated[int, Field(ge=1, le=5000)] = 250,
+    limit: Annotated[int, Field(ge=1, le=5000, description="Newest rows to return (max 5000). 250 daily rows is about 70 KB; for long ranges use granularity instead of a big limit")] = 250,
     adjusted: Annotated[bool, Field(description="Back-adjust for capital increases/dividends (تعدیل شده)")] = False,
+    granularity: Annotated[str, Field(description="'daily' (default), 'weekly' (Saturday-start), 'monthly' or 'yearly' (Jalali) bars: open/high/low/close, summed volume and value, change % per period")] = "daily",
 ) -> dict:
-    """Daily OHLCV history since listing, optionally adjusted (تاریخچه قیمت)."""
-    return await svc().price_history(symbol, from_date, to_date, limit, adjusted)
+    """OHLCV price history since listing (تاریخچه قیمت), daily or aggregated to weekly/monthly/yearly bars, optionally back-adjusted for capital increases and dividends. For long ranges prefer granularity='monthly' or 'yearly' over thousands of daily rows."""
+    return await svc().price_history(symbol, from_date, to_date, limit, adjusted, granularity)
 
 
 @tool()

@@ -200,3 +200,14 @@ async def test_feed_outage_falls_back_to_the_gateway_and_says_so():
     assert out["source"] == "tse-gateway" and out["total_instruments"] == 1 and symbols(out) == ["الف"]
     screened = await b.screen_stocks(filter="volume > 0")
     assert symbols(screened) == ["الف"]
+
+
+def test_orders_beyond_the_limits_do_not_break_a_queue_in_the_feed_either():
+    book = [level(1, 4330, 98_499_098, 609, 4340, 250_526, 10)]  # فولاد: the only ask is above the 4,330 ceiling
+    row = M.shape_market_row(feed_row("فولاد", "IRO1FOLD0001", "46348559193224090", last=4330.0, py=4210.0, upper=4330.0, lower=4090.0, book=book))
+    assert row["at_upper_limit"] and row["buy_queue_probable"]
+    open_book = [level(1, 4330, 100, 1, 4330, 50, 1)]  # an ask AT the ceiling can still trade
+    assert not M.shape_market_row(feed_row("x", "IRO1XXXX0001", "1", last=4330.0, py=4210.0, upper=4330.0, lower=4090.0, book=open_book))["buy_queue_probable"]
+    sell = [level(1, 4000, 100, 1, 4090, 8_000_000, 90)]  # a bid below the 4,090 floor is next-session too
+    flagged = M.shape_market_row(feed_row("y", "IRO1YYYY0001", "2", last=4090.0, py=4210.0, upper=4330.0, lower=4090.0, book=sell))
+    assert flagged["at_lower_limit"] and flagged["sell_queue_probable"]

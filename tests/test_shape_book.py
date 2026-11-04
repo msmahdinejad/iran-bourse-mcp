@@ -22,7 +22,9 @@ def test_book_from_fixture(fx):
     assert book["spread"] == 30.0
     assert book["total_bid_volume"] == sum(b["volume"] for b in book["bids"])
     assert -1 <= book["imbalance"] <= 1
-    assert book["queue"]["state"] is None  # sellers exist at 4240
+    # the asks start at 4240, above today's ceiling of 4210: nobody can trade against the bid, so it is a queue
+    assert book["queue"]["state"] == "buy_queue" and book["queue"]["queue_volume"] == book["bids"][0]["volume"]
+    assert all(a.get("outside_price_limits") for a in book["asks"])
 
 
 def test_buy_queue_detected_when_no_sellers_at_upper_limit():
@@ -43,8 +45,18 @@ def test_sell_queue_detected_when_no_buyers_at_lower_limit():
 
 
 def test_no_queue_when_bid_at_limit_but_sellers_present():
-    rows = [row(1, 4210, 5000, 2, 4220, 100, 1)]
+    rows = [row(1, 4210, 5000, 2, 4200, 100, 1)]  # a seller at 4200 is within today's limits and trades with the bid
     assert shape.shape_order_book(rows, 4210.0, 3970.0)["queue"]["state"] is None
+
+
+def test_orders_beyond_the_limits_do_not_break_a_queue():
+    """Asks above the ceiling and bids below the floor are next-session orders: they cannot trade today."""
+    buy = shape.shape_order_book([row(1, 4210, 5000, 2, 4220, 100, 1), row(2, 4200, 10, 1, 4250, 5, 1)], 4210.0, 3970.0)
+    assert buy["queue"]["state"] == "buy_queue" and buy["queue"]["queue_volume"] == 5000
+    assert [a["outside_price_limits"] for a in buy["asks"]] == [True, True] and "next session" in buy["note"]
+    sell = shape.shape_order_book([row(1, 3900, 50, 1, 3970, 9000, 7)], 4210.0, 3970.0)
+    assert sell["queue"]["state"] == "sell_queue" and sell["bids"][0]["outside_price_limits"] is True
+    assert shape.shape_order_book([row(1, 4000, 50, 1, 3970, 9000, 7)], 4210.0, 3970.0)["queue"]["state"] is None  # a live bid
 
 
 def test_empty_book_is_safe():

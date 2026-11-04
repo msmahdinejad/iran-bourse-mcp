@@ -188,3 +188,74 @@ async def test_holder_lookup_errors_name_the_candidates():
     with pytest.raises(InputError, match="matches 3 holders"):
         await b.shareholder_history("فولاد", holder="صندوق")
     assert (await b.shareholder_history("فولاد", holder="7"))["holder_id"] == 7  # by holder_id too
+
+
+class TwoRecords:
+    """A ticker that moved boards: the old Bourse record is dead (HTTP 500), the Fara record is live."""
+
+    def __init__(self, live_day=20261104, dead_day=None):
+        self.live_day, self.dead_day = live_day, dead_day
+
+    async def search(self, query):
+        return [
+            {"lVal18AFC": "خاور", "lVal30": "ایران خودرو", "insCode": "dead", "flow": 1, "cgrValCot": "N2"},
+            {"lVal18AFC": "خاور", "lVal30": "ایران خودرو", "insCode": "live", "flow": 2, "cgrValCot": "Z1"},
+        ]
+
+    async def closing_info(self, ins):
+        if ins == "dead":
+            if self.dead_day is None:
+                from iran_bourse_mcp.client import NotAvailable
+
+                raise NotAvailable("HTTP 500")
+            return {"dEven": self.dead_day}
+        return {"dEven": self.live_day}
+
+
+async def test_a_ticker_listed_twice_resolves_to_the_record_that_trades():
+    from iran_bourse_mcp.resolver import Resolver
+
+    assert (await Resolver(TwoRecords()).resolve("خاور")).ins_code == "live"  # not the lowest flow, the one that is alive
+    assert (await Resolver(TwoRecords(live_day=20261104, dead_day=20261104)).resolve("خاور")).ins_code == "dead"  # a tie keeps the lowest flow
+    assert (await Resolver(TwoRecords(live_day=20261104, dead_day=20260101)).resolve("خاور")).ins_code == "live"  # the staler one loses
+
+
+def daily(date, jdate_, o, h, l, c, v):  # noqa: E741
+    return {"date": date, "jdate": jdate_, "open": o, "high": h, "low": l, "close": c, "volume": v, "value": c * v, "trades": 10}
+
+
+SERIES = [
+    daily("2026-10-24", "1405/08/02", 100, 110, 95, 105, 10),   # Saturday
+    daily("2026-10-25", "1405/08/03", 105, 120, 100, 115, 20),
+    daily("2026-10-28", "1405/08/06", 115, 118, 90, 92, 30),    # Wednesday
+    daily("2026-10-31", "1405/08/09", 92, 99, 91, 98, 0),       # Saturday, no volume: skipped
+    daily("2026-11-02", "1405/08/11", 98, 130, 97, 125, 40),
+    daily("2026-12-02", "1405/09/11", 125, 140, 120, 135, 50),
+]
+
+
+def test_prices_aggregate_into_weekly_monthly_and_yearly_bars():
+    monthly = shape.aggregate_prices(SERIES, "monthly")
+    assert [m["period"] for m in monthly] == ["1405/08", "1405/09"]
+    aban = monthly[0]
+    assert (aban["open"], aban["high"], aban["low"], aban["close"], aban["volume"], aban["days"], aban["traded_days"]) == (100, 130, 90, 125, 100, 5, 4)
+    assert aban["value"] == 105 * 10 + 115 * 20 + 92 * 30 + 125 * 40 and aban["change_pct"] is None
+    assert monthly[1]["change_pct"] == 8.0  # 135 vs 125
+    weekly = shape.aggregate_prices(SERIES, "weekly")
+    assert [w["period"] for w in weekly] == ["week of 2026-10-24", "week of 2026-10-31", "week of 2026-11-28"]
+    assert weekly[0]["close"] == 92 and weekly[1]["close"] == 125 and weekly[1]["traded_days"] == 1  # the 31st had no volume
+    yearly = shape.aggregate_prices(SERIES, "yearly")
+    assert len(yearly) == 1 and yearly[0]["period"] == "1405" and yearly[0]["high"] == 140 and yearly[0]["close"] == 135
+    assert shape.aggregate_prices(SERIES, "daily") is SERIES
+    with pytest.raises(ValueError, match="granularity"):
+        shape.aggregate_prices(SERIES, "hourly")
+
+
+async def test_price_history_tool_aggregates_and_validates_granularity():
+    from iran_bourse_mcp.service import InputError
+
+    b = bourse_with(MarketApi())
+    monthly = await b.price_history("فولاد", granularity="monthly")
+    assert monthly["returned"] >= 1 and "period" in monthly["rows"][0]
+    with pytest.raises(InputError, match="granularity"):
+        await b.price_history("فولاد", granularity="hourly")

@@ -11,6 +11,7 @@ Conventions
 
 from __future__ import annotations
 
+import datetime as dt
 import re
 from collections import defaultdict
 from collections.abc import Iterable
@@ -105,7 +106,7 @@ def shape_quote(closing: dict, info: dict) -> dict:
         "volume_vs_avg": _r(_safe_div(volume, avg_volume)),
         "fundamentals": {
             "eps": eps,
-            "pe": _r(_safe_div(last, eps)) if eps and eps > 0 else None,
+            "pe": _r(_safe_div(close or last, eps)) if eps and eps > 0 else None,
             "sector_pe": _f(eps_block.get("sectorPE")),
             "psr": _f(eps_block.get("psr")),
             "shares_outstanding": _i(shares),
@@ -175,8 +176,14 @@ def _levels(rows: Iterable[dict]) -> tuple[list[dict], list[dict]]:
 
 
 def queue_state(bids: list[dict], asks: list[dict], upper: float | None, lower: float | None) -> dict:
-    """Detect a buy queue (صف خرید) or sell queue (صف فروش) from the top of the book."""
-    if bids and not asks and upper and bids[0]["price"] is not None and bids[0]["price"] >= upper:
+    """Detect a buy queue (صف خرید) or sell queue (صف فروش) from the top of the book.
+
+    Orders priced beyond today's limits (asks above the ceiling, bids below the floor) cannot trade today: the exchange
+    accepts them for the next session. They do not break a queue.
+    """
+    asks_live = [a for a in asks if not (upper and a["price"] is not None and a["price"] > upper)]
+    bids_live = [b for b in bids if not (lower and b["price"] is not None and b["price"] < lower)]
+    if bids and not asks_live and upper and bids[0]["price"] is not None and bids[0]["price"] >= upper:
         top = bids[0]
         return {
             "state": "buy_queue",
@@ -184,7 +191,7 @@ def queue_state(bids: list[dict], asks: list[dict], upper: float | None, lower: 
             "queue_orders": top["orders"],
             "queue_value": _i(top["volume"] * top["price"]),
         }
-    if asks and not bids and lower and asks[0]["price"] is not None and asks[0]["price"] <= lower:
+    if asks and not bids_live and lower and asks[0]["price"] is not None and asks[0]["price"] <= lower:
         top = asks[0]
         return {
             "state": "sell_queue",
@@ -592,6 +599,56 @@ def shape_daily_prices(rows: list[dict], *, adjusted: bool = False) -> tuple[lis
     return out, events
 
 
+GRANULARITIES = ("daily", "weekly", "monthly", "yearly")
+
+
+def aggregate_prices(series: list[dict], granularity: str) -> list[dict]:
+    """Collapse ascending daily OHLCV rows into weekly (Saturday-start), monthly or yearly (Jalali) bars.
+
+    Days without trades (no close) are skipped for open/high/low/close but counted in ``days``.
+    """
+    if granularity not in GRANULARITIES:
+        raise ValueError(f"granularity must be one of {', '.join(GRANULARITIES)}")
+    if granularity == "daily":
+        return series
+    buckets: dict[str, list[dict]] = {}
+    for row in series:
+        if granularity == "yearly":
+            key = row["jdate"][:4]
+        elif granularity == "monthly":
+            key = row["jdate"][:7]
+        else:  # weeks start on Saturday, the first trading day
+            day = dt.date.fromisoformat(row["date"])
+            key = (day - dt.timedelta(days=(day.weekday() + 2) % 7)).isoformat()
+        buckets.setdefault(key, []).append(row)
+    out: list[dict] = []
+    previous_close: float | None = None
+    for key, rows in buckets.items():
+        traded = [r for r in rows if r["close"] is not None and (r["volume"] or 0) > 0]
+        if not traded:
+            continue
+        close = traded[-1]["close"]
+        out.append(
+            {
+                "period": f"week of {key}" if granularity == "weekly" else key,
+                "from": rows[0]["date"],
+                "to": rows[-1]["date"],
+                "days": len(rows),
+                "traded_days": len(traded),
+                "open": traded[0]["open"],
+                "high": max(r["high"] for r in traded if r["high"] is not None),
+                "low": min(r["low"] for r in traded if r["low"] is not None),
+                "close": close,
+                "volume": sum(r["volume"] or 0 for r in traded),
+                "value": sum(r["value"] or 0 for r in traded),
+                "trades": sum(r["trades"] or 0 for r in traded),
+                "change_pct": pct_change(close, previous_close),
+            }
+        )
+        previous_close = close
+    return out
+
+
 # --------------------------------------------------------------------------- holders
 
 
@@ -675,8 +732,8 @@ def shape_watch_row(row: dict) -> dict:
         "price_limits": {"upper": upper, "lower": lower},
         "at_upper_limit": at_upper,
         "at_lower_limit": at_lower,
-        "buy_queue_probable": bool(at_upper and not sell_qty),
-        "sell_queue_probable": bool(at_lower and not buy_qty),
+        "buy_queue_probable": bool(at_upper and not (sell_qty and (_f(_v(row.get("sellPrice"))) or 0) <= upper)),
+        "sell_queue_probable": bool(at_lower and not (buy_qty and (_f(_v(row.get("buyPrice"))) or 0) >= lower)),
         "best_bid": {"price": _f(_v(row.get("buyPrice"))), "volume": _i(buy_qty), "orders": _i(_v(row.get("buyCount")))},
         "best_ask": {"price": _f(_v(row.get("sellPrice"))), "volume": _i(sell_qty), "orders": _i(_v(row.get("sellCount")))},
         "pe": next((p for p in (_f(_v(row.get("pe"))),) if p is not None and p > 0), None),

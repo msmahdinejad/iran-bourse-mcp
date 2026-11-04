@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 from dataclasses import dataclass
 
@@ -91,6 +92,15 @@ class Resolver:
             isin=info.get("cIsin"),
         )
 
+    async def _most_recent(self, candidates: list[dict]) -> dict:
+        results = await asyncio.gather(*(self._api.closing_info(str(r.get("insCode"))) for r in candidates), return_exceptions=True)
+        best, best_day = candidates[0], -1
+        for row, info in zip(candidates, results, strict=True):
+            day = int(info.get("dEven") or 0) if isinstance(info, dict) else 0
+            if day > best_day:  # ties keep the earlier candidate, i.e. the lowest flow
+                best, best_day = row, day
+        return best
+
     async def _by_symbol(self, ref: str) -> Instrument:
         rows = await self._api.search(ascii_digits(clean(ref) or ref))
         if not rows:
@@ -102,9 +112,10 @@ class Resolver:
         if len(exact) == 1:
             return _from_search_row(exact[0])
         if len(exact) > 1:
-            # Same symbol on several boards: prefer the main equity markets (lowest flow id).
+            # Same symbol on several boards: prefer the main equity markets (lowest flow id) ...
             exact.sort(key=lambda r: (int(r.get("flow") or 99), str(r.get("cgrValCot") or "")))
-            return _from_search_row(exact[0])
+            # ... but a ticker that moved boards leaves a dead record behind, so take the one that traded most recently.
+            return _from_search_row(await self._most_recent(exact[:4]))
         suggestions = ", ".join(
             f"{clean(r.get('lVal18AFC'))} ({clean(r.get('lVal30'))})" for r in rows[:8]
         )
