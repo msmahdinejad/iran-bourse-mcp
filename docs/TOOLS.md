@@ -74,14 +74,14 @@ Stocks pushing the total index up or down the most, in index points (بیشتر�
 
 ### `market_snapshot`
 
-End-of-day table for every instrument on a past date (تاریخچه کل بازار در یک روز).
+End-of-day table for every instrument on a past date; ordinary stocks unless security_type says otherwise (تاریخچه کل بازار در یک روز).
 
 | parameter | type | description |
 |---|---|---|
 | `date`* | string | Gregorian or Jalali date of a past trading day |
 | `sort_by` | string | value, volume, trades, change_pct (default `value`) |
 | `limit` | integer | Maximum rows to return (1-300); the server rejects larger values (default `30`) |
-| `security_type` | string | stock, fund or bond |
+| `security_type` | string | stock (default), fund, bond, option, future, rights, commodity, base or all (default `stock`) |
 
 ### `market_holder_moves`
 

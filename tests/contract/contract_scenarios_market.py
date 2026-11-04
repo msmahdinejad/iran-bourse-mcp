@@ -58,13 +58,20 @@ def _market_status(run):
     out, raw = run.out, run.rec.body("GetMarketOverview")["marketOverview"]
     assert_keys(
         out,
-        "tehran_time tehran_jdate weekday is_trading_weekday within_session_hours session bourse gateway exchange_server_time",
+        "tehran_time tehran_jdate weekday is_trading_weekday holiday is_trading_day day_status within_session_hours session "
+        "next_session upcoming_holidays holiday_calendar bourse gateway exchange_server_time",
     )
     # the clock is frozen at the recording time
     assert out["tehran_time"] == run.now.strftime("%Y-%m-%d %H:%M:%S")
     assert out["weekday"] == run.now.strftime("%A")
     assert out["is_trading_weekday"] is (run.now.weekday() in (5, 6, 0, 1, 2))  # Saturday-Wednesday
     assert out["within_session_hours"] is in_session(run.now)
+    # the holiday calendar: a trading day is a Saturday-Wednesday that is not a holiday, and the next session is never in the past
+    assert out["is_trading_day"] is (out["is_trading_weekday"] and out["holiday"] is None)
+    assert out["day_status"] in {"open", "before_open", "after_close", "weekend", "holiday"}
+    assert out["next_session"]["date"] >= run.now.strftime("%Y-%m-%d") and out["next_session"]["opens_at"] == "09:00"
+    assert all(h["date"] > run.now.strftime("%Y-%m-%d") for h in out["upcoming_holidays"])
+    assert out["holiday_calendar"]["covers_this_year"] is True
     assert out["tehran_jdate"].startswith("14") and out["tehran_jdate"].count("/") == 2
     assert out["bourse"]["index"]["value"] == raw["indexLastValue"]
     assert out["bourse"]["market_state_code"] == raw["marketState"]

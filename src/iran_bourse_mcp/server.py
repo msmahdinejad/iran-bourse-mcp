@@ -171,9 +171,9 @@ async def market_snapshot(
     date: Annotated[str, Field(description="Gregorian or Jalali date of a past trading day")],
     sort_by: Annotated[str, Field(description="value, volume, trades, change_pct")] = "value",
     limit: Annotated[int, Field(ge=1, le=300, description="Maximum rows to return (1-300); the server rejects larger values")] = 30,
-    security_type: Annotated[str | None, Field(description="stock, fund or bond")] = None,
+    security_type: Annotated[str | None, Field(description="stock (default), fund, bond, option, future, rights, commodity, base or all")] = "stock",
 ) -> dict:
-    """End-of-day table for every instrument on a past date (تاریخچه کل بازار در یک روز)."""
+    """End-of-day table for every instrument on a past date; ordinary stocks unless security_type says otherwise (تاریخچه کل بازار در یک روز)."""
     return await svc().market_snapshot(date, sort_by, limit, security_type)
 
 

@@ -4,6 +4,11 @@
 
 ### Added
 - **Public holidays in `market_status`** (#7): `holiday`, `is_trading_day`, `day_status`, `next_session` (skips weekends and holidays and lists what it skipped), `upcoming_holidays` and a `holiday_calendar` block. The table is the official calendar of Jalali year 1405 (time.ir) plus the fixed Solar Hijri holidays for any other year, and says so when religious holidays of a year are unknown. `within_session_hours` and the screener's `session_open` now respect holidays. When the exchange's newest data disagrees with the calendar (an unannounced closure), `calendar_check` says so. Both tables are tested against the exchange's own history of non-trading days since 2019.
+- **Contract tests** (#10): recorded real upstream responses (`tests/fixtures/recorded/`) replayed through `respx` exercise all 38 tools end to end without network, through the MCP server layer, with the clock frozen. A meta-test fails for any registered tool without a scenario. Re-record with `scripts/record_contract.py --record` (see `tests/README.md`).
+
+### Fixed
+- `market_snapshot` through MCP listed every instrument type (bonds topped the table) because the tool's default for `security_type` overrode the service default of stocks.
+- Sector codes `01`-`09` of the market feed matched no industry name (40 of 3,680 rows); both spellings of a code are now registered.
 
 ## 0.3.0 (2026-11-04)
 

@@ -26,6 +26,13 @@ async def test_all_tools_registered(tools):
     assert {t.name for t in tools} == EXPECTED
 
 
+async def test_market_snapshot_defaults_to_stocks(tools):
+    """A wrapper default of None once overrode the service default: bonds topped the table."""
+    tool = {t.name: t for t in tools}["market_snapshot"]
+    schema = getattr(tool, "inputSchema", None) or tool.input_schema
+    assert schema["properties"]["security_type"]["default"] == "stock"
+
+
 async def test_every_tool_is_documented_and_read_only(tools):
     for t in tools:
         assert t.description and len(t.description) > 30, t.name
