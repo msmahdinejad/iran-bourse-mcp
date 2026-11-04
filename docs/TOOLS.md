@@ -39,7 +39,7 @@ Whole-market table (دیده‌بان بازار) of the exchange's own feed: ab
 | `only_traded` | boolean |  (default `True`) |
 | `sort_by` | string | last_pct, close_pct, value, volume, trades, market_cap, pe, effect_on_index (default `value`) |
 | `descending` | boolean |  (default `True`) |
-| `limit` | integer |  (default `50`) |
+| `limit` | integer | Maximum rows to return (1-700); the server rejects larger values (default `50`) |
 | `detail` | string | 'compact' (default) or 'full' (every field incl. best bid/ask, limits, EPS, base volume, NAV) (default `compact`) |
 
 ### `top_movers`
@@ -51,7 +51,7 @@ Ranked lists: top gainers/losers, most traded, buy/sell queues (صف خرید/ف
 | `kind` | string | gainers, losers, value, volume, trades, buy_queue, sell_queue, real_inflow, real_outflow, real_buyer_power (default `gainers`) |
 | `market` | string | 'bourse' or 'fara' (Fara Bourse). Omit for both where applicable. |
 | `security_type` | string | 'stock' (default, سهام), 'fund', 'option', 'bond', 'all' ... (default `سهام`) |
-| `limit` | integer |  (default `20`) |
+| `limit` | integer | Maximum rows to return (1-100); the server rejects larger values (default `20`) |
 
 ### `industry_summary`
 
@@ -60,7 +60,7 @@ Per-industry breakdown: traded value, average and cap-weighted change, index eff
 | parameter | type | description |
 |---|---|---|
 | `market` | string | 'bourse' or 'fara' (Fara Bourse). Omit for both where applicable. |
-| `limit` | integer | How many industries to return, largest traded value first (default `15`) |
+| `limit` | integer | How many industries to return, largest traded value first (max 80) (default `15`) |
 
 ### `index_contributors`
 
@@ -68,7 +68,7 @@ Stocks pushing the total index up or down the most, in index points (بیشتر�
 
 | parameter | type | description |
 |---|---|---|
-| `limit` | integer |  (default `15`) |
+| `limit` | integer | Maximum rows to return (1-60); the server rejects larger values (default `15`) |
 
 ### `market_snapshot`
 
@@ -78,7 +78,7 @@ End-of-day table for every instrument on a past date (تاریخچه کل باز
 |---|---|---|
 | `date`* | string | Gregorian or Jalali date of a past trading day |
 | `sort_by` | string | value, volume, trades, change_pct (default `value`) |
-| `limit` | integer |  (default `30`) |
+| `limit` | integer | Maximum rows to return (1-300); the server rejects larger values (default `30`) |
 | `security_type` | string | stock, fund or bond |
 
 ### `market_holder_moves`
@@ -87,7 +87,7 @@ Large holders whose positions changed most over the last 5 reported days, market
 
 | parameter | type | description |
 |---|---|---|
-| `limit` | integer |  (default `30`) |
+| `limit` | integer | Maximum rows to return (1-200); the server rejects larger values (default `30`) |
 
 ### `supervisor_messages`
 
@@ -96,7 +96,7 @@ Exchange supervisor notices (پیام ناظر): trading restrictions, clarifica
 | parameter | type | description |
 |---|---|---|
 | `symbol` | string | Symbol, or omit for market-wide messages |
-| `limit` | integer |  (default `10`) |
+| `limit` | integer | Maximum rows to return (1-100); the server rejects larger values (default `10`) |
 | `full_text` | boolean |  (default `False`) |
 | `market` | string | 'bourse' or 'fara' (when no symbol) (default `bourse`) |
 
@@ -116,7 +116,7 @@ Stock screener (فیلتر نویسی): the filter box of tsetmc.com driven by a
 | `columns` | array | Expressions to show, optionally 'expr as label'. Default: symbol, last, close_pct, volume, value plus the fields and window values the filter uses. |
 | `sort` | string | Expression to sort by, e.g. 'volume / avg(volume, 20)'. Default: the preset's, else value. |
 | `descending` | boolean |  |
-| `limit` | integer |  (default `30`) |
+| `limit` | integer | Maximum rows to return (1-300); the server rejects larger values (default `30`) |
 | `include_untraded` | boolean | Also consider symbols with no trades today (default `False`) |
 | `adjusted` | boolean | Adjust past prices for capital increases and dividends so close[5] is comparable with close (default `True`) |
 
@@ -139,7 +139,7 @@ History of any index (تاریخچه شاخص) in index points, not rial: the to
 | `index`* | string | Index name or fragment: 'شاخص کل', 'شاخص کل (هم وزن)', 'شاخص آزاد شناور', 'فلزات', 'بانک', 'شاخص کل فرابورس' (English: total, equal_weight, fara), an industry code such as 27, or an insCode from the indices tool. A fragment that matches several indices is an error that lists them. |
 | `from_date` | string | Range bound: Gregorian 2026-11-03 / 20261103 or Jalali 1405/08/12. Omit for no bound. |
 | `to_date` | string | Range bound: Gregorian 2026-11-03 / 20261103 or Jalali 1405/08/12. Omit for no bound. |
-| `limit` | integer | Most rows to return (default 120). Longer ranges are thinned by granularity, or cut to the newest rows (default `120`) |
+| `limit` | integer | Most rows to return (default 120). Longer ranges are thinned by granularity, or cut to the newest rows (max 500) (default `120`) |
 | `intraday` | boolean | True: today's 5-minute path of the index (روند شاخص در روز) instead of daily history; dates and granularity are ignored (default `False`) |
 | `granularity` | string | 'auto' (default: daily rows if the range fits limit, else weekly, monthly, quarterly or yearly closes), 'daily', 'weekly' (Saturday-start), 'monthly', 'quarterly' or 'yearly' (Jalali) (default `auto`) |
 
@@ -152,7 +152,7 @@ Member stocks of an index (سهام شاخص) with close, change %, volume, valu
 | `index`* | string | Index name, fragment, industry code or insCode, as for index_history ('شاخص کل', 'فلزات', 'بانک', 'شاخص آزاد شناور', 'شاخص کل فرابورس') |
 | `sort_by` | string | effect (points added to the total index, the default), abs_effect, value (traded value), volume, trades, change (closing price change %) or market_cap (default `effect`) |
 | `descending` | boolean |  (default `True`) |
-| `limit` | integer | Most members to return (default 25) (default `25`) |
+| `limit` | integer | Most members to return (default 25) (max 500) (default `25`) |
 
 ### `fund_ranking`
 
@@ -164,7 +164,7 @@ Ranking and screening of the investment-fund registry (صندوق‌های سر�
 | `sort_by` | string | return_1y (default; also return_1d, return_1w, return_1m, return_3m, return_6m, return_since_inception, or short forms such as 1m, 3m), net_assets, units, nav or age (default `return_1y`) |
 | `descending` | boolean |  (default `True`) |
 | `min_net_assets` | number | Smallest net assets (خالص ارزش دارایی) in RIAL, e.g. 1e13 = 10 trillion rial = 1 trillion toman. Funds without a figure are dropped |
-| `limit` | integer | Most funds to return (default 25) (default `25`) |
+| `limit` | integer | Most funds to return (default 25) (max 300) (default `25`) |
 | `detail` | string | 'compact' (default) or 'full' (adds custodian, guarantor, website, top-5 holdings, start date and the mostly empty investor-mix, yield and market-maker fields) (default `compact`) |
 
 ## Derivatives
@@ -184,7 +184,7 @@ Option chain (اختیار معامله) of the Tehran derivatives market: for a
 | `min_open_interest` | integer | Only legs with at least this many open contracts (default `0`) |
 | `strike_window_pct` | number | Only strikes within this percent of the underlying's price, e.g. 10 |
 | `sort_by` | string | Chain: strike (default), distance (from the underlying's price), volume, open_interest, value. Underlyings list: open_interest (default), volume, value, name, expiry. |
-| `limit` | integer | Chain: maximum strike rows over all expiries (default 15; the strikes nearest the underlying's price, or the top by sort_by, are kept). Underlyings list: maximum underlyings (default 30). |
+| `limit` | integer | Chain: maximum strike rows over all expiries (default 15; the strikes nearest the underlying's price, or the top by sort_by, are kept). Underlyings list: maximum underlyings (default 30). (max 60) |
 
 ### `futures_market`
 
@@ -195,7 +195,7 @@ Futures (آتی) of the Tehran derivatives market (about 16 contracts): last and
 | `underlying` | string | Underlying symbol or fragment, e.g. 'اهرم', 'شستا'. Omit for every futures contract. |
 | `sort_by` | string | expiry (default), underlying, open_interest, volume, value or basis_pct |
 | `descending` | boolean | Reverse the default direction (nearest expiry first; largest first for the numeric keys) |
-| `limit` | integer |  |
+| `limit` | integer | Maximum rows to return (1-50); the server rejects larger values |
 
 ## Lists, calendar and status
 
@@ -207,7 +207,7 @@ The exchange's own best-of tables («برترین‌ها» of tsetmc.com): most 
 |---|---|---|
 | `list_name` | string | A list such as price_gainers, price_losers, top_value, top_volume, most_active, block_trades, closing_price_only, rights, etf_trades, option_calls, option_open_interest, largest_bids, largest_asks, market_cap_gainers or sectors_by_value (the exchange's own type names such as PClosingTop work too). 'catalogue' (default) lists every list with its valid flows, ranking column and fields. (default `catalogue`) |
 | `flow` | integer/string | Market segment: 1 or 'bourse' (default), 2 or 'fara', 3 derivatives, 7 commodity, 11 / 12 first / second market of the Bourse, 27 / 28 / 29 Fara base market yellow / orange / red. Each list accepts only some flows; the catalogue says which. |
-| `limit` | integer |  (default `20`) |
+| `limit` | integer | Maximum rows to return (1-300); the server rejects larger values (default `20`) |
 
 ### `capital_calendar`
 
@@ -217,8 +217,8 @@ Market-wide corporate-action calendar (افزایش سرمایه و تعدیل �
 |---|---|---|
 | `flow` | integer/string | 1 or 'bourse' (default), 2 or 'fara', 4 or 'base' (Fara base market), or 'all' for the three (default `1`) |
 | `direction` | string | 'upcoming' (after today, default), 'recent' (up to and including today) or 'all' (both sides) (default `upcoming`) |
-| `days` | integer | How far from today the window reaches (default `30`) |
-| `limit` | integer |  (default `50`) |
+| `days` | integer | How far from today the window reaches (max 366) (default `30`) |
+| `limit` | integer | Maximum rows to return (1-500); the server rejects larger values (default `50`) |
 | `kind` | string | 'capital_increase', 'price_adjustment', 'capital_decrease', 'rights_symbol' (a rights instrument listed or removed), 'share_count_roundtrip' (bookkeeping pairs) or 'all' (default: the first four) (default `all`) |
 
 ### `trading_status`
@@ -230,7 +230,7 @@ Which symbols are halted or flagged. 'suspended' lists symbols whose trading is 
 | `kind` | string | 'suspended' (default), 'supervision', 'state_changes' or 'symbol_history' (default `suspended`) |
 | `market` | string | 'bourse' or 'fara' (Fara Bourse). Omit for both where applicable. |
 | `symbol` | string | Symbol: required for 'symbol_history'; with 'suspended' or 'supervision' it checks that one symbol |
-| `limit` | integer |  (default `50`) |
+| `limit` | integer | Maximum rows to return (1-300); the server rejects larger values (default `50`) |
 
 ## Symbol
 
@@ -241,7 +241,7 @@ Find instruments by symbol or name fragment; returns symbol, name, market, board
 | parameter | type | description |
 |---|---|---|
 | `query`* | string |  |
-| `limit` | integer |  (default `15`) |
+| `limit` | integer | Maximum rows to return (1-50); the server rejects larger values (default `15`) |
 
 ### `symbol_overview`
 
@@ -277,7 +277,7 @@ Intraday order-book evolution rebuilt from every event: sampled depth plus buy/s
 | `date` | string | Gregorian 2026-11-03 / 20261103 or Jalali 1405/08/12. Omit for the latest trading day. |
 | `from_time` | string | HH:MM[:SS] Tehran time |
 | `to_time` | string | HH:MM[:SS] Tehran time |
-| `step_seconds` | integer | Sampling step (default `300`) |
+| `step_seconds` | integer | Sampling step (max 3600) (default `300`) |
 
 ### `trades`
 
@@ -290,7 +290,7 @@ Raw tick-by-tick trades (ریز معاملات) with time, price, volume, value.
 | `from_time` | string | HH:MM[:SS] |
 | `to_time` | string | HH:MM[:SS] |
 | `min_volume` | integer | Only trades with at least this many shares (default `0`) |
-| `limit` | integer |  (default `200`) |
+| `limit` | integer | Maximum rows to return (1-5000); the server rejects larger values (default `200`) |
 | `newest_first` | boolean |  (default `False`) |
 
 ### `trade_summary`
@@ -303,7 +303,7 @@ Aggregate a day's ticks: intraday bars, VWAP, biggest trades, volume by price le
 | `date` | string | Gregorian 2026-11-03 / 20261103 or Jalali 1405/08/12. Omit for the latest trading day. |
 | `from_time` | string | HH:MM[:SS] |
 | `to_time` | string | HH:MM[:SS] |
-| `interval_minutes` | integer |  (default `5`) |
+| `interval_minutes` | integer | Maximum rows to return (1-60); the server rejects larger values (default `5`) |
 
 ### `price_history`
 
@@ -325,7 +325,7 @@ Real vs legal buying/selling (حقیقی و حقوقی): counts, per-capita, buy
 | parameter | type | description |
 |---|---|---|
 | `symbol`* | string | Persian symbol such as 'فولاد', or an insCode |
-| `days` | integer | How many past trading days of history to add (0 = latest session only) (default `10`) |
+| `days` | integer | How many past trading days of history to add (0 = latest session only) (max 90) (default `10`) |
 
 ### `shareholders`
 
@@ -344,7 +344,7 @@ Dated major-holder snapshots for a symbol with computed changes between snapshot
 | `symbol`* | string | Persian symbol such as 'فولاد', or an insCode |
 | `date` | string | Gregorian 2026-11-03 / 20261103 or Jalali 1405/08/12. Omit for the latest trading day. |
 | `holder` | string | Name fragment (or holder_id) of one major holder, e.g. 'کشوری'. Returns that holder's position over time and the days it changed, instead of snapshots. |
-| `days` | integer | With holder: how many daily records to read (default 250, about one year) (default `250`) |
+| `days` | integer | With holder: how many daily records to read (default 250, about one year) (max 500) (default `250`) |
 
 ### `shareholder_portfolio`
 
@@ -392,7 +392,7 @@ Search Codal disclosures (کدال): title, publish time, tracing number and lin
 | `title_contains` | string | Client-side title filter, e.g. 'صورت‌های مالی', 'افزایش سرمایه', 'فعالیت ماهانه' |
 | `category` | integer | Codal category id, -1 for all (default `-1`) |
 | `letter_type` | integer | Codal letter type id, -1 for all (default `-1`) |
-| `limit` | integer |  (default `20`) |
+| `limit` | integer | Maximum rows to return (1-100); the server rejects larger values (default `20`) |
 | `page` | integer |  (default `1`) |
 
 ### `codal_company`

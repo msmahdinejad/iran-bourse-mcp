@@ -13,7 +13,14 @@
   /* ------------------------------------------------------------------ i18n */
   var T = {
     en: {
-      "nav.why": "Why", "nav.bench": "Benchmarks", "nav.install": "Install", "nav.tools": "Tools", "nav.faq": "FAQ",
+      "nav.why": "Why", "nav.screener": "Screener",
+      "scr.eyebrow": "New: stock screener", "scr.h2": "The filter box of tsetmc.com, written by your agent.",
+      "scr.lead": "Say what you want in plain words. The agent writes a short condition and gets back only the stocks that pass it right now, with the evidence for each hit.", "scr.you": "You",
+      "scr.q": "Stocks trading over twice their 20-day average volume, up more than 1% yesterday, positive today, and over 5 billion rial traded.",
+      "scr.c1.h": "Today and 60 days back", "scr.c1.p": "Live values, yesterday (close[1]), averages (avg(volume, 20)), streaks (all(close_pct > 0, 3)) and highs over any window, adjusted for capital increases.",
+      "scr.c2.h": "3,700 instruments, real money, order book", "scr.c2.p": "Shares, funds, bonds, options and futures from the exchange's own feed, with real vs legal flow, a five-level book, base volume and fund NAV.",
+      "scr.c3.h": "Safe, and it explains itself", "scr.c3.p": "Conditions are parsed, never executed. Mistakes come back with suggestions, 15 presets are built in, and every hit shows the numbers behind it.",
+      "scr.link": "Read the screener guide: every field, function and preset.", "scr.col.symbol": "Symbol", "scr.col.y": "Yesterday", "scr.col.t": "Today", "scr.col.v": "Volume vs 20-day avg", "scr.col.val": "Value (bn rial)", "nav.bench": "Benchmarks", "nav.install": "Install", "nav.tools": "Tools", "nav.faq": "FAQ",
       "copy": "Copy", "copied": "Copied", "replay": "Replay", "works": "Works with",
       "hero.eyebrow": "Model Context Protocol · open source · MIT",
       "hero.h1": "Your AI agent, on the <em>Tehran Stock Exchange.</em>",
@@ -49,7 +56,14 @@
       "foot.disc": "Unofficial. Not affiliated with TSETMC, the Tehran Stock Exchange, Fara Bourse or Codal. Information only, not investment advice. Market data belongs to its owners."
     },
     fa: {
-      "nav.why": "چرا", "nav.bench": "بنچمارک", "nav.install": "نصب", "nav.tools": "ابزارها", "nav.faq": "سؤالات",
+      "nav.why": "چرا", "nav.screener": "اسکرینر",
+      "scr.eyebrow": "جدید: اسکرینر سهام", "scr.h2": "فیلتر نویسیِ سایت tsetmc، این بار توسط ایجنتِ شما.",
+      "scr.lead": "به زبان ساده بگویید چه می‌خواهید. ایجنت یک شرط کوتاه می‌نویسد و فقط سهم‌هایی را می‌گیرد که همین لحظه از آن رد می‌شوند، همراه با شاهد هر نتیجه.", "scr.you": "شما",
+      "scr.q": "سهم‌هایی که حجمشان از دو برابر میانگین ۲۰ روزه بیشتر است، دیروز بیش از ۱٪ رشد کرده‌اند، امروز مثبت‌اند و ارزش معاملاتشان بالای ۵ میلیارد ریال است.",
+      "scr.c1.h": "امروز و تا ۶۰ روز قبل", "scr.c1.p": "مقدار لحظه‌ای، دیروز (close[1])، میانگین‌ها (avg(volume, 20))، روند متوالی (all(close_pct > 0, 3)) و سقف و کف هر بازه، تعدیل‌شده برای افزایش سرمایه.",
+      "scr.c2.h": "۳٬۷۰۰ نماد، پول حقیقی، عمق بازار", "scr.c2.p": "سهام، صندوق، اوراق، اختیار و آتی از فید خودِ بورس، همراه با حقیقی/حقوقی، عمق ۵ سطری، حجم مبنا و NAV صندوق.",
+      "scr.c3.h": "امن، و خودش را توضیح می‌دهد", "scr.c3.p": "شرط‌ها فقط تحلیل می‌شوند و هرگز اجرا نمی‌شوند. خطا با پیشنهاد اصلاح برمی‌گردد، ۱۵ فیلتر آماده دارد و هر نتیجه اعدادِ پشتش را نشان می‌دهد.",
+      "scr.link": "راهنمای اسکرینر: همه‌ی فیلدها، توابع و فیلترهای آماده.", "scr.col.symbol": "نماد", "scr.col.y": "دیروز", "scr.col.t": "امروز", "scr.col.v": "حجم نسبت به میانگین ۲۰ روزه", "scr.col.val": "ارزش (میلیارد ریال)", "nav.bench": "بنچمارک", "nav.install": "نصب", "nav.tools": "ابزارها", "nav.faq": "سؤالات",
       "copy": "کپی", "copied": "کپی شد", "replay": "پخش دوباره", "works": "سازگار با",
       "hero.eyebrow": "Model Context Protocol · متن‌باز · MIT",
       "hero.h1": "ایجنت هوش مصنوعی‌تان، روی <em>بورس تهران.</em>",
@@ -214,8 +228,8 @@
 
   /* ------------------------------------------------------------------ charts */
   var SERIES = { raw: { key: "raw", c: "var(--s2)", en: "Raw API route", fa: "مسیر خام API" }, mcp: { key: "mcp", c: "var(--s1)", en: "iran-bourse-mcp", fa: "iran-bourse-mcp" } };
-  var TASKS_FA = { quote: "قیمت لحظه‌ای", order_book: "عمق بازار و صف", trade_summary: "خلاصه ریز معاملات یک روز", real_legal_14d: "حقیقی/حقوقی ۱۰ روز", real_legal_10d: "حقیقی/حقوقی ۱۰ روز", shareholders: "سهامداران عمده", buy_queues: "رتبه‌بندی صف‌های خرید بازار", codal_5: "۵ اطلاعیه کدال", price_history_1y: "قیمت یک‌ساله تعدیل‌شده" };
-  var TASKS_EN = { quote: "Live quote", order_book: "Order book + queue", trade_summary: "One day of ticks", real_legal_10d: "Real/legal flow, 10 days", shareholders: "Major shareholders", buy_queues: "Market-wide buy queues", codal_5: "Latest 5 Codal filings", price_history_1y: "1 year adjusted prices" };
+  var TASKS_FA = { quote: "قیمت لحظه‌ای", order_book: "عمق بازار و صف", trade_summary: "خلاصه ریز معاملات یک روز", real_legal_14d: "حقیقی/حقوقی ۱۰ روز", real_legal_10d: "حقیقی/حقوقی ۱۰ روز", shareholders: "سهامداران عمده", buy_queues: "رتبه‌بندی صف‌های خرید بازار", codal_5: "۵ اطلاعیه کدال", price_history_1y: "قیمت یک‌ساله تعدیل‌شده", screen_surge: "اسکرین کل بازار (حجم، روند دیروز)" };
+  var TASKS_EN = { quote: "Live quote", order_book: "Order book + queue", trade_summary: "One day of ticks", real_legal_10d: "Real/legal flow, 10 days", shareholders: "Major shareholders", buy_queues: "Market-wide buy queues", codal_5: "Latest 5 Codal filings", price_history_1y: "1 year adjusted prices", screen_surge: "Market-wide screen (volume, yesterday's trend)" };
   var tip = $("#tip");
   function showTip(e, html) { tip.innerHTML = html; tip.hidden = false; var x = Math.min(e.clientX + 14, innerWidth - 280), y = e.clientY + 16; tip.style.left = x + "px"; tip.style.top = y + "px"; }
   function hideTip() { tip.hidden = true; }
@@ -398,7 +412,20 @@
   window.addEventListener("resize", function () { clearTimeout(resizeTimer); resizeTimer = setTimeout(renderBench, 180); });
 
   /* ------------------------------------------------------------------ boot */
-  function renderAll() { renderTape(); renderWorks(); renderPanel(); renderStats(); renderBench(); renderInstall(); renderExamples(); renderTools(); renderTrust(); renderFaq(); typeInto("t-bad", true); typeInto("t-good", true); $("#ver").textContent = "v" + (D.version || "0.1.0"); }
+  function renderScreener() {
+    var s = SNAP.screener;
+    var sec = $("#screener");
+    if (!s || !s.rows || !s.rows.length) { if (sec) sec.style.display = "none"; return; }
+    sec.style.display = "";
+    $("#scr-q").textContent = (T[lang] || T.en)["scr.q"];
+    $("#scr-filter").textContent = 'screen_stocks(filter="' + s.filter.replace(/^\(|\)$/g, "").replace(/5000000000\.0/, "5B") + '")';
+    $("#scr-meta").textContent = nf(s.matched) + " / " + nf(s.universe) + " stocks \u00b7 " + s.history_days + " trading days \u00b7 " + s.seconds + " s \u00b7 " + s.jdate;
+    var t = function (k) { return (T[lang] || T.en)[k]; };
+    var pct = function (v) { return '<span class="' + (v >= 0 ? "up" : "") + '">' + (v >= 0 ? "+" : "") + nf(v, 2) + "%</span>"; };
+    $("#scr-table").innerHTML = "<thead><tr><th>" + t("scr.col.symbol") + "</th><th>" + t("scr.col.y") + "</th><th>" + t("scr.col.t") + "</th><th>" + t("scr.col.v") + "</th><th>" + t("scr.col.val") + "</th></tr></thead><tbody>" +
+      s.rows.map(function (r) { return "<tr><td>" + esc(r.symbol) + '</td><td class="num">' + pct(r.yesterday_pct) + '</td><td class="num">' + pct(r.today_pct) + '</td><td class="num">' + nf(r.volume_x, 1) + '\u00d7</td><td class="num">' + nf(r.value_billion_rial, 0) + "</td></tr>"; }).join("") + "</tbody>";
+  }
+  function renderAll() { renderTape(); renderWorks(); renderPanel(); renderStats(); renderBench(); renderScreener(); renderInstall(); renderExamples(); renderTools(); renderTrust(); renderFaq(); typeInto("t-bad", true); typeInto("t-good", true); $("#ver").textContent = "v" + (D.version || "0.1.0"); }
   applyLang();
   initTerminals();
   fetch("https://api.github.com/repos/msmahdinejad/iran-bourse-mcp").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j && typeof j.stargazers_count === "number") $("#stars").textContent = "★ " + j.stargazers_count; }).catch(function () { });

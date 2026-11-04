@@ -296,6 +296,22 @@ td.num { font-family: var(--font-mono); text-align: end; }
 .trap .wrong { color: var(--red); font-family: var(--font-mono); } .trap .right { color: var(--teal); font-family: var(--font-mono); }
 @media (max-width: 760px) { .trap { grid-template-columns: minmax(0, 1fr); gap: 6px; } }
 .note { color: var(--muted); font-size: 14px; max-width: 80ch; margin-top: 18px; }
+.note a { color: var(--teal); }
+.scr-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr); gap: 24px; align-items: start; margin-bottom: 22px; }
+@media (max-width: 900px) { .scr-grid { grid-template-columns: minmax(0, 1fr); } }
+.scr-chat { display: grid; gap: 12px; min-width: 0; }
+.bubble { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; min-width: 0; }
+.bubble .who { display: block; font: 600 12px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.bubble p { margin: 0; color: var(--ink); font-size: 16.5px; line-height: 1.7; }
+.bubble.agent { border-color: var(--line-2); box-shadow: inset 3px 0 0 var(--teal); }
+.bubble.agent pre { margin: 0; font: 13.5px/1.7 var(--font-mono); color: #cfdcff; background: var(--code-bg); border-radius: 10px; padding: 12px 14px; white-space: pre-wrap; word-break: break-word; direction: ltr; text-align: left; }
+.scr-meta { margin: 0; color: var(--muted); font: 13px var(--font-mono); direction: ltr; text-align: left; }
+.scr-table td { white-space: nowrap; }
+.scr-table th { white-space: normal; line-height: 1.25; vertical-align: bottom; }
+.scr-table td, .scr-table th { padding: 10px 11px; }
+.scr-table td.num { font-family: var(--font-mono); text-align: right; direction: ltr; }
+.scr-table .up { color: var(--teal); }
+.scr-cards { margin-top: 6px; }
 .agent-table td.bar-cell { min-width: 150px; }
 .hbar { display: inline-block; height: 10px; border-radius: 3px; vertical-align: middle; margin-inline-end: 8px; }
 

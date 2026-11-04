@@ -74,8 +74,9 @@ Raw per-run metrics and every final answer are in `results/agent_runs.json`.
 | Market-wide ranking of buy queues | 222 req · 15.0s · 695,971 tok | 1 call · 9.4s · 1,241 tok | **561x** |
 | Latest 5 Codal filings with links | 1 req · 1.6s · 6,489 tok | 1 call · 1.6s · 1,539 tok | **4x** |
 | One year of daily prices, adjusted | 2 req · 0.4s · 610,549 tok | 1 call · 0.8s · 19,517 tok | **31x** |
+| Screen the market: volume > 2x 20-day average, up yesterday and today | 22 req · 5.8s · 7,437,128 tok | 1 call · 3.9s · 723 tok | **10,286x** |
 
-_Data-plane benchmark, 2026-11-04 09:16:52 UTC. Tokens are a tiktoken `o200k_base` proxy; the ratios matter more than the absolute numbers. A single-endpoint task takes about as long either way; the server wins where the raw route needs many sequential requests, and on tokens everywhere._
+_Data-plane benchmark, 2026-11-04 15:51:55 UTC. Tokens are a tiktoken `o200k_base` proxy; the ratios matter more than the absolute numbers. A single-endpoint task takes about as long either way; the server wins where the raw route needs many sequential requests, and on tokens everywhere._
 
 **Traps in the raw data** (each found on the live endpoints and handled by the server):
 

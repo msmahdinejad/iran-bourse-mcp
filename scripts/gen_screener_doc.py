@@ -51,8 +51,8 @@ TAIL = """
   "filter": "(volume > 2 * avg(volume, 20) and close_pct[1] > 1 ...)",
   "as_of": {"date": "2026-11-04", "jdate": "1405/08/13", "session_open": false},
   "history": {"trading_days_loaded": 20, "from": "2026-10-07", "to": "2026-11-03", "adjusted_for_capital_changes": true},
-  "matched": 28, "returned": 6,
-  "rows": [{"symbol": "...", "yesterday_pct": 2.97, "today_pct": 2.85, "volume_x": 8.42}]
+  "matched": 35, "returned": 6,
+  "rows": [{"symbol": "...", "yesterday_pct": 2.97, "today_pct": 2.85, "volume_x": 9.36}]
 }
 ```
 

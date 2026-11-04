@@ -32,6 +32,7 @@
     </a>
     <nav class="nav-links" aria-label="Sections">
       <a href="#why" data-i18n="nav.why">Why</a>
+      <a href="#screener" data-i18n="nav.screener">Screener</a>
       <a href="#benchmarks" data-i18n="nav.bench">Benchmarks</a>
       <a href="#install" data-i18n="nav.install">Install</a>
       <a href="#tools" data-i18n="nav.tools">Tools</a>
@@ -136,6 +137,30 @@
       </div>
     </div>
     <p class="note" data-i18n="cmp.note">Outputs shown are real, captured on 2026-11-03. The browser-only agent cannot even find the data; an agent that guesses the hidden endpoint can be misled by their fields.</p>
+  </div>
+</section>
+
+<section id="screener" class="band">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow" data-i18n="scr.eyebrow">New: stock screener</p>
+      <h2 data-i18n="scr.h2">The filter box of tsetmc.com, written by your agent.</h2>
+      <p class="lead" data-i18n="scr.lead">Say what you want in plain words. The agent writes a short condition and gets back only the stocks that pass it right now, with the evidence for each hit.</p>
+    </div>
+    <div class="scr-grid">
+      <div class="scr-chat">
+        <div class="bubble user"><span class="who" data-i18n="scr.you">You</span><p id="scr-q"></p></div>
+        <div class="bubble agent"><span class="who">screen_stocks</span><pre id="scr-filter"></pre></div>
+        <p class="scr-meta" id="scr-meta"></p>
+      </div>
+      <div class="table-wrap"><table class="agent-table scr-table" id="scr-table"></table></div>
+    </div>
+    <div class="cards3 scr-cards">
+      <article class="card"><h3 data-i18n="scr.c1.h">Today and 60 days back</h3><p data-i18n="scr.c1.p">Live values, yesterday (close[1]), averages (avg(volume, 20)), streaks (all(close_pct &gt; 0, 3)) and highs over any window, adjusted for capital increases.</p></article>
+      <article class="card"><h3 data-i18n="scr.c2.h">3,700 instruments, real money, order book</h3><p data-i18n="scr.c2.p">Shares, funds, bonds, options and futures from the exchange's own feed, with real vs legal flow, a five-level book, base volume and fund NAV.</p></article>
+      <article class="card"><h3 data-i18n="scr.c3.h">Safe, and it explains itself</h3><p data-i18n="scr.c3.p">Conditions are parsed, never executed. Mistakes come back with suggestions, 15 presets are built in, and every hit shows the numbers behind it.</p></article>
+    </div>
+    <p class="note"><a href="https://github.com/msmahdinejad/iran-bourse-mcp/blob/main/docs/SCREENER.md" target="_blank" rel="noopener" data-i18n="scr.link">Read the screener guide: every field, function and preset.</a></p>
   </div>
 </section>
 

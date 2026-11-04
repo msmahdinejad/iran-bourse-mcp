@@ -1,6 +1,6 @@
 {
- "tests": 142,
- "version": "0.2.0",
+ "tests": 585,
+ "version": "0.3.0",
  "tools": [
   {
    "name": "market_status",
@@ -46,8 +46,8 @@
   {
    "name": "market_watch",
    "group": "Market",
-   "description": "Whole-market screen (دیده‌بان بازار) of ordinary shares on Bourse and Fara Bourse: filter, sort and page through ~600 symbols in one call.",
-   "fa": "دیده‌بان کل بازار با فیلتر و مرتب‌سازی",
+   "description": "Whole-market table (دیده‌بان بازار) of the exchange's own feed: about 3,700 instruments (shares, base market, funds, bonds, options, futures, rights, commodities) on Bourse and Fara Bourse, filtered, sorted and paged in one call. To find instruments by conditions use screen_stocks.",
+   "fa": "دیده‌بان کل بازار (سهام، صندوق، اوراق، اختیار، آتی)",
    "params": [
     {
      "name": "market",
@@ -58,8 +58,8 @@
     {
      "name": "security_type",
      "required": false,
-     "description": "Substring filter on the exchange's security type. The gateway's watch lists ordinary shares (سهام عادی) of Bourse and Fara Bourse; funds and bonds are in market_snapshot.",
-     "default": null
+     "description": "Type of instrument: 'stock' (default, سهام), 'fund' (صندوق), 'bond', 'option', 'future', 'rights', 'commodity', 'base' (بازار پایه) or 'all'; a Persian substring such as 'صندوق' works too.",
+     "default": "سهام"
     },
     {
      "name": "industry",
@@ -70,7 +70,7 @@
     {
      "name": "board",
      "required": false,
-     "description": "Board substring, e.g. 'اول', 'دوم', 'نوآفرین'",
+     "description": "Board substring, e.g. 'اول', 'دوم', 'پایه'",
      "default": null
     },
     {
@@ -100,13 +100,13 @@
     {
      "name": "limit",
      "required": false,
-     "description": "",
+     "description": "Maximum rows to return (1-700); the server rejects larger values",
      "default": 50
     },
     {
      "name": "detail",
      "required": false,
-     "description": "'compact' (default) or 'full' (every field incl. best bid/ask, limits, EPS)",
+     "description": "'compact' (default) or 'full' (every field incl. best bid/ask, limits, EPS, base volume, NAV)",
      "default": "compact"
     }
    ]
@@ -132,13 +132,13 @@
     {
      "name": "security_type",
      "required": false,
-     "description": "Substring filter, default 'سهام' (stocks)",
+     "description": "'stock' (default, سهام), 'fund', 'option', 'bond', 'all' ...",
      "default": "سهام"
     },
     {
      "name": "limit",
      "required": false,
-     "description": "",
+     "description": "Maximum rows to return (1-100); the server rejects larger values",
      "default": 20
     }
    ]
@@ -147,7 +147,7 @@
    "name": "industry_summary",
    "group": "Market",
    "description": "Per-industry breakdown: traded value, average and cap-weighted change, index effect, queue counts (گروه‌های صنعتی).",
-   "fa": "خلاصه گروه‌های صنعتی",
+   "fa": "خلاصه گروه‌های صنعتی و ورود پول حقیقی هر صنعت",
    "params": [
     {
      "name": "market",
@@ -158,7 +158,7 @@
     {
      "name": "limit",
      "required": false,
-     "description": "How many industries to return, largest traded value first",
+     "description": "How many industries to return, largest traded value first (max 80)",
      "default": 15
     }
    ]
@@ -172,7 +172,7 @@
     {
      "name": "limit",
      "required": false,
-     "description": "",
+     "description": "Maximum rows to return (1-60); the server rejects larger values",
      "default": 15
     }
    ]
@@ -198,7 +198,7 @@
     {
      "name": "limit",
      "required": false,
-     "description": "",
+     "description": "Maximum rows to return (1-300); the server rejects larger values",
      "default": 30
     },
     {
@@ -218,7 +218,7 @@
     {
      "name": "limit",
      "required": false,
-     "description": "",
+     "description": "Maximum rows to return (1-200); the server rejects larger values",
      "default": 30
     }
    ]
@@ -238,7 +238,7 @@
     {
      "name": "limit",
      "required": false,
-     "description": "",
+     "description": "Maximum rows to return (1-100); the server rejects larger values",
      "default": 10
     },
     {
@@ -252,6 +252,410 @@
      "required": false,
      "description": "'bourse' or 'fara' (when no symbol)",
      "default": "bourse"
+    }
+   ]
+  },
+  {
+   "name": "screen_stocks",
+   "group": "Screener",
+   "description": "Stock screener (فیلتر نویسی): the filter box of tsetmc.com driven by an expression. Returns only the stocks that pass your condition right now, using today's live values plus up to 60 past trading days (close[1], avg(volume, 20), count(close_pct > 0, 3)) and real/legal money flow, in one call with a validated, safe expression (nothing is executed).",
+   "fa": "اسکرینر و فیلتر نویس: شرط بنویس، نمادهای رد شده را بگیر",
+   "params": [
+    {
+     "name": "filter",
+     "required": false,
+     "description": "Condition checked for every stock, e.g. \"volume > 2 * avg(volume, 20) and close_pct > 1\". Today: last close open high low yesterday last_pct close_pct volume value(rial) trades pe eps market_cap bid_volume ask_volume at_upper_limit buy_queue real_net_value real_buyer_power industry symbol. Past days: close[1] (yesterday), avg(volume, 20), highest(high, 10), count(close_pct > 0, 5), all(close_pct < 0, 3). Operators: and or not, has(industry, 'بانک'), 5B = 5 billion rial. All fields and functions: screener_reference.",
+     "default": null
+    },
+    {
+     "name": "preset",
+     "required": false,
+     "description": "Ready-made filter, e.g. volume_surge, smart_money, breakout_20d, buy_queue (screener_reference lists them). ANDed with filter.",
+     "default": null
+    },
+    {
+     "name": "market",
+     "required": false,
+     "description": "'bourse' or 'fara' (Fara Bourse). Omit for both where applicable.",
+     "default": null
+    },
+    {
+     "name": "security_type",
+     "required": false,
+     "description": "Instrument type: 'stock' (default, سهام), 'fund' (صندوق, has nav and nav_premium_pct), 'option', 'future', 'bond', 'rights', 'commodity', 'base' or 'all'",
+     "default": "سهام"
+    },
+    {
+     "name": "industry",
+     "required": false,
+     "description": "Industry name substring, e.g. 'بانک'",
+     "default": null
+    },
+    {
+     "name": "columns",
+     "required": false,
+     "description": "Expressions to show, optionally 'expr as label'. Default: symbol, last, close_pct, volume, value plus the fields and window values the filter uses.",
+     "default": null
+    },
+    {
+     "name": "sort",
+     "required": false,
+     "description": "Expression to sort by, e.g. 'volume / avg(volume, 20)'. Default: the preset's, else value.",
+     "default": null
+    },
+    {
+     "name": "descending",
+     "required": false,
+     "description": "",
+     "default": null
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "description": "Maximum rows to return (1-300); the server rejects larger values",
+     "default": 30
+    },
+    {
+     "name": "include_untraded",
+     "required": false,
+     "description": "Also consider symbols with no trades today",
+     "default": false
+    },
+    {
+     "name": "adjusted",
+     "required": false,
+     "description": "Adjust past prices for capital increases and dividends so close[5] is comparable with close",
+     "default": true
+    }
+   ]
+  },
+  {
+   "name": "screener_reference",
+   "group": "Screener",
+   "description": "Fields, functions, ready-made presets and examples for screen_stocks filters. Call it when a filter is rejected or you need a field name.",
+   "fa": "راهنمای فیلتر: فیلدها، توابع و فیلترهای آماده",
+   "params": [
+    {
+     "name": "topic",
+     "required": false,
+     "description": "overview (default), fields, functions, presets, syntax, examples or all",
+     "default": "overview"
+    }
+   ]
+  },
+  {
+   "name": "index_history",
+   "group": "Indices and funds",
+   "description": "History of any index (تاریخچه شاخص) in index points, not rial: the total index (شاخص کل) back to 2008, equal-weight, free-float, any industry index such as فلزات or بانک, and the Fara Bourse indices. Rows ascending with close, low, high and daily change %, plus a summary of the whole requested range: change %, highest and lowest close with dates, maximum drawdown, up/down days and a volatility estimate. Days the market was closed are flagged flat and kept out of the statistics. With intraday=true: today's 5-minute path with day high/low and the previous close.",
+   "fa": "تاریخچه و روند لحظه‌ای هر شاخص",
+   "params": [
+    {
+     "name": "index",
+     "required": true,
+     "description": "Index name or fragment: 'شاخص کل', 'شاخص کل (هم وزن)', 'شاخص آزاد شناور', 'فلزات', 'بانک', 'شاخص کل فرابورس' (English: total, equal_weight, fara), an industry code such as 27, or an insCode from the indices tool. A fragment that matches several indices is an error that lists them.",
+     "default": null
+    },
+    {
+     "name": "from_date",
+     "required": false,
+     "description": "Range bound: Gregorian 2026-11-03 / 20261103 or Jalali 1405/08/12. Omit for no bound.",
+     "default": null
+    },
+    {
+     "name": "to_date",
+     "required": false,
+     "description": "Range bound: Gregorian 2026-11-03 / 20261103 or Jalali 1405/08/12. Omit for no bound.",
+     "default": null
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "description": "Most rows to return (default 120). Longer ranges are thinned by granularity, or cut to the newest rows (max 500)",
+     "default": 120
+    },
+    {
+     "name": "intraday",
+     "required": false,
+     "description": "True: today's 5-minute path of the index (روند شاخص در روز) instead of daily history; dates and granularity are ignored",
+     "default": false
+    },
+    {
+     "name": "granularity",
+     "required": false,
+     "description": "'auto' (default: daily rows if the range fits limit, else weekly, monthly, quarterly or yearly closes), 'daily', 'weekly' (Saturday-start), 'monthly', 'quarterly' or 'yearly' (Jalali)",
+     "default": "auto"
+    }
+   ]
+  },
+  {
+   "name": "index_constituents",
+   "group": "Indices and funds",
+   "description": "Member stocks of an index (سهام شاخص) with close, change %, volume, value and each stock's effect in index points on the total index (تاثیر در شاخص, from the exchange), plus totals: members, advancers/decliners, traded value, sum of effects. The exchange publishes no index weights, so market-cap share is only a derived proxy (sort_by market_cap). Effects are for the latest session and are left out, with a note, when the exchange's table does not add up to the index move; for a sector index they are the effect on the total index, not on the sector index.",
+   "fa": "اعضای شاخص و تأثیر هر نماد",
+   "params": [
+    {
+     "name": "index",
+     "required": true,
+     "description": "Index name, fragment, industry code or insCode, as for index_history ('شاخص کل', 'فلزات', 'بانک', 'شاخص آزاد شناور', 'شاخص کل فرابورس')",
+     "default": null
+    },
+    {
+     "name": "sort_by",
+     "required": false,
+     "description": "effect (points added to the total index, the default), abs_effect, value (traded value), volume, trades, change (closing price change %) or market_cap",
+     "default": "effect"
+    },
+    {
+     "name": "descending",
+     "required": false,
+     "description": "",
+     "default": true
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "description": "Most members to return (default 25) (max 500)",
+     "default": 25
+    }
+   ]
+  },
+  {
+   "name": "fund_ranking",
+   "group": "Indices and funds",
+   "description": "Ranking and screening of the investment-fund registry (صندوق‌های سرمایه‌گذاری): about 580 funds of 15 types, not only the exchange-traded ones, with net assets, units, redemption/issue/statistical NAV (ابطال، صدور، آماری), returns over 1 day to 1 year and since inception, portfolio mix (stock/bond/deposit), manager and NAV date. Sort by any return or size, filter by type and minimum net assets. Returns are percent as published, null where the fund is too young. The registry has no ticker: find the traded unit with search_symbol on the fund's name, then etf_nav for its NAV premium. Market-maker and very young funds show extreme returns, so filter them for a fair ranking.",
+   "fa": "رتبه‌بندی و مقایسهٔ صندوق‌های سرمایه‌گذاری",
+   "params": [
+    {
+     "name": "fund_type",
+     "required": false,
+     "description": "Fund type: fixed_income (درآمد ثابت), equity (سهام: every stock fund), equity_general (در سهام), mixed (مختلط), gold (طلا و کالا), market_maker (بازارگردانی), sector, leveraged, index, venture, private, project, fund_of_funds, real_estate, principal_protected, pension; a Persian name or fragment, a numeric type id, or a comma-separated list. Omit for every type.",
+     "default": null
+    },
+    {
+     "name": "sort_by",
+     "required": false,
+     "description": "return_1y (default; also return_1d, return_1w, return_1m, return_3m, return_6m, return_since_inception, or short forms such as 1m, 3m), net_assets, units, nav or age",
+     "default": "return_1y"
+    },
+    {
+     "name": "descending",
+     "required": false,
+     "description": "",
+     "default": true
+    },
+    {
+     "name": "min_net_assets",
+     "required": false,
+     "description": "Smallest net assets (خالص ارزش دارایی) in RIAL, e.g. 1e13 = 10 trillion rial = 1 trillion toman. Funds without a figure are dropped",
+     "default": null
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "description": "Most funds to return (default 25) (max 300)",
+     "default": 25
+    },
+    {
+     "name": "detail",
+     "required": false,
+     "description": "'compact' (default) or 'full' (adds custodian, guarantor, website, top-5 holdings, start date and the mostly empty investor-mix, yield and market-maker fields)",
+     "default": "compact"
+    }
+   ]
+  },
+  {
+   "name": "option_chain",
+   "group": "Derivatives",
+   "description": "Option chain (اختیار معامله) of the Tehran derivatives market: for an underlying ('اهرم', 'شستا', 'وبملت' ...) and expiry, every strike with its call (خرید) and put (فروش) leg - last/close price, bid/ask, volume, value, open interest, change % - plus derived (computed, not published) moneyness ITM/OTM, intrinsic and time value, break-even, bid-ask spread, put/call ratios, top open-interest strikes and an estimated max pain. Omit underlying to list the underlyings that have options. Prices are rial per underlying unit, one contract = contract_size units; legs with no trade today show no price; open interest is the clearing house's daily figure.",
+   "fa": "زنجیرهٔ اختیار معامله: خرید و فروش هر قیمت اعمال",
+   "params": [
+    {
+     "name": "underlying",
+     "required": false,
+     "description": "Underlying symbol or fragment, e.g. 'اهرم', 'شستا', 'وبملت', 'شپنا' (or one of its option symbols such as 'ضهرم8029'). Omit to list the underlyings that have options, with expiries, open interest and volume.",
+     "default": null
+    },
+    {
+     "name": "expiry",
+     "required": false,
+     "description": "'nearest' (default), 'all', or one expiry date: Gregorian 2026-11-18 or Jalali 1405/08/27.",
+     "default": null
+    },
+    {
+     "name": "market",
+     "required": false,
+     "description": "'bourse' or 'fara' (Fara Bourse). Omit for both where applicable.",
+     "default": null
+    },
+    {
+     "name": "option_type",
+     "required": false,
+     "description": "'call' (خرید), 'put' (فروش) or omit for both",
+     "default": null
+    },
+    {
+     "name": "moneyness",
+     "required": false,
+     "description": "'itm' (in the money), 'otm' or 'atm' (the strike nearest the underlying's price). Applies to each leg: an ITM call at 50,000 pairs with an OTM put.",
+     "default": null
+    },
+    {
+     "name": "min_volume",
+     "required": false,
+     "description": "Only legs with at least this many contracts traded today",
+     "default": 0
+    },
+    {
+     "name": "min_open_interest",
+     "required": false,
+     "description": "Only legs with at least this many open contracts",
+     "default": 0
+    },
+    {
+     "name": "strike_window_pct",
+     "required": false,
+     "description": "Only strikes within this percent of the underlying's price, e.g. 10",
+     "default": null
+    },
+    {
+     "name": "sort_by",
+     "required": false,
+     "description": "Chain: strike (default), distance (from the underlying's price), volume, open_interest, value. Underlyings list: open_interest (default), volume, value, name, expiry.",
+     "default": null
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "description": "Chain: maximum strike rows over all expiries (default 15; the strikes nearest the underlying's price, or the top by sort_by, are kept). Underlyings list: maximum underlyings (default 30). (max 60)",
+     "default": null
+    }
+   ]
+  },
+  {
+   "name": "futures_market",
+   "group": "Derivatives",
+   "description": "Futures (آتی) of the Tehran derivatives market (about 16 contracts): last and close price, bid/ask, volume, value, open interest, expiry and days left, plus the basis against the underlying - absolute, percent and an annualised estimate (formula in the notes). Contracts that did not trade today show no price and no basis.",
+   "fa": "قراردادهای آتی و پایه (basis)",
+   "params": [
+    {
+     "name": "underlying",
+     "required": false,
+     "description": "Underlying symbol or fragment, e.g. 'اهرم', 'شستا'. Omit for every futures contract.",
+     "default": null
+    },
+    {
+     "name": "sort_by",
+     "required": false,
+     "description": "expiry (default), underlying, open_interest, volume, value or basis_pct",
+     "default": null
+    },
+    {
+     "name": "descending",
+     "required": false,
+     "description": "Reverse the default direction (nearest expiry first; largest first for the numeric keys)",
+     "default": null
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "description": "Maximum rows to return (1-50); the server rejects larger values",
+     "default": null
+    }
+   ]
+  },
+  {
+   "name": "top_lists",
+   "group": "Lists, calendar and status",
+   "description": "The exchange's own best-of tables («برترین‌ها» of tsetmc.com): most trades, biggest traded value or volume, price gainers and losers, last price above or below the close, block trades (معاملات عمده), closing-price-only TAL trades, rights (حق تقدم), ETFs, options and futures by volume or open interest, debt papers, energy and commodity markets, the largest buy and sell queues (برترین تقاضا و عرضه), market-value gainers and losers and industries by traded value, for the Bourse, the Fara Bourse and their sub-markets. Rows keep the exchange's own ranking with stable keys (symbol, close, close_pct, last, trades, volume, value ...; rial). Call it first with list_name='catalogue' to see all lists and the flows each one supports.",
+   "fa": "فهرست‌های رسمی برترین‌ها",
+   "params": [
+    {
+     "name": "list_name",
+     "required": false,
+     "description": "A list such as price_gainers, price_losers, top_value, top_volume, most_active, block_trades, closing_price_only, rights, etf_trades, option_calls, option_open_interest, largest_bids, largest_asks, market_cap_gainers or sectors_by_value (the exchange's own type names such as PClosingTop work too). 'catalogue' (default) lists every list with its valid flows, ranking column and fields.",
+     "default": "catalogue"
+    },
+    {
+     "name": "flow",
+     "required": false,
+     "description": "Market segment: 1 or 'bourse' (default), 2 or 'fara', 3 derivatives, 7 commodity, 11 / 12 first / second market of the Bourse, 27 / 28 / 29 Fara base market yellow / orange / red. Each list accepts only some flows; the catalogue says which.",
+     "default": null
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "description": "Maximum rows to return (1-300); the server rejects larger values",
+     "default": 20
+    }
+   ]
+  },
+  {
+   "name": "capital_calendar",
+   "group": "Lists, calendar and status",
+   "description": "Market-wide corporate-action calendar (افزایش سرمایه و تعدیل قیمت), sorted by date: capital increases with the old and new share count, added shares and increase %, and price adjustments (reference-price cuts around dividends and rights) with the adjustment factor, for the days after today, the days up to today, or both. Forward visibility is short: the exchange lists a share-count change only a few days before it takes effect, and price adjustments only after the fact. Not in this feed: dividend per share, ex-dividend and AGM dates, rights exercise price; they are in Codal letters (use codal_filings).",
+   "fa": "تقویم افزایش سرمایه و تعدیل قیمت",
+   "params": [
+    {
+     "name": "flow",
+     "required": false,
+     "description": "1 or 'bourse' (default), 2 or 'fara', 4 or 'base' (Fara base market), or 'all' for the three",
+     "default": 1
+    },
+    {
+     "name": "direction",
+     "required": false,
+     "description": "'upcoming' (after today, default), 'recent' (up to and including today) or 'all' (both sides)",
+     "default": "upcoming"
+    },
+    {
+     "name": "days",
+     "required": false,
+     "description": "How far from today the window reaches (max 366)",
+     "default": 30
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "description": "Maximum rows to return (1-500); the server rejects larger values",
+     "default": 50
+    },
+    {
+     "name": "kind",
+     "required": false,
+     "description": "'capital_increase', 'price_adjustment', 'capital_decrease', 'rights_symbol' (a rights instrument listed or removed), 'share_count_roundtrip' (bookkeeping pairs) or 'all' (default: the first four)",
+     "default": "all"
+    }
+   ]
+  },
+  {
+   "name": "trading_status",
+   "group": "Lists, calendar and status",
+   "description": "Which symbols are halted or flagged. 'suspended' lists symbols whose trading is suspended (تعلیق شده) with the exchange's reasons; 'supervision' lists symbols that still trade but are in the suspension process (مشمول فرآیند تعلیق) or under caution (معامله تحت احتیاط); 'state_changes' is the market-wide log of order-entry states (مجاز, ممنوع, محفوظ, متوقف), decoded into what each means; 'symbol_history' gives one symbol's state history with its current supervision status and since when. Reasons are plain Persian lines.",
+   "fa": "نمادهای متوقف، تحت نظارت و تغییر وضعیت",
+   "params": [
+    {
+     "name": "kind",
+     "required": false,
+     "description": "'suspended' (default), 'supervision', 'state_changes' or 'symbol_history'",
+     "default": "suspended"
+    },
+    {
+     "name": "market",
+     "required": false,
+     "description": "'bourse' or 'fara' (Fara Bourse). Omit for both where applicable.",
+     "default": null
+    },
+    {
+     "name": "symbol",
+     "required": false,
+     "description": "Symbol: required for 'symbol_history'; with 'suspended' or 'supervision' it checks that one symbol",
+     "default": null
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "description": "Maximum rows to return (1-300); the server rejects larger values",
+     "default": 50
     }
    ]
   },
@@ -270,7 +674,7 @@
     {
      "name": "limit",
      "required": false,
-     "description": "",
+     "description": "Maximum rows to return (1-50); the server rejects larger values",
      "default": 15
     }
    ]
@@ -350,7 +754,7 @@
     {
      "name": "step_seconds",
      "required": false,
-     "description": "Sampling step",
+     "description": "Sampling step (max 3600)",
      "default": 300
     }
    ]
@@ -394,7 +798,7 @@
     {
      "name": "limit",
      "required": false,
-     "description": "",
+     "description": "Maximum rows to return (1-5000); the server rejects larger values",
      "default": 200
     },
     {
@@ -438,7 +842,7 @@
     {
      "name": "interval_minutes",
      "required": false,
-     "description": "",
+     "description": "Maximum rows to return (1-60); the server rejects larger values",
      "default": 5
     }
    ]
@@ -446,7 +850,7 @@
   {
    "name": "price_history",
    "group": "Symbol",
-   "description": "Daily OHLCV history since listing, optionally adjusted (تاریخچه قیمت).",
+   "description": "OHLCV price history since listing (تاریخچه قیمت), daily or aggregated to weekly/monthly/yearly bars, optionally back-adjusted for capital increases and dividends. For long ranges prefer granularity='monthly' or 'yearly' over thousands of daily rows.",
    "fa": "تاریخچه قیمت (تعدیل‌شده)",
    "params": [
     {
@@ -470,7 +874,7 @@
     {
      "name": "limit",
      "required": false,
-     "description": "",
+     "description": "Newest rows to return (max 5000). 250 daily rows is about 70 KB; for long ranges use granularity instead of a big limit",
      "default": 250
     },
     {
@@ -478,6 +882,12 @@
      "required": false,
      "description": "Back-adjust for capital increases/dividends (تعدیل شده)",
      "default": false
+    },
+    {
+     "name": "granularity",
+     "required": false,
+     "description": "'daily' (default), 'weekly' (Saturday-start), 'monthly' or 'yearly' (Jalali) bars: open/high/low/close, summed volume and value, change % per period",
+     "default": "daily"
     }
    ]
   },
@@ -496,7 +906,7 @@
     {
      "name": "days",
      "required": false,
-     "description": "How many past trading days of history to add (0 = latest session only)",
+     "description": "How many past trading days of history to add (0 = latest session only) (max 90)",
      "default": 10
     }
    ]
@@ -518,8 +928,8 @@
   {
    "name": "shareholder_history",
    "group": "Symbol",
-   "description": "Dated major-holder snapshots for a symbol with computed changes between snapshots.",
-   "fa": "تاریخچه سهامداران",
+   "description": "Dated major-holder snapshots for a symbol with computed changes between snapshots; or, with holder=..., one major holder's position over time and the days it bought or sold (تاریخچه سهامدار عمده).",
+   "fa": "تاریخچه سهامداران و موقعیت هر سهامدار در طول زمان",
    "params": [
     {
      "name": "symbol",
@@ -532,6 +942,18 @@
      "required": false,
      "description": "Gregorian 2026-11-03 / 20261103 or Jalali 1405/08/12. Omit for the latest trading day.",
      "default": null
+    },
+    {
+     "name": "holder",
+     "required": false,
+     "description": "Name fragment (or holder_id) of one major holder, e.g. 'کشوری'. Returns that holder's position over time and the days it changed, instead of snapshots.",
+     "default": null
+    },
+    {
+     "name": "days",
+     "required": false,
+     "description": "With holder: how many daily records to read (default 250, about one year) (max 500)",
+     "default": 250
     }
    ]
   },
@@ -636,7 +1058,7 @@
     {
      "name": "limit",
      "required": false,
-     "description": "",
+     "description": "Maximum rows to return (1-100); the server rejects larger values",
      "default": 20
     },
     {
@@ -709,9 +1131,9 @@
    "id": "codex",
    "label": "OpenAI Codex CLI",
    "group": "cli",
-   "note": "",
+   "note": "`uvx --version` must work in the shell that starts Codex. For scripted `codex exec` runs use the config.toml form (required = true), or `uv tool install` the package so the server starts in about a second.",
    "docs": "https://developers.openai.com/codex/mcp",
-   "snippet": "# Run once in your terminal:\ncodex mcp add iran-bourse -- uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp\n\n# or add to ~/.codex/config.toml:\n[mcp_servers.iran-bourse]\ncommand = \"uvx\"\nargs = [\"--from\", \"git+https://github.com/msmahdinejad/iran-bourse-mcp\", \"iran-bourse-mcp\"]\n",
+   "snippet": "# Run once in your terminal:\ncodex mcp add iran-bourse -- uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp\n\n# or add to ~/.codex/config.toml:\n[mcp_servers.iran-bourse]\ncommand = \"uvx\"\nargs = [\"--from\", \"git+https://github.com/msmahdinejad/iran-bourse-mcp\", \"iran-bourse-mcp\"]\nstartup_timeout_sec = 60  # the first start downloads the packages\nrequired = true           # `codex exec` waits for the server instead of starting its first turn without the tools\n\n# Note: `uvx --version` must work in the shell that starts Codex. For scripted `codex exec` runs use the config.toml form (required = true), or `uv tool install` the package so the server starts in about a second.\n",
    "oneclick": {
     "cursor": null,
     "vscode": null,
@@ -943,16 +1365,16 @@
   }
  ],
  "snapshot": {
-  "captured_at_utc": "2026-11-04 09:33 UTC",
-  "tehran_time": "2026-11-04 13:03:01",
+  "captured_at_utc": "2026-11-04 17:09 UTC",
+  "tehran_time": "2026-11-04 20:39:01",
   "market_state": "بسته",
   "index": {
-   "value": 7912649.04,
-   "change": 88045.65,
+   "value": 7912741.15,
+   "change": 88137.76,
    "change_pct": 1.13
   },
-  "trades_today": 855604,
-  "value_today": 355075179752160,
+  "trades_today": 918002,
+  "value_today": 531221857310766,
   "tape": [
    {
     "symbol": "فملی",
@@ -970,14 +1392,14 @@
     "pct": 2.85
    },
    {
-    "symbol": "شپنا",
-    "last": 11780.0,
-    "pct": -1.17
-   },
-   {
     "symbol": "شتران",
     "last": 6150.0,
     "pct": 2.84
+   },
+   {
+    "symbol": "شپنا",
+    "last": 11780.0,
+    "pct": -1.17
    },
    {
     "symbol": "فکور",
@@ -988,6 +1410,16 @@
     "symbol": "وبملت",
     "last": 1434.0,
     "pct": 2.94
+   },
+   {
+    "symbol": "جم2",
+    "last": 74120.0,
+    "pct": 2.99
+   },
+   {
+    "symbol": "فخوز2",
+    "last": 3600.0,
+    "pct": 1.41
    },
    {
     "symbol": "فزر",
@@ -1023,98 +1455,140 @@
     "symbol": "وبصادر",
     "last": 1015.0,
     "pct": 2.94
-   },
-   {
-    "symbol": "شستا",
-    "last": 3300.0,
-    "pct": 2.8
-   },
-   {
-    "symbol": "تابان",
-    "last": 23280.0,
-    "pct": 2.96
    }
   ],
+  "screener": {
+   "filter": "(volume > 2 * avg(volume, 20) and close_pct[1] > 1 and close_pct > 0 and value > 5B)",
+   "matched": 35,
+   "universe": 625,
+   "jdate": "1405/08/13",
+   "history_days": 20,
+   "seconds": 3.58,
+   "rows": [
+    {
+     "symbol": "فخوز2",
+     "yesterday_pct": 2.8902,
+     "today_pct": 1.69,
+     "volume_x": 6.3545,
+     "value_billion_rial": 4752.6651
+    },
+    {
+     "symbol": "انتخاب",
+     "yesterday_pct": 2.9715,
+     "today_pct": 2.85,
+     "volume_x": 9.3554,
+     "value_billion_rial": 3490.3564
+    },
+    {
+     "symbol": "پکرمان",
+     "yesterday_pct": 2.9211,
+     "today_pct": 2.93,
+     "volume_x": 5.0397,
+     "value_billion_rial": 2117.115
+    },
+    {
+     "symbol": "کرماشا",
+     "yesterday_pct": 2.9895,
+     "today_pct": 2.98,
+     "volume_x": 4.1932,
+     "value_billion_rial": 1757.6987
+    },
+    {
+     "symbol": "خراسان",
+     "yesterday_pct": 2.9864,
+     "today_pct": 2.98,
+     "volume_x": 4.6904,
+     "value_billion_rial": 1550.8967
+    },
+    {
+     "symbol": "احیا",
+     "yesterday_pct": 2.9982,
+     "today_pct": 2.74,
+     "volume_x": 2.0201,
+     "value_billion_rial": 1401.5816
+    }
+   ]
+  },
   "gainers": [
    {
-    "symbol": "کخاک",
-    "name": "صنایع‌خاک‌چینی‌ایران‌",
-    "last": 81430.0,
-    "last_pct": 3.0,
-    "close": 80610.0,
-    "close_pct": 1.96,
-    "volume": 15637970,
-    "value": 1260622929220,
-    "trades": 4243,
-    "pe": 16.17,
-    "market_cap": 285005000000000,
-    "at_upper_limit": true,
-    "at_lower_limit": false,
-    "industry": "سایر محصولات کانی غیرفلزی"
-   },
-   {
-    "symbol": "شگستر",
-    "name": "گسترش سوخت سبززاگرس(سهامی عام)",
-    "last": 2475.0,
-    "last_pct": 3.0,
-    "close": 2473.0,
-    "close_pct": 2.91,
-    "volume": 505411254,
-    "value": 1249852698640,
-    "trades": 3517,
-    "pe": 21.5,
-    "market_cap": 101436561292275,
-    "at_upper_limit": true,
-    "at_lower_limit": false,
-    "industry": "محصولات شیمیایی"
-   },
-   {
-    "symbol": "وخارزم",
-    "name": "سرمایه گذاری خوارزمی",
-    "last": 11680.0,
-    "last_pct": 3.0,
-    "close": 11660.0,
-    "close_pct": 2.82,
-    "volume": 83128222,
-    "value": 968878466990,
-    "trades": 3897,
-    "pe": 11.67,
-    "market_cap": 934400000000000,
-    "at_upper_limit": true,
-    "at_lower_limit": false,
+    "symbol": "وبوعلی4",
+    "name": "سرمایه‌گذاری‌بوعلی‌",
+    "last": 6000.0,
+    "last_pct": 62.6,
+    "close": 6000.0,
+    "close_pct": 62.6,
+    "volume": 360000000,
+    "value": 2160000000000,
+    "trades": 1,
+    "pe": 5.6,
+    "market_cap": 72000000000000,
+    "at_upper_limit": false,
+    "at_lower_limit": true,
     "industry": "سرمایه گذاریها"
    },
    {
-    "symbol": "کپشیر",
-    "name": "پشم‌شیشه‌ایران‌",
-    "last": 42270.0,
+    "symbol": "فسبزوار",
+    "name": "پارس فولاد سبزوار",
+    "last": 101660.0,
     "last_pct": 3.0,
-    "close": 42260.0,
-    "close_pct": 2.97,
-    "volume": 13720001,
-    "value": 579840793510,
-    "trades": 2041,
-    "pe": 20.69,
-    "market_cap": 253620000000000,
+    "close": 101660.0,
+    "close_pct": 3.0,
+    "volume": 3304835,
+    "value": 335969526100,
+    "trades": 517,
+    "pe": 5.8,
+    "market_cap": 406640000000000,
     "at_upper_limit": true,
     "at_lower_limit": false,
-    "industry": "سایر محصولات کانی غیرفلزی"
+    "industry": "فلزات اساسی"
    },
    {
-    "symbol": "ولغدر",
-    "name": "لیزینگ‌خودروغدیر",
-    "last": 4470.0,
+    "symbol": "سکرما2",
+    "name": "سیمان‌ کرمان‌",
+    "last": 111340.0,
     "last_pct": 3.0,
-    "close": 4370.0,
-    "close_pct": 0.69,
-    "volume": 92148490,
-    "value": 402722320930,
-    "trades": 1040,
-    "pe": 52.65,
-    "market_cap": 10728000000000,
+    "close": 111340.0,
+    "close_pct": 3.0,
+    "volume": 2750000,
+    "value": 306185000000,
+    "trades": 1,
+    "pe": 9.4,
+    "market_cap": 167010000000000,
     "at_upper_limit": true,
     "at_lower_limit": false,
-    "industry": "سایر واسطه گریهای مالی"
+    "industry": "سیمان، آهک و گچ"
+   },
+   {
+    "symbol": "شبهرن",
+    "name": "نفت‌ بهران‌",
+    "last": 16490.0,
+    "last_pct": 3.0,
+    "close": 16490.0,
+    "close_pct": 3.0,
+    "volume": 12634806,
+    "value": 208347950940,
+    "trades": 526,
+    "pe": 6.6,
+    "market_cap": 1046290500000000,
+    "at_upper_limit": true,
+    "at_lower_limit": false,
+    "industry": "فراورده های نفتی، کک و سوخت هسته ای"
+   },
+   {
+    "symbol": "سیسکو",
+    "name": "فولاد سیرجان ایرانیان",
+    "last": 6190.0,
+    "last_pct": 3.0,
+    "close": 6190.0,
+    "close_pct": 3.0,
+    "volume": 31157222,
+    "value": 192863204180,
+    "trades": 654,
+    "pe": 6.5,
+    "market_cap": 773750000000000,
+    "at_upper_limit": true,
+    "at_lower_limit": false,
+    "industry": "فلزات اساسی"
    }
   ],
   "buy_queues": [
@@ -1128,14 +1602,14 @@
     "volume": 2990856,
     "value": 225301182480,
     "trades": 11919,
-    "pe": 5.02,
+    "pe": 5.0,
     "market_cap": 375294060000000,
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "محصولات شیمیایی",
-    "queue_volume": 189226322,
+    "queue_volume": 175049399,
     "queue_orders": 9999,
-    "queue_value": 14254418836260
+    "queue_value": 13186471226670
    },
    {
     "symbol": "تابان",
@@ -1147,14 +1621,14 @@
     "volume": 115940027,
     "value": 2699083828560,
     "trades": 4560,
-    "pe": 25.64,
+    "pe": 25.6,
     "market_cap": 6984000000000000,
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "محصولات شیمیایی",
-    "queue_volume": 270119835,
-    "queue_orders": 4316,
-    "queue_value": 6288389758800
+    "queue_volume": 263567252,
+    "queue_orders": 4117,
+    "queue_value": 6135845626560
    },
    {
     "symbol": "فساپ",
@@ -1166,14 +1640,14 @@
     "volume": 10769785,
     "value": 71295976700,
     "trades": 29744,
-    "pe": 6.09,
+    "pe": 6.1,
     "market_cap": 48789400000000,
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "ساخت محصولات فلزی",
-    "queue_volume": 584659984,
-    "queue_orders": 3754,
-    "queue_value": 3870449094080
+    "queue_volume": 542839332,
+    "queue_orders": 3528,
+    "queue_value": 3593596377840
    },
    {
     "symbol": "کرماشا",
@@ -1185,14 +1659,14 @@
     "volume": 61934416,
     "value": 1757698726080,
     "trades": 1408,
-    "pe": 6.13,
+    "pe": 6.1,
     "market_cap": 592937323440000,
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "محصولات شیمیایی",
-    "queue_volume": 125928852,
-    "queue_orders": 1463,
-    "queue_value": 3573860819760
+    "queue_volume": 121598278,
+    "queue_orders": 1393,
+    "queue_value": 3450959129640
    },
    {
     "symbol": "شیراز",
@@ -1204,14 +1678,14 @@
     "volume": 12011325,
     "value": 814367835000,
     "trades": 867,
-    "pe": 6.37,
+    "pe": 6.4,
     "market_cap": 1037340000000000,
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "محصولات شیمیایی",
-    "queue_volume": 33116963,
-    "queue_orders": 1188,
-    "queue_value": 2245330091400
+    "queue_volume": 31603363,
+    "queue_orders": 1129,
+    "queue_value": 2142708011400
    }
   ],
   "real_inflow": [
@@ -1225,7 +1699,7 @@
     "volume": 115940027,
     "value": 2699083828560,
     "trades": 4560,
-    "pe": 25.64,
+    "pe": 25.6,
     "market_cap": 6984000000000000,
     "at_upper_limit": true,
     "at_lower_limit": false,
@@ -1247,7 +1721,7 @@
     "value": 3490356381580,
     "trades": 3511,
     "pe": 8.2,
-    "market_cap": 410339453628000,
+    "market_cap": 409879431819000,
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "ماشین آلات و تجهیزات",
@@ -1267,7 +1741,7 @@
     "volume": 25537572,
     "value": 1550896747560,
     "trades": 1810,
-    "pe": 5.57,
+    "pe": 5.6,
     "market_cap": 728760000000000,
     "at_upper_limit": true,
     "at_lower_limit": false,
@@ -1288,7 +1762,7 @@
     "volume": 61934416,
     "value": 1757698726080,
     "trades": 1408,
-    "pe": 6.13,
+    "pe": 6.1,
     "market_cap": 592937323440000,
     "at_upper_limit": true,
     "at_lower_limit": false,
@@ -1309,8 +1783,8 @@
     "volume": 85151283,
     "value": 3291277070430,
     "trades": 11808,
-    "pe": 69.02,
-    "market_cap": 3696805000000000,
+    "pe": 69.0,
+    "market_cap": 3691075000000000,
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "استخراج کانه های فلزی",
@@ -1372,18 +1846,18 @@
     "ranges": {
      "week": {
       "low": 4020.0,
-      "high": 4210.0
+      "high": 4330.0
      },
      "year": {
       "low": 2182.0,
       "high": 4540.0
      }
     },
-    "avg_volume": 2877533991,
-    "volume_vs_avg": 0.49,
+    "avg_volume": 2815849175,
+    "volume_vs_avg": 0.5,
     "fundamentals": {
      "eps": 693.0,
-     "pe": 6.25,
+     "pe": 6.19,
      "sector_pe": 11.46,
      "psr": 2541.02,
      "shares_outstanding": 1935000000000,
@@ -1397,32 +1871,32 @@
      {
       "level": 1,
       "price": 4330.0,
-      "volume": 103382393,
-      "orders": 659
+      "volume": 98499098,
+      "orders": 609
      },
      {
       "level": 2,
       "price": 4320.0,
-      "volume": 2913062,
-      "orders": 23
+      "volume": 206062,
+      "orders": 12
      },
      {
       "level": 3,
       "price": 4310.0,
-      "volume": 101569,
-      "orders": 4
+      "volume": 99369,
+      "orders": 3
      },
      {
       "level": 4,
       "price": 4300.0,
-      "volume": 2032081,
-      "orders": 29
+      "volume": 510911,
+      "orders": 22
      },
      {
       "level": 5,
       "price": 4290.0,
-      "volume": 3708736,
-      "orders": 28
+      "volume": 3090766,
+      "orders": 22
      }
     ],
     "asks": [
@@ -1430,53 +1904,59 @@
       "level": 1,
       "price": 4340.0,
       "volume": 250526,
-      "orders": 10
+      "orders": 10,
+      "outside_price_limits": true
      },
      {
       "level": 2,
       "price": 4350.0,
       "volume": 1200,
-      "orders": 1
+      "orders": 1,
+      "outside_price_limits": true
      },
      {
       "level": 3,
       "price": 4360.0,
       "volume": 1035000,
-      "orders": 6
+      "orders": 6,
+      "outside_price_limits": true
      },
      {
       "level": 4,
       "price": 4370.0,
       "volume": 12000,
-      "orders": 2
+      "orders": 2,
+      "outside_price_limits": true
      },
      {
       "level": 5,
       "price": 4400.0,
       "volume": 50000,
-      "orders": 1
+      "orders": 1,
+      "outside_price_limits": true
      }
     ],
     "best_bid": 4330.0,
     "best_ask": 4340.0,
     "spread": 10.0,
     "spread_pct": 0.23,
-    "total_bid_volume": 112137841,
+    "total_bid_volume": 102406206,
     "total_ask_volume": 1348726,
-    "total_bid_orders": 743,
+    "total_bid_orders": 668,
     "total_ask_orders": 20,
-    "imbalance": 0.9762,
+    "imbalance": 0.974,
     "queue": {
-     "state": null,
-     "queue_volume": 0,
-     "queue_orders": 0,
-     "queue_value": 0
+     "state": "buy_queue",
+     "queue_volume": 98499098,
+     "queue_orders": 609,
+     "queue_value": 426501094340
     },
     "price_limits": {
      "upper": 4330.0,
      "lower": 4090.0
     },
-    "units": "price in rial, volume in shares"
+    "units": "price in rial, volume in shares",
+    "note": "5 level(s) are priced outside today's limits (orders for the next session): flagged outside_price_limits."
    },
    "real_legal": {
     "real": {
@@ -1564,642 +2044,521 @@
      }
     ]
    },
-   "filings": [
-    {
-     "tracing_no": 1621524,
-     "symbol": "فولاد",
-     "company": "فولاد مبارکه اصفهان",
-     "title": "گزارش فعالیت ماهانه دوره ۱ ماهه منتهی به ۱۴۰۵/۰۷/۳۰",
-     "letter_code": "ن-۳۰",
-     "published": "1405/08/06 16:01:48",
-     "sent": "1405/08/06 16:01:48",
-     "under_supervision": false,
-     "is_estimate": false,
-     "has": {
-      "html": true,
-      "pdf": true,
-      "excel": true,
-      "xbrl": false,
-      "attachment": true
-     },
-     "links": {
-      "page": "https://codal.ir/Reports/Decision.aspx?LetterSerial=LyQnlYP7OOObOOOIDLto8TGJDkDQ%3d%3d&rt=0&let=58&ct=0&ft=-1",
-      "pdf": "https://codal.ir/DownloadFile.aspx?hs=LyQnlYP7OOObOOOIDLto8TGJDkDQ%3d%3d&ft=1005&let=58",
-      "excel": "https://excel.codal.ir/service/Excel/GetAll/LyQnlYP7OOObOOOIDLto8TGJDkDQ%3d%3d/0",
-      "attachments": "https://codal.ir/Reports/Attachment.aspx?LetterSerial=LyQnlYP7OOObOOOIDLto8TGJDkDQ%3d%3d"
-     }
-    },
-    {
-     "tracing_no": 1618277,
-     "symbol": "فولاد",
-     "company": "فولاد مبارکه اصفهان",
-     "title": "توضیحات در خصوص اطلاعات و صورت های مالی منتشر شده",
-     "letter_code": "ن-۲۶",
-     "published": "1405/07/30 14:40:53",
-     "sent": "1405/07/30 14:40:53",
-     "under_supervision": false,
-     "is_estimate": false,
-     "has": {
-      "html": true,
-      "pdf": true,
-      "excel": false,
-      "xbrl": false,
-      "attachment": true
-     },
-     "links": {
-      "page": "https://codal.ir/Reports/Decision.aspx?LetterSerial=q1TwzvITsscrZmqLPHatbw%3d%3d&rt=0&let=174&ct=0&ft=-1",
-      "pdf": "https://codal.ir/DownloadFile.aspx?hs=q1TwzvITsscrZmqLPHatbw%3d%3d&ft=1005&let=174",
-      "excel": null,
-      "attachments": "https://codal.ir/Reports/Attachment.aspx?LetterSerial=q1TwzvITsscrZmqLPHatbw%3d%3d"
-     }
-    },
-    {
-     "tracing_no": 1612323,
-     "symbol": "فولاد",
-     "company": "فولاد مبارکه اصفهان",
-     "title": "اطلاعات و صورت‌های مالی میاندوره‌ای دوره ۶ ماهه منتهی به ۱۴۰۵/۰۶/۳۱ (حسابرسی نشده)",
-     "letter_code": "ن-۱۰",
-     "published": "1405/07/30 14:37:13",
-     "sent": "1405/07/30 14:37:13",
-     "under_supervision": false,
-     "is_estimate": false,
-     "has": {
-      "html": true,
-      "pdf": true,
-      "excel": true,
-      "xbrl": false,
-      "attachment": true
-     },
-     "links": {
-      "page": "https://codal.ir/Reports/Decision.aspx?LetterSerial=qV4MKXMUUbQQQaQQQ9cOOObOOO8qmo3wRg%3d%3d&rt=0&let=6&ct=0&ft=-1",
-      "pdf": "https://codal.ir/DownloadFile.aspx?hs=qV4MKXMUUbQQQaQQQ9cOOObOOO8qmo3wRg%3d%3d&ft=1005&let=6",
-      "excel": "https://excel.codal.ir/service/Excel/GetAll/qV4MKXMUUbQQQaQQQ9cOOObOOO8qmo3wRg%3d%3d/0",
-      "attachments": "https://codal.ir/Reports/Attachment.aspx?LetterSerial=qV4MKXMUUbQQQaQQQ9cOOObOOO8qmo3wRg%3d%3d"
-     }
-    },
-    {
-     "tracing_no": 1618061,
-     "symbol": "فولاد",
-     "company": "فولاد مبارکه اصفهان",
-     "title": "گزارش فعالیت ماهانه دوره ۱ ماهه منتهی به ۱۴۰۵/۰۶/۳۱(اصلاحیه)",
-     "letter_code": "ن-۳۰",
-     "published": "1405/07/29 20:50:26",
-     "sent": "1405/07/29 20:50:26",
-     "under_supervision": false,
-     "is_estimate": false,
-     "has": {
-      "html": true,
-      "pdf": true,
-      "excel": true,
-      "xbrl": false,
-      "attachment": false
-     },
-     "links": {
-      "page": "https://codal.ir/Reports/Decision.aspx?LetterSerial=UF9BctCE5jV6HYNuyA8yYA%3d%3d&rt=0&let=58&ct=0&ft=-1",
-      "pdf": "https://codal.ir/DownloadFile.aspx?hs=UF9BctCE5jV6HYNuyA8yYA%3d%3d&ft=1005&let=58",
-      "excel": "https://excel.codal.ir/service/Excel/GetAll/UF9BctCE5jV6HYNuyA8yYA%3d%3d/0",
-      "attachments": null
-     }
-    },
-    {
-     "tracing_no": 1605314,
-     "symbol": "فولاد",
-     "company": "فولاد مبارکه اصفهان",
-     "title": "گزارش فعالیت ماهانه دوره ۱ ماهه منتهی به ۱۴۰۵/۰۶/۳۱",
-     "letter_code": "ن-۳۰",
-     "published": "1405/07/07 18:55:34",
-     "sent": "1405/07/07 18:55:34",
-     "under_supervision": false,
-     "is_estimate": false,
-     "has": {
-      "html": true,
-      "pdf": true,
-      "excel": true,
-      "xbrl": false,
-      "attachment": true
-     },
-     "links": {
-      "page": "https://codal.ir/Reports/Decision.aspx?LetterSerial=yDB53PvV4XTHKOOOObOOOckOo9tw%3d%3d&rt=0&let=58&ct=0&ft=-1",
-      "pdf": "https://codal.ir/DownloadFile.aspx?hs=yDB53PvV4XTHKOOOObOOOckOo9tw%3d%3d&ft=1005&let=58",
-      "excel": "https://excel.codal.ir/service/Excel/GetAll/yDB53PvV4XTHKOOOObOOOckOo9tw%3d%3d/0",
-      "attachments": "https://codal.ir/Reports/Attachment.aspx?LetterSerial=yDB53PvV4XTHKOOOObOOOckOo9tw%3d%3d"
-     }
-    }
-   ],
+   "filings": null,
    "trade_summary": {
     "summary": {
-     "ticks": 6819,
+     "ticks": 16887,
      "cancelled_ticks": 0,
-     "first_trade": "09:00:13",
-     "last_trade": "12:29:56",
-     "volume": 646253701,
-     "value": 2719753642780,
-     "vwap": 4208.49,
-     "open": 4180.0,
-     "high": 4210.0,
-     "low": 4180.0,
-     "close": 4210.0,
-     "avg_trade_volume": 94772,
-     "median_trade_volume": 64867
+     "first_trade": "09:00:31",
+     "last_trade": "12:29:59",
+     "volume": 1397098412,
+     "value": 5996217957060,
+     "vwap": 4291.91,
+     "open": 4240.0,
+     "high": 4330.0,
+     "low": 4140.0,
+     "close": 4330.0,
+     "avg_trade_volume": 82732,
+     "median_trade_volume": 43215
     },
     "completeness": {
-     "ticks_volume": 646253701,
-     "ticks_count": 6819,
-     "official_volume": 646253701,
+     "ticks_volume": 1397098412,
+     "ticks_count": 16887,
+     "official_volume": 1397098412,
      "volume_coverage_pct": 100.0,
-     "official_trade_count": 6819,
+     "official_trade_count": 16887,
      "count_coverage_pct": 100.0,
      "note": "Coverage compares tick data with the exchange's own daily totals; ~100% means nothing is missing."
     },
     "pressure": {
-     "method": "tick rule: volume of trades printed above/below the previous trade price",
-     "uptick_volume_pct": 96.03,
-     "downtick_volume_pct": 1.2,
-     "neutral_volume_pct": 2.77,
+     "method": "classic tick rule: a trade above the previous price counts as up, below as down, and a trade at an unchanged price keeps the previous direction",
+     "uptick_volume_pct": 78.69,
+     "downtick_volume_pct": 16.81,
+     "neutral_volume_pct": 4.5,
      "caveat": "TSETMC does not publish who initiated a trade; this is a heuristic, not exchange data."
     },
     "bars": [
      {
       "from": "09:00",
-      "open": 4180.0,
-      "high": 4210.0,
-      "low": 4180.0,
-      "close": 4210.0,
-      "volume": 182689456,
-      "value": 768148171330,
-      "trades": 1922,
-      "vwap": 4204.67
+      "open": 4240.0,
+      "high": 4250.0,
+      "low": 4160.0,
+      "close": 4230.0,
+      "volume": 135757143,
+      "value": 574314816960,
+      "trades": 1409,
+      "vwap": 4230.46
      },
      {
       "from": "09:05",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 23456370,
-      "value": 98751317700,
-      "trades": 282,
-      "vwap": 4210.0
+      "open": 4220.0,
+      "high": 4230.0,
+      "low": 4140.0,
+      "close": 4200.0,
+      "volume": 72572808,
+      "value": 304393824810,
+      "trades": 1040,
+      "vwap": 4194.32
      },
      {
       "from": "09:10",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
+      "open": 4200.0,
+      "high": 4270.0,
+      "low": 4200.0,
       "close": 4210.0,
-      "volume": 65756827,
-      "value": 276836241670,
-      "trades": 595,
-      "vwap": 4210.0
+      "volume": 56052739,
+      "value": 237807220470,
+      "trades": 826,
+      "vwap": 4242.56
      },
      {
       "from": "09:15",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 26051631,
-      "value": 109677366510,
-      "trades": 263,
-      "vwap": 4210.0
+      "open": 4200.0,
+      "high": 4260.0,
+      "low": 4200.0,
+      "close": 4250.0,
+      "volume": 25485550,
+      "value": 107718678730,
+      "trades": 437,
+      "vwap": 4226.66
      },
      {
       "from": "09:20",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 5252072,
-      "value": 22111223120,
-      "trades": 101,
-      "vwap": 4210.0
+      "open": 4250.0,
+      "high": 4290.0,
+      "low": 4230.0,
+      "close": 4290.0,
+      "volume": 89099822,
+      "value": 380212276720,
+      "trades": 973,
+      "vwap": 4267.26
      },
      {
       "from": "09:25",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 2462609,
-      "value": 10367583890,
-      "trades": 64,
-      "vwap": 4210.0
+      "open": 4290.0,
+      "high": 4300.0,
+      "low": 4270.0,
+      "close": 4300.0,
+      "volume": 55792809,
+      "value": 239293065160,
+      "trades": 724,
+      "vwap": 4288.96
      },
      {
       "from": "09:30",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 12640147,
-      "value": 53215018870,
-      "trades": 153,
-      "vwap": 4210.0
+      "open": 4290.0,
+      "high": 4300.0,
+      "low": 4260.0,
+      "close": 4270.0,
+      "volume": 39159718,
+      "value": 167813858690,
+      "trades": 602,
+      "vwap": 4285.37
      },
      {
       "from": "09:35",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 6601167,
-      "value": 27790913070,
-      "trades": 100,
-      "vwap": 4210.0
+      "open": 4280.0,
+      "high": 4290.0,
+      "low": 4260.0,
+      "close": 4270.0,
+      "volume": 20419024,
+      "value": 87357877440,
+      "trades": 299,
+      "vwap": 4278.26
      },
      {
       "from": "09:40",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 10161641,
-      "value": 42780508610,
-      "trades": 121,
-      "vwap": 4210.0
+      "open": 4280.0,
+      "high": 4280.0,
+      "low": 4250.0,
+      "close": 4260.0,
+      "volume": 17804928,
+      "value": 75839754870,
+      "trades": 328,
+      "vwap": 4259.48
      },
      {
       "from": "09:45",
-      "open": 4210.0,
-      "high": 4210.0,
+      "open": 4260.0,
+      "high": 4260.0,
       "low": 4210.0,
-      "close": 4210.0,
-      "volume": 1941997,
-      "value": 8175807370,
-      "trades": 50,
-      "vwap": 4210.0
+      "close": 4240.0,
+      "volume": 19363881,
+      "value": 81921303360,
+      "trades": 363,
+      "vwap": 4230.62
      },
      {
       "from": "09:50",
-      "open": 4210.0,
-      "high": 4210.0,
+      "open": 4240.0,
+      "high": 4240.0,
       "low": 4210.0,
-      "close": 4210.0,
-      "volume": 1121339,
-      "value": 4720837190,
-      "trades": 35,
-      "vwap": 4210.0
+      "close": 4220.0,
+      "volume": 22523955,
+      "value": 95085049770,
+      "trades": 355,
+      "vwap": 4221.51
      },
      {
       "from": "09:55",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 59769681,
-      "value": 251630357010,
-      "trades": 459,
-      "vwap": 4210.0
+      "open": 4230.0,
+      "high": 4280.0,
+      "low": 4220.0,
+      "close": 4270.0,
+      "volume": 20418906,
+      "value": 86719734870,
+      "trades": 357,
+      "vwap": 4247.03
      },
      {
       "from": "10:00",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 1857503,
-      "value": 7820087630,
-      "trades": 48,
-      "vwap": 4210.0
+      "open": 4270.0,
+      "high": 4270.0,
+      "low": 4250.0,
+      "close": 4260.0,
+      "volume": 6918248,
+      "value": 29448395460,
+      "trades": 181,
+      "vwap": 4256.63
      },
      {
       "from": "10:05",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 7668587,
-      "value": 32284751270,
-      "trades": 89,
-      "vwap": 4210.0
+      "open": 4260.0,
+      "high": 4280.0,
+      "low": 4250.0,
+      "close": 4260.0,
+      "volume": 20467300,
+      "value": 87449769880,
+      "trades": 271,
+      "vwap": 4272.66
      },
      {
       "from": "10:10",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 25367387,
-      "value": 106796699270,
-      "trades": 197,
-      "vwap": 4210.0
+      "open": 4260.0,
+      "high": 4310.0,
+      "low": 4260.0,
+      "close": 4300.0,
+      "volume": 49641591,
+      "value": 213256160430,
+      "trades": 682,
+      "vwap": 4295.92
      },
      {
       "from": "10:15",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 3673423,
-      "value": 15465110830,
-      "trades": 60,
-      "vwap": 4210.0
+      "open": 4300.0,
+      "high": 4330.0,
+      "low": 4300.0,
+      "close": 4330.0,
+      "volume": 116537583,
+      "value": 503662527820,
+      "trades": 1375,
+      "vwap": 4321.89
      },
      {
       "from": "10:20",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 4846300,
-      "value": 20402923000,
-      "trades": 71,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4320.0,
+      "close": 4330.0,
+      "volume": 243347843,
+      "value": 1053692979500,
+      "trades": 2462,
+      "vwap": 4329.99
      },
      {
       "from": "10:25",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 3144579,
-      "value": 13238677590,
-      "trades": 73,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 59222124,
+      "value": 256431796920,
+      "trades": 499,
+      "vwap": 4330.0
      },
      {
       "from": "10:30",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 1212121,
-      "value": 5103029410,
-      "trades": 31,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 7836530,
+      "value": 33932174900,
+      "trades": 114,
+      "vwap": 4330.0
      },
      {
       "from": "10:35",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 3765247,
-      "value": 15851689870,
-      "trades": 62,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 32677331,
+      "value": 141492843230,
+      "trades": 306,
+      "vwap": 4330.0
      },
      {
       "from": "10:40",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 4014609,
-      "value": 16901503890,
-      "trades": 63,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 11471648,
+      "value": 49672235840,
+      "trades": 163,
+      "vwap": 4330.0
      },
      {
       "from": "10:45",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 9148601,
-      "value": 38515610210,
-      "trades": 83,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 10914590,
+      "value": 47260174700,
+      "trades": 119,
+      "vwap": 4330.0
      },
      {
       "from": "10:50",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 3346927,
-      "value": 14090562670,
-      "trades": 61,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 28280747,
+      "value": 122455634510,
+      "trades": 239,
+      "vwap": 4330.0
      },
      {
       "from": "10:55",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 32253448,
-      "value": 135787016080,
-      "trades": 246,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 7777124,
+      "value": 33674946920,
+      "trades": 122,
+      "vwap": 4330.0
      },
      {
       "from": "11:00",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 595018,
-      "value": 2505025780,
-      "trades": 20,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 3617780,
+      "value": 15664987400,
+      "trades": 76,
+      "vwap": 4330.0
      },
      {
       "from": "11:05",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 1708990,
-      "value": 7194847900,
-      "trades": 38,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 7641542,
+      "value": 33087876860,
+      "trades": 118,
+      "vwap": 4330.0
      },
      {
       "from": "11:10",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 11778619,
-      "value": 49587985990,
-      "trades": 113,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 3417840,
+      "value": 14799247200,
+      "trades": 58,
+      "vwap": 4330.0
      },
      {
       "from": "11:15",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 3558786,
-      "value": 14982489060,
-      "trades": 41,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 729340,
+      "value": 3158042200,
+      "trades": 33,
+      "vwap": 4330.0
      },
      {
       "from": "11:20",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 4972393,
-      "value": 20933774530,
-      "trades": 59,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 53469561,
+      "value": 231523199130,
+      "trades": 450,
+      "vwap": 4330.0
      },
      {
       "from": "11:25",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 5227923,
-      "value": 22009555830,
-      "trades": 72,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 20285187,
+      "value": 87834859710,
+      "trades": 246,
+      "vwap": 4330.0
      },
      {
       "from": "11:30",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 2707428,
-      "value": 11398271880,
-      "trades": 40,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 2295162,
+      "value": 9938051460,
+      "trades": 56,
+      "vwap": 4330.0
      },
      {
       "from": "11:35",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 1825451,
-      "value": 7685148710,
-      "trades": 39,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 1084663,
+      "value": 4696590790,
+      "trades": 33,
+      "vwap": 4330.0
      },
      {
       "from": "11:40",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 6367895,
-      "value": 26808837950,
-      "trades": 84,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 1205975,
+      "value": 5221871750,
+      "trades": 33,
+      "vwap": 4330.0
      },
      {
       "from": "11:45",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 3683328,
-      "value": 15506810880,
-      "trades": 47,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 29676405,
+      "value": 128498833650,
+      "trades": 272,
+      "vwap": 4330.0
      },
      {
       "from": "11:50",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 11926270,
-      "value": 50209596700,
-      "trades": 132,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 2928951,
+      "value": 12682357830,
+      "trades": 64,
+      "vwap": 4330.0
      },
      {
       "from": "11:55",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 4124039,
-      "value": 17362204190,
-      "trades": 67,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 1634325,
+      "value": 7076627250,
+      "trades": 58,
+      "vwap": 4330.0
      },
      {
       "from": "12:00",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 3443699,
-      "value": 14497972790,
-      "trades": 48,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 41663159,
+      "value": 180401478470,
+      "trades": 434,
+      "vwap": 4330.0
      },
      {
       "from": "12:05",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 9002521,
-      "value": 37900613410,
-      "trades": 105,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 12452347,
+      "value": 53918662510,
+      "trades": 212,
+      "vwap": 4330.0
      },
      {
       "from": "12:10",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 55246420,
-      "value": 232587428200,
-      "trades": 425,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 4533189,
+      "value": 19628708370,
+      "trades": 74,
+      "vwap": 4330.0
      },
      {
       "from": "12:15",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 12366003,
-      "value": 52060872630,
-      "trades": 116,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 4166839,
+      "value": 18042412870,
+      "trades": 71,
+      "vwap": 4330.0
      },
      {
       "from": "12:20",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 2314213,
-      "value": 9742836730,
-      "trades": 48,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 18578562,
+      "value": 80445173460,
+      "trades": 178,
+      "vwap": 4330.0
      },
      {
       "from": "12:25",
-      "open": 4210.0,
-      "high": 4210.0,
-      "low": 4210.0,
-      "close": 4210.0,
-      "volume": 7201036,
-      "value": 30316361560,
-      "trades": 96,
-      "vwap": 4210.0
+      "open": 4330.0,
+      "high": 4330.0,
+      "low": 4330.0,
+      "close": 4330.0,
+      "volume": 18173643,
+      "value": 78691874190,
+      "trades": 175,
+      "vwap": 4330.0
      }
     ],
     "biggest": [
      {
-      "time": "09:11:28",
-      "price": 4210.0,
-      "volume": 299880,
-      "value": 1262494800
+      "time": "12:05:06",
+      "price": 4330.0,
+      "volume": 299992,
+      "value": 1298965360
      },
      {
-      "time": "10:57:26",
-      "price": 4210.0,
-      "volume": 299872,
-      "value": 1262461120
+      "time": "10:22:29",
+      "price": 4330.0,
+      "volume": 299850,
+      "value": 1298350500
      },
      {
-      "time": "10:57:26",
-      "price": 4210.0,
-      "volume": 299872,
-      "value": 1262461120
+      "time": "12:05:04",
+      "price": 4330.0,
+      "volume": 299766,
+      "value": 1297986780
      }
     ]
    },
@@ -2325,7 +2684,7 @@
      "days_with_real_inflow": 0,
      "days_with_real_outflow": 5
     },
-    "units": "value in rial, volume in shares"
+    "units": "value in rial, volume in shares. history rows are published by the exchange; latest_session values are estimated (net volume x VWAP) because the live table has volumes and counts only"
    },
    "book_history": {
     "date": "2026-11-02",
@@ -2431,7 +2790,7 @@
   }
  },
  "bench_data_plane": {
-  "generated": "2026-11-04 09:16:52 UTC",
+  "generated": "2026-11-04 15:51:55 UTC",
   "tokenizer": "tiktoken o200k_base (proxy)",
   "repeats": 3,
   "tasks": [
@@ -2578,6 +2937,24 @@
     },
     "token_reduction": 31.3,
     "byte_reduction": 34.3
+   },
+   {
+    "id": "screen_surge",
+    "title": "Screen the market: volume > 2x 20-day average, up yesterday and today",
+    "raw": {
+     "requests": 22,
+     "seconds": 5.75,
+     "bytes": 19215105,
+     "tokens": 7437128
+    },
+    "mcp": {
+     "requests": 1,
+     "seconds": 3.94,
+     "bytes": 2050,
+     "tokens": 723
+    },
+    "token_reduction": 10286.5,
+    "byte_reduction": 9373.2
    }
   ],
   "traps": [

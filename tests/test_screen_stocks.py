@@ -197,3 +197,15 @@ async def test_silent_days_count_as_zero_volume_but_unlisted_days_do_not():
     assert rows["ه"]["avg3"] == pytest.approx(1_000_000)  # only the two sessions it traded in
     streak = await b.screen_stocks(filter="close_pct < 0 and all(close_pct < 0, 3)")
     assert streak["matched"] == 0  # a silent day has no price change, so the streak is broken
+
+
+async def test_board_code_lets_a_screen_drop_second_segment_symbols():
+    class Api(ScreenApi):
+        pass
+
+    b = Bourse()
+    b.api = Api()
+    b.resolver._api = b.api
+    # the gateway fallback has no board code; the field exists and compares as text, so such a filter is valid and matches nothing there
+    out = await b.screen_stocks(filter="board_code != '1O' or isnull(board_code)", limit=10)
+    assert out["matched"] == 4

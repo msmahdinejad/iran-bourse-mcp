@@ -83,6 +83,11 @@ async def snapshot() -> dict:
         summary = await b.trade_summary("فولاد", date=done_day)
         flow = await b.real_legal_flow("فولاد", 5)
         book_hist = await b.order_book_history("فولاد", date="2026-11-02", step_seconds=1800)
+        screen = await b.screen_stocks(
+            filter="volume > 2 * avg(volume, 20) and close_pct[1] > 1 and close_pct > 0 and value > 5B",
+            columns=["symbol", "close_pct[1] as yesterday_pct", "close_pct as today_pct", "volume / avg(volume, 20) as volume_x", "value / 1e9 as value_billion_rial"],
+            limit=6,
+        )
     finally:
         await b.aclose()
     return {
@@ -96,6 +101,10 @@ async def snapshot() -> dict:
             {"symbol": r["symbol"], "last": r["last"], "pct": r["last_pct"]}
             for r in movers["rows"]
         ],
+        "screener": {
+            "filter": screen["filter"], "matched": screen["matched"], "universe": screen["universe"]["instruments"],
+            "jdate": screen["as_of"]["jdate"], "history_days": screen["history"]["trading_days_loaded"], "seconds": screen["elapsed_seconds"], "rows": screen["rows"],
+        },
         "gainers": gainers["rows"],
         "buy_queues": queues["rows"],
         "real_inflow": inflow["rows"],

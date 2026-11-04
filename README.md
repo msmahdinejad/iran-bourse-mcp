@@ -91,6 +91,7 @@ or in `~/.codex/config.toml`:
 command = "uvx"
 args = ["--from", "git+https://github.com/msmahdinejad/iran-bourse-mcp", "iran-bourse-mcp"]
 ```
+> `uvx --version` must work in the shell that starts Codex. For scripted `codex exec` runs use the config.toml form (required = true), or `uv tool install` the package so the server starts in about a second.
 
 #### Gemini CLI
 Add to `~/.gemini/settings.json`:
@@ -389,7 +390,7 @@ uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp c
 ```text
 You:    stocks trading over twice their 20-day average volume, up more than 1% yesterday, positive today, over 5 billion rial
 Agent:  screen_stocks(filter="volume > 2 * avg(volume, 20) and close_pct[1] > 1 and close_pct > 0 and value > 5B")
-        28 of 625 stocks match, 2.4 s: انتخاب (8.4x volume, +2.97% yesterday, +2.85% today), پکرمان, کرماشا, خراسان ...
+        35 of 625 stocks match, 3.6 s: انتخاب (9.4x volume, +2.97% yesterday, +2.85% today), پکرمان, کرماشا, خراسان ...
 ```
 
 The language is a safe expression grammar (parsed with `ast`, never `eval`), accepts the field names and JavaScript spellings of the exchange's own filter (`pl`, `pc`, `tvol`, `tmax`, `pd1`, `ct.Buy_I_Volume`, `===`), ships 15 ready-made presets (`volume_surge`, `smart_money`, `breakout_20d`, `buy_queue` ...) and reports mistakes with suggestions. Checked against an independent re-implementation straight from raw exchange data: identical results on three different screens. Guide and every field: [docs/SCREENER.md](docs/SCREENER.md).
@@ -441,8 +442,9 @@ Measured against the live exchange, not claimed. The raw route is the **best cas
 | Market-wide ranking of buy queues | 222 req · 15.0s · 695,971 tok | 1 call · 9.4s · 1,241 tok | **561x** |
 | Latest 5 Codal filings with links | 1 req · 1.6s · 6,489 tok | 1 call · 1.6s · 1,539 tok | **4x** |
 | One year of daily prices, adjusted | 2 req · 0.4s · 610,549 tok | 1 call · 0.8s · 19,517 tok | **31x** |
+| Screen the market: volume > 2x 20-day average, up yesterday and today | 22 req · 5.8s · 7,437,128 tok | 1 call · 3.9s · 723 tok | **10,286x** |
 
-_Data-plane benchmark, 2026-11-04 09:16:52 UTC. Tokens are a tiktoken `o200k_base` proxy; the ratios matter more than the absolute numbers. A single-endpoint task takes about as long either way; the server wins where the raw route needs many sequential requests, and on tokens everywhere._
+_Data-plane benchmark, 2026-11-04 15:51:55 UTC. Tokens are a tiktoken `o200k_base` proxy; the ratios matter more than the absolute numbers. A single-endpoint task takes about as long either way; the server wins where the raw route needs many sequential requests, and on tokens everywhere._
 
 **Traps in the raw data** (each found on the live endpoints and handled by the server):
 

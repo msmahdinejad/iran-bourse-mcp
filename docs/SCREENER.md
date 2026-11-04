@@ -63,6 +63,7 @@ Fields marked **history** also work as `name[k]` and inside the window functions
 | `market` | بازار | text |  | 'بورس' or 'فرابورس'. |
 | `board` | تابلو | text |  | Board, e.g. 'بازار اول - اصلی', 'تابلو فرعی', 'نوآفرین'. |
 | `security_type` | نوع اوراق | text |  | e.g. 'سهام عادی', 'حق تقدم'. |
+| `board_code`, `cgrvalcot` | کد تابلو | text |  | The exchange's board code: N1, N2 (Bourse boards), 1Z, Z1 (Fara), P1 (base market) ... A few companies also have a second symbol on another segment (e.g. فخوز and فخوز2, board 1O); filter on board_code to keep or drop them. |
 | `status` | وضعیت نماد | text |  | Trading status: 'مجاز', 'مجاز-محفوظ', 'ممنوع' ... |
 | `last`, `pl`, `last_price` | آخرین معامله | rial | yes | Last trade price. |
 | `close`, `pc`, `closing_price` | قیمت پایانی | rial | yes | Closing (volume-weighted) price. |
@@ -203,8 +204,8 @@ Use `screen_stocks(preset="volume_surge")`, optionally with an extra `filter` th
   "filter": "(volume > 2 * avg(volume, 20) and close_pct[1] > 1 ...)",
   "as_of": {"date": "2026-11-04", "jdate": "1405/08/13", "session_open": false},
   "history": {"trading_days_loaded": 20, "from": "2026-10-07", "to": "2026-11-03", "adjusted_for_capital_changes": true},
-  "matched": 28, "returned": 6,
-  "rows": [{"symbol": "...", "yesterday_pct": 2.97, "today_pct": 2.85, "volume_x": 8.42}]
+  "matched": 35, "returned": 6,
+  "rows": [{"symbol": "...", "yesterday_pct": 2.97, "today_pct": 2.85, "volume_x": 9.36}]
 }
 ```
 

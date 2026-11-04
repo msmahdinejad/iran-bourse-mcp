@@ -64,6 +64,7 @@ FIELDS: tuple[Field, ...] = (
     _f("market", "text", "text", "بازار", "'بورس' or 'فرابورس'."),
     _f("board", "text", "text", "تابلو", "Board, e.g. 'بازار اول - اصلی', 'تابلو فرعی', 'نوآفرین'."),
     _f("security_type", "text", "text", "نوع اوراق", "e.g. 'سهام عادی', 'حق تقدم'."),
+    _f("board_code", "text", "text", "کد تابلو", "The exchange's board code: N1, N2 (Bourse boards), 1Z, Z1 (Fara), P1 (base market) ... A few companies also have a second symbol on another segment (e.g. فخوز and فخوز2, board 1O); filter on board_code to keep or drop them.", aliases=("cgrvalcot",)),
     _f("status", "text", "text", "وضعیت نماد", "Trading status: 'مجاز', 'مجاز-محفوظ', 'ممنوع' ..."),
     # prices (history-capable)
     _f("last", "num", "rial", "آخرین معامله", "Last trade price.", history=True, aliases=("pl", "last_price")),
@@ -184,7 +185,7 @@ def build_today(row: dict, flow: dict | None = None) -> dict[str, Any]:
     out: dict[str, Any] = {
         "symbol": row.get("symbol"), "name": row.get("name"), "industry": row.get("industry"),
         "sub_industry": row.get("sub_industry"), "market": row.get("market"), "board": row.get("board"),
-        "security_type": row.get("security_type"), "status": row.get("status"),
+        "security_type": row.get("security_type"), "board_code": row.get("board_code"), "status": row.get("status"),
         "last": last, "close": row.get("close"), "open": open_, "high": high, "low": low, "yesterday": yest,
         "last_pct": row.get("last_pct"), "close_pct": row.get("close_pct"), "vwap": row.get("vwap"),
         "last_change": None if last is None or yest is None else last - yest,
