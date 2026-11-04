@@ -358,6 +358,46 @@ async def etf_nav(symbol: Symbol) -> dict:
 # ----------------------------------------------------------------------------- Codal
 
 
+# ----------------------------------------------------------------------------- indices and funds
+
+
+@tool()
+async def index_history(
+    index: Annotated[str, Field(description="Index name or fragment: 'شاخص کل', 'شاخص کل (هم وزن)', 'شاخص آزاد شناور', 'فلزات', 'بانک', 'شاخص کل فرابورس' (English: total, equal_weight, fara), an industry code such as 27, or an insCode from the indices tool. A fragment that matches several indices is an error that lists them.")],
+    from_date: DateBound = None,
+    to_date: DateBound = None,
+    limit: Annotated[int, Field(ge=1, le=500, description="Most rows to return (default 120). Longer ranges are thinned by granularity, or cut to the newest rows")] = 120,
+    intraday: Annotated[bool, Field(description="True: today's 5-minute path of the index (روند شاخص در روز) instead of daily history; dates and granularity are ignored")] = False,
+    granularity: Annotated[str, Field(description="'auto' (default: daily rows if the range fits limit, else weekly, monthly, quarterly or yearly closes), 'daily', 'weekly' (Saturday-start), 'monthly', 'quarterly' or 'yearly' (Jalali)")] = "auto",
+) -> dict:
+    """History of any index (تاریخچه شاخص) in index points, not rial: the total index (شاخص کل) back to 2008, equal-weight, free-float, any industry index such as فلزات or بانک, and the Fara Bourse indices. Rows ascending with close, low, high and daily change %, plus a summary of the whole requested range: change %, highest and lowest close with dates, maximum drawdown, up/down days and a volatility estimate. Days the market was closed are flagged flat and kept out of the statistics. With intraday=true: today's 5-minute path with day high/low and the previous close."""
+    return await svc().index_history(index, from_date, to_date, limit, intraday, granularity)
+
+
+@tool()
+async def index_constituents(
+    index: Annotated[str, Field(description="Index name, fragment, industry code or insCode, as for index_history ('شاخص کل', 'فلزات', 'بانک', 'شاخص آزاد شناور', 'شاخص کل فرابورس')")],
+    sort_by: Annotated[str, Field(description="effect (points added to the total index, the default), abs_effect, value (traded value), volume, trades, change (closing price change %) or market_cap")] = "effect",
+    descending: bool = True,
+    limit: Annotated[int, Field(ge=1, le=500, description="Most members to return (default 25)")] = 25,
+) -> dict:
+    """Member stocks of an index (سهام شاخص) with close, change %, volume, value and each stock's effect in index points on the total index (تاثیر در شاخص, from the exchange), plus totals: members, advancers/decliners, traded value, sum of effects. The exchange publishes no index weights, so market-cap share is only a derived proxy (sort_by market_cap). Effects are for the latest session and are left out, with a note, when the exchange's table does not add up to the index move; for a sector index they are the effect on the total index, not on the sector index."""
+    return await svc().index_constituents(index, sort_by, descending, limit)
+
+
+@tool()
+async def fund_ranking(
+    fund_type: Annotated[str | None, Field(description="Fund type: fixed_income (درآمد ثابت), equity (سهام: every stock fund), equity_general (در سهام), mixed (مختلط), gold (طلا و کالا), market_maker (بازارگردانی), sector, leveraged, index, venture, private, project, fund_of_funds, real_estate, principal_protected, pension; a Persian name or fragment, a numeric type id, or a comma-separated list. Omit for every type.")] = None,
+    sort_by: Annotated[str, Field(description="return_1y (default; also return_1d, return_1w, return_1m, return_3m, return_6m, return_since_inception, or short forms such as 1m, 3m), net_assets, units, nav or age")] = "return_1y",
+    descending: bool = True,
+    min_net_assets: Annotated[float | None, Field(description="Smallest net assets (خالص ارزش دارایی) in RIAL, e.g. 1e13 = 10 trillion rial = 1 trillion toman. Funds without a figure are dropped")] = None,
+    limit: Annotated[int, Field(ge=1, le=300, description="Most funds to return (default 25)")] = 25,
+    detail: Annotated[str, Field(description="'compact' (default) or 'full' (adds custodian, guarantor, website, top-5 holdings, start date and the mostly empty investor-mix, yield and market-maker fields)")] = "compact",
+) -> dict:
+    """Ranking and screening of the investment-fund registry (صندوق‌های سرمایه‌گذاری): about 580 funds of 15 types, not only the exchange-traded ones, with net assets, units, redemption/issue/statistical NAV (ابطال، صدور، آماری), returns over 1 day to 1 year and since inception, portfolio mix (stock/bond/deposit), manager and NAV date. Sort by any return or size, filter by type and minimum net assets. Returns are percent as published, null where the fund is too young. The registry has no ticker: find the traded unit with search_symbol on the fund's name, then etf_nav for its NAV premium. Market-maker and very young funds show extreme returns, so filter them for a fair ranking."""
+    return await svc().fund_ranking(fund_type, sort_by, descending, min_net_assets, limit, detail)
+
+
 @tool()
 async def top_lists(
     list_name: Annotated[

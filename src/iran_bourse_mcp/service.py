@@ -8,6 +8,8 @@ import time
 from typing import Any
 
 from . import calendar_events, derivatives, screener, shape, status, toplists
+from . import funds as fundmod
+from . import indices as indexmod
 from . import market as marketfeed
 from .api import CODAL_SITE, TseApi
 from .client import Http, NotAvailable, UpstreamError
@@ -56,6 +58,10 @@ def _check_type(security_type: str | None) -> None:
 
 def _clamp(value: int, low: int, high: int) -> int:
     return max(low, min(high, int(value)))
+
+
+def _today_deven() -> int:
+    return from_date(tehran_now().date())
 
 
 def _date_arg(value: str | int | None) -> int | None:
@@ -558,6 +564,98 @@ class Bourse:
         neg = sorted(rows, key=lambda r: r["effect_on_index"])[:limit]
         cut = lambda r: {"symbol": r["symbol"], "effect_on_index": r["effect_on_index"], "last_pct": r["last_pct"], "industry": r["industry"]}  # noqa: E731
         return {"positive": [cut(r) for r in pos], "negative": [cut(r) for r in neg], "unit": "index points"}
+
+    # ------------------------------------------------------------------ indices: history, members
+    async def _resolve_index(self, index: str) -> dict:
+        bourse, fara = await asyncio.gather(self.api.indices(1), self.api.indices(2))
+        try:
+            return indexmod.resolve_index(index, bourse, fara)
+        except ValueError as exc:
+            raise InputError(str(exc)) from exc
+
+    async def index_history(
+        self,
+        index: str,
+        from_date: str | None = None,
+        to_date: str | None = None,
+        limit: int = 120,
+        intraday: bool = False,
+        granularity: str = "auto",
+    ) -> dict:
+        entry = await self._resolve_index(index)
+        try:
+            if intraday:
+                return indexmod.shape_index_intraday(await self.api.index_intraday(entry["ins_code"]), entry, limit=limit, today=_today_deven())
+            rows = await self.api.index_history(entry["ins_code"])
+            return indexmod.shape_index_history(rows, entry, from_date=from_date, to_date=to_date, limit=limit, granularity=granularity)
+        except ValueError as exc:
+            raise InputError(str(exc)) from exc
+
+    async def _index_effects(self, entry: dict) -> tuple[list[dict] | None, str]:
+        """Each stock's effect (index points) on the market's total index, with where it came from.
+
+        The published table (Index/GetInstEffect) is used when it adds up to the total index's move; the exchange sometimes serves the
+        previous session's table in the evening. Then, for the Bourse, the TSE gateway's live ``effectonIndex`` figures (the same numbers,
+        already in the market rows) are tried. Otherwise the published table is returned anyway so the output can say why effects are withheld.
+        """
+        source = "Index/GetInstEffect"
+        try:
+            table: list[dict] | None = await self.api.index_effects(_today_deven(), entry["flow"])
+        except (NotAvailable, UpstreamError):
+            table = None
+        if table and indexmod.effects_usable(table, entry):
+            return table, source
+        if entry["flow"] == 1:
+            try:
+                rows, _ = await self._market_rows()
+            except (NotAvailable, UpstreamError):
+                rows = []
+            gateway = indexmod.effects_from_market_rows(rows, 1)
+            if gateway and indexmod.effects_usable(gateway, entry):
+                return gateway, "TSE gateway (effectonIndex)"
+        return table, source
+
+    async def index_constituents(self, index: str, sort_by: str = "effect", descending: bool = True, limit: int = 25) -> dict:
+        entry = await self._resolve_index(index)
+        members = await self.api.index_members(entry["ins_code"])
+        effects, effects_source = await self._index_effects(entry)  # a bonus: without it the members still come back, effects null
+        caps = None
+        if str(sort_by).strip().casefold() in ("market_cap", "cap"):  # the member list has no share counts: take them from the market feed
+            rows, _ = await self._market_rows()
+            caps = {r["ins_code"]: r["market_cap"] for r in rows if r.get("market_cap") and r.get("ins_code")}
+        try:
+            return indexmod.shape_index_constituents(
+                members, entry, effects=effects, sort_by=sort_by, descending=descending, limit=limit, market_caps=caps, effects_source=effects_source
+            )
+        except ValueError as exc:
+            raise InputError(str(exc)) from exc
+
+    # ------------------------------------------------------------------ fund registry
+    async def fund_ranking(
+        self,
+        fund_type: str | None = None,
+        sort_by: str = "return_1y",
+        descending: bool = True,
+        min_net_assets: float | None = None,
+        limit: int = 25,
+        detail: str = "compact",
+    ) -> dict:
+        try:
+            ids = fundmod.resolve_fund_types(fund_type)
+            fundmod.resolve_sort(sort_by)  # fail before fetching anything
+        except ValueError as exc:
+            raise InputError(str(exc)) from exc
+        by_type: dict[int, list[dict]] = {}
+        for start in range(0, len(ids), 4):  # a few at a time: 15 small requests for "all types"
+            batch = ids[start : start + 4]
+            for type_id, rows in zip(batch, await asyncio.gather(*(self.api.funds(i) for i in batch)), strict=True):
+                by_type[type_id] = rows
+        try:
+            return fundmod.shape_fund_ranking(
+                by_type, sort_by=sort_by, descending=descending, min_net_assets=min_net_assets, limit=limit, detail=detail
+            )
+        except ValueError as exc:
+            raise InputError(str(exc)) from exc
 
     async def market_snapshot(self, date: str | int, sort_by: str = "value", limit: int = 30, security_type: str | None = "stock") -> dict:
         deven = _date_arg(date)

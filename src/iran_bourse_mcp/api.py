@@ -189,6 +189,29 @@ class TseApi:
     async def state_history(self, ins: str) -> list[dict]:
         return await self._cdn(f"/MarketData/GetInstrumentStateAll/{ins}", "instrumentState", SHORT) or []
 
+    # -- indices: history, today's path, members ------------------------------------------
+    async def index_history(self, ins: str) -> list[dict]:
+        """Daily close/low/high of one index since 2008 (about 4,300 rows, 0.5 MB). The last row is today's."""
+        return await self._cdn(f"/Index/GetIndexB2History/{ins}", "indexB2", SHORT) or []
+
+    async def index_intraday(self, ins: str) -> list[dict]:
+        """The index on a 5-minute grid for the latest session (about 125 rows)."""
+        return await self._cdn(f"/Index/GetIndexB1LastDay/{ins}", "indexB1", SHORT) or []
+
+    async def index_members(self, ins: str) -> list[dict]:
+        """Member stocks with today's prices (405 for the total index). The reply also carries a 30-day close history of every member
+        (about 11,700 rows, 2.4 MB for the total index) under ``relatedCompanyThirtyDayHistory``; only ``indexCompany`` is returned."""
+        return await self._cdn(f"/ClosingPrice/GetIndexCompany/{ins}", "indexCompany", SHORT) or []
+
+    async def index_effects(self, deven: int, flow: int, top: int = 9999) -> list[dict]:
+        """Index points each stock added to the market's total index (flow 1 Bourse, 2 Fara). The server ignores ``deven``: the table is the latest session's."""
+        return await self._cdn(f"/Index/GetInstEffect/{deven}/{flow}/{top}", "instEffect", SHORT) or []
+
+    # -- funds -----------------------------------------------------------------------------
+    async def funds(self, fund_type: int) -> list[dict]:
+        """The fund registry for one type id (4, 5, 6, 7, 11, 12, 13, 16, 17, 18, 21-25). Ids 0 and 1 answer HTTP 500, other ids are empty."""
+        return await self._cdn(f"/Fund/GetFunds/{fund_type}", "funds", HOUR) or []
+
     # -- derivatives (options and futures) -----------------------------------------------
     async def option_market_watch(self, flow: int = 0) -> list[dict]:
         """Option chain rows, one per strike/expiry pair with the call and the put side by side. flow 0 = all, 1 = Bourse, 2 = Fara Bourse."""
