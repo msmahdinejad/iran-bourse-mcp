@@ -350,3 +350,49 @@ async def test_symbol_overview_survives_a_failing_optional_section():
     assert out["quote"]["last"]["price"] and out["order_book"] is not None
     assert out["unavailable_sections"] == ["recent_filings", "recent_supervisor_messages"]
     assert "recent_filings" not in out
+
+
+# ---- market_status and the holiday calendar ------------------------------------------------------
+
+
+def _at(monkeypatch, *args):
+    import datetime as dt
+
+    from iran_bourse_mcp import service
+
+    monkeypatch.setattr(service, "tehran_now", lambda: dt.datetime(*args))
+
+
+async def test_market_status_on_a_public_holiday(bourse, monkeypatch):
+    _at(monkeypatch, 2026, 12, 23, 10, 0)  # Wednesday, 13 Rajab
+    out = await bourse.market_status()
+    assert out["holiday"] == "ولادت امام علی (ع) و روز پدر"
+    assert out["is_trading_weekday"] is True and out["is_trading_day"] is False
+    assert out["day_status"] == "holiday" and out["within_session_hours"] is False
+    assert out["next_session"]["date"] == "2026-12-26" and out["next_session"]["skipped_holidays"][0]["date"] == "2026-12-23"
+    assert out["upcoming_holidays"][0]["date"] == "2027-01-06"
+    assert out["holiday_calendar"]["covers_this_year"] is True and out["holiday_calendar"]["note"] is None
+    assert "calendar_check" not in out or "published data for today" not in out["calendar_check"]
+
+
+async def test_market_status_on_a_normal_trading_day(bourse, monkeypatch):
+    _at(monkeypatch, 2026, 11, 4, 11, 0)  # the fixture's market data is from this very day
+    out = await bourse.market_status()
+    assert out["holiday"] is None and out["is_trading_day"] is True and out["day_status"] == "open"
+    assert out["within_session_hours"] is True and out["next_session"]["date"] == "2026-11-07"
+    assert "calendar_check" not in out
+
+
+async def test_market_status_flags_a_closure_the_calendar_does_not_know(bourse, monkeypatch):
+    _at(monkeypatch, 2026, 11, 7, 11, 0)  # a Saturday, but the newest exchange data is still from Wednesday
+    out = await bourse.market_status()
+    assert out["day_status"] == "open"
+    assert "unannounced closure" in out["calendar_check"] and "2026-11-04" in out["calendar_check"]
+    _at(monkeypatch, 2026, 11, 7, 8, 30)  # before the open nobody expects fresh data yet
+    assert "calendar_check" not in await bourse.market_status()
+
+
+async def test_market_status_says_when_the_year_is_not_in_the_holiday_table(bourse, monkeypatch):
+    _at(monkeypatch, 2027, 6, 1, 10, 0)
+    out = await bourse.market_status()
+    assert out["holiday_calendar"]["covers_this_year"] is False and "religious" in out["holiday_calendar"]["note"]

@@ -167,6 +167,144 @@ def is_trading_weekday(day: dt.date) -> bool:
     return day.weekday() in TRADING_WEEKDAYS
 
 
-def is_session_hours(now_tehran: dt.datetime) -> bool:
+# ---- public holidays -------------------------------------------------------------------------
+# The exchange trades Saturday to Wednesday except on official public holidays. Two sources, in order of trust:
+#
+# * PUBLISHED_HOLIDAYS: the official calendar as published by time.ir (Iran's calendar portal), one entry per
+#   holiday that does not fall on a Friday, for each year in PUBLISHED_YEARS. Religious holidays follow the moon
+#   and are announced year by year, so they can only come from a published calendar.
+# * SOLAR_HOLIDAYS: the holidays fixed in the Solar Hijri calendar, valid for any year, used when a year has not
+#   been published into this table yet (religious holidays are then unknown and the output says so).
+#
+# Neither covers days the exchange closes without a holiday (heat, air pollution, energy saving, emergencies).
+# The tests compare both tables with the exchange's own history of non-trading days.
+SOLAR_HOLIDAYS: dict[tuple[int, int], str] = {
+    (1, 1): "عید نوروز",
+    (1, 2): "عید نوروز",
+    (1, 3): "عید نوروز",
+    (1, 4): "عید نوروز",
+    (1, 12): "روز جمهوری اسلامی",
+    (1, 13): "روز طبیعت (سیزده‌به‌در)",
+    (3, 14): "رحلت امام خمینی",
+    (3, 15): "قیام ۱۵ خرداد",
+    (11, 22): "پیروزی انقلاب اسلامی",
+    (12, 29): "روز ملی شدن صنعت نفت ایران",
+}
+
+PUBLISHED_YEARS = frozenset({1405})
+PUBLISHED_HOLIDAYS: dict[dt.date, str] = {
+    dt.date(2026, 3, 21): "عید نوروز / عید سعید فطر",
+    dt.date(2026, 3, 22): "عید نوروز / عید سعید فطر",
+    dt.date(2026, 3, 23): "عید نوروز",
+    dt.date(2026, 3, 24): "عید نوروز",
+    dt.date(2026, 4, 1): "روز جمهوری اسلامی",
+    dt.date(2026, 4, 2): "روز طبیعت (سیزده‌به‌در)",
+    dt.date(2026, 4, 14): "شهادت امام جعفر صادق (ع)",
+    dt.date(2026, 5, 27): "عید سعید قربان",
+    dt.date(2026, 6, 4): "رحلت امام خمینی / عید سعید غدیر خم",
+    dt.date(2026, 6, 24): "تاسوعای حسینی",
+    dt.date(2026, 6, 25): "عاشورای حسینی",
+    dt.date(2026, 8, 4): "اربعین حسینی",
+    dt.date(2026, 8, 12): "رحلت پیامبر اکرم (ص) و شهادت امام حسن مجتبی (ع)",
+    dt.date(2026, 8, 13): "شهادت امام رضا (ع)",
+    dt.date(2026, 8, 30): "میلاد پیامبر اکرم (ص) و امام جعفر صادق (ع)",
+    dt.date(2026, 12, 23): "ولادت امام علی (ع) و روز پدر",
+    dt.date(2027, 1, 6): "مبعث پیامبر اکرم (ص)",
+    dt.date(2027, 1, 24): "ولادت حضرت قائم (عج) و نیمه شعبان",
+    dt.date(2027, 2, 11): "پیروزی انقلاب اسلامی",
+    dt.date(2027, 2, 28): "شهادت امام علی (ع)",
+    dt.date(2027, 3, 10): "عید سعید فطر",
+    dt.date(2027, 3, 11): "عید سعید فطر",
+    dt.date(2027, 3, 20): "روز ملی شدن صنعت نفت ایران",
+}
+HOLIDAY_SOURCE = "time.ir official calendar of 1405, read 2026-11-05"
+
+
+def holiday_name(day: dt.date) -> str | None:
+    """Persian name of the official public holiday on ``day``, or ``None``.
+
+    Years in ``PUBLISHED_YEARS`` use the published calendar (Fridays are not listed in it); other years only know
+    the fixed Solar Hijri holidays.
+    """
+    jy, jm, jd = gregorian_to_jalali(day.year, day.month, day.day)
+    if jy in PUBLISHED_YEARS:
+        return PUBLISHED_HOLIDAYS.get(day)
+    return SOLAR_HOLIDAYS.get((jm, jd))
+
+
+def holidays_published_for(day: dt.date) -> bool:
+    """True when the whole Jalali year of ``day`` is in the published table (religious holidays included)."""
+    return gregorian_to_jalali(day.year, day.month, day.day)[0] in PUBLISHED_YEARS
+
+
+def is_trading_day(day: dt.date) -> bool:
+    """Saturday to Wednesday and not an official public holiday (exceptional closures are not predictable)."""
+    return is_trading_weekday(day) and holiday_name(day) is None
+
+
+def next_trading_day(day: dt.date, *, include_today: bool = False) -> dt.date:
+    cursor = day if include_today else day + dt.timedelta(days=1)
+    for _ in range(400):
+        if is_trading_day(cursor):
+            return cursor
+        cursor += dt.timedelta(days=1)
+    raise DateError(f"No trading day found after {day}")
+
+
+def upcoming_holidays(day: dt.date, count: int = 3, horizon_days: int = 400) -> list[dict]:
+    """The next ``count`` public holidays that close the market (Saturday to Wednesday), after ``day``."""
+    found: list[dict] = []
+    for step in range(1, horizon_days + 1):
+        cursor = day + dt.timedelta(days=step)
+        name = holiday_name(cursor) if is_trading_weekday(cursor) else None
+        if name:
+            found.append(_day_entry(cursor, name))
+            if len(found) >= count:
+                break
+    return found
+
+
+def _day_entry(day: dt.date, name: str | None = None) -> dict:
+    entry = {"date": day.isoformat(), "jdate": jdate(from_date(day)), "weekday": day.strftime("%A")}
+    if name is not None:
+        entry["name"] = name
+    return entry
+
+
+def day_status(now_tehran: dt.datetime) -> str:
+    """``open``, ``before_open``, ``after_close`` (trading day), ``holiday`` (weekday closure) or ``weekend``."""
+    day = now_tehran.date()
+    if not is_trading_weekday(day):
+        return "weekend"
+    if holiday_name(day):
+        return "holiday"
     hhmmss = now_tehran.hour * 10000 + now_tehran.minute * 100 + now_tehran.second
-    return is_trading_weekday(now_tehran.date()) and OPEN_TIME <= hhmmss <= CLOSE_TIME
+    if hhmmss < OPEN_TIME:
+        return "before_open"
+    return "open" if hhmmss <= CLOSE_TIME else "after_close"
+
+
+def next_session(now_tehran: dt.datetime) -> dict:
+    """The next time the market is expected to open: today if it has not opened yet, otherwise the next trading day.
+
+    ``skipped_holidays`` lists the public holidays that fall between now and that day, so a long closure explains itself.
+    """
+    today = now_tehran.date()
+    status = day_status(now_tehran)
+    day = today if status == "before_open" else next_trading_day(today)
+    skipped = [
+        _day_entry(today + dt.timedelta(days=step), holiday_name(today + dt.timedelta(days=step)))
+        for step in range(0, (day - today).days)
+        if is_trading_weekday(today + dt.timedelta(days=step)) and holiday_name(today + dt.timedelta(days=step))
+    ]
+    return {
+        **_day_entry(day),
+        "opens_at": fmt_time(OPEN_TIME)[:5],
+        "closes_at": fmt_time(CLOSE_TIME)[:5],
+        "days_ahead": (day - today).days,
+        "skipped_holidays": skipped,
+    }
+
+
+def is_session_hours(now_tehran: dt.datetime) -> bool:
+    return day_status(now_tehran) == "open"

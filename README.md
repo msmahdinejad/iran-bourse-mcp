@@ -510,7 +510,7 @@ iran-bourse-mcp serve --transport streamable-http --host 127.0.0.1 --port 8000
 
 - Prices and values are in **Rial** (1 Toman = 10 Rial). Dates accept Gregorian (`2026-11-03`) or Jalali (`1405/08/12`, Persian digits fine).
 - Persian/Arabic letter variants are interchangeable on input (`کگل` = `كگل`) and normalised on output.
-- The market trades Saturday-Wednesday 09:00-12:30 Tehran time. Public holidays are not modelled. Outside the session you get the last session's data.
+- The market trades Saturday-Wednesday 09:00-12:30 Tehran time, except on official public holidays. `market_status` knows the 1405 holiday calendar (`holiday`, `next_session`, `upcoming_holidays`); for years not yet in the table only the fixed Solar Hijri holidays are known. The exchange also closes on some days without a holiday; `market_status` flags it when the exchange's own data disagrees with the calendar. Outside the session you get the last session's data.
 - **Order-book history for the current trading day may be partial.** TSETMC publishes the full intraday book history only after the day ends. `order_book_history` tells you when it is cut short (`events_span`, `warning`). Use `order_book` for the live book.
 - The unofficial endpoints can change without notice. Every quirk we found is in [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md).
 - Requests are cached briefly (seconds for live data, hours for history) and limited to 6 in flight. Please be gentle: this is somebody else's server.
@@ -545,8 +545,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md), [AGENTS.md](AGENTS.md) and [docs/ARCHITE
 
 ## Roadmap
 
-- Options chain and Greeks (derivatives board), IME commodity and energy bourse data
-- Persian holidays calendar
+- IME commodity and energy bourse data
+- Holiday table for Jalali year 1406 (once the official calendar is final)
 - Published PyPI release (`uvx iran-bourse-mcp`)
 
 ## Citing

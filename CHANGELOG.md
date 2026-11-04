@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **Public holidays in `market_status`** (#7): `holiday`, `is_trading_day`, `day_status`, `next_session` (skips weekends and holidays and lists what it skipped), `upcoming_holidays` and a `holiday_calendar` block. The table is the official calendar of Jalali year 1405 (time.ir) plus the fixed Solar Hijri holidays for any other year, and says so when religious holidays of a year are unknown. `within_session_hours` and the screener's `session_open` now respect holidays. When the exchange's newest data disagrees with the calendar (an unannounced closure), `calendar_check` says so. Both tables are tested against the exchange's own history of non-trading days since 2019.
+
 ## 0.3.0 (2026-11-04)
 
 Ten new tools (38 in total), the whole-market tools moved to the exchange's own feed, and every finding of two independent client reviews fixed.

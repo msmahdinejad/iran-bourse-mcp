@@ -14,16 +14,24 @@ from . import market as marketfeed
 from .api import CODAL_SITE, TseApi
 from .client import Http, NotAvailable, UpstreamError
 from .dates import (
+    HOLIDAY_SOURCE,
     DateError,
+    day_status,
     fmt_date,
     fmt_time,
     from_date,
+    holiday_name,
+    holidays_published_for,
     is_session_hours,
+    is_trading_day,
+    is_trading_weekday,
     jdate,
+    next_session,
     parse_date,
     parse_time,
     tehran_now,
     to_date,
+    upcoming_holidays,
 )
 from .resolver import FLOW_NAMES, Instrument, Resolver
 from .text import ascii_digits, clean, match_key
@@ -54,6 +62,22 @@ def _check_type(security_type: str | None) -> None:
         marketfeed.check_security_type(security_type)
     except ValueError as exc:
         raise InputError(str(exc)) from exc
+
+
+def _calendar_check(now: dt.datetime, as_of: dict | None) -> str | None:
+    """Say so when the holiday calendar and the exchange's own latest-session date disagree (heuristic, text only)."""
+    last = (as_of or {}).get("date")
+    today = now.date()
+    if not last:
+        return None
+    if is_trading_day(today) and now.hour >= 10 and last < today.isoformat():
+        return (
+            f"The calendar says today is a trading day, but the exchange's newest market data is from {last}: "
+            "today may be an unannounced closure. Trust the exchange."
+        )
+    if holiday_name(today) and last == today.isoformat():
+        return "The calendar lists today as a public holiday, but the exchange published data for today: the calendar may be outdated."
+    return None
 
 
 def _clamp(value: int, low: int, high: int) -> int:
@@ -134,16 +158,32 @@ class Bourse:
             self.api.server_time(),
             return_exceptions=True,
         )
+        today = now.date()
         result: dict[str, Any] = {
             "tehran_time": now.strftime("%Y-%m-%d %H:%M:%S"),
-            "tehran_jdate": jdate(from_date(now.date())),
+            "tehran_jdate": jdate(from_date(today)),
             "weekday": now.strftime("%A"),
-            "is_trading_weekday": now.weekday() in (5, 6, 0, 1, 2),
+            "is_trading_weekday": is_trading_weekday(today),
+            "holiday": holiday_name(today),
+            "is_trading_day": is_trading_day(today),
+            "day_status": day_status(now),
             "within_session_hours": is_session_hours(now),
-            "session": "Saturday-Wednesday 09:00-12:30 Asia/Tehran (public holidays are not modelled)",
+            "session": "Saturday-Wednesday 09:00-12:30 Asia/Tehran, closed on official public holidays and on days the exchange closes without notice",
+            "next_session": next_session(now),
+            "upcoming_holidays": upcoming_holidays(today),
+            "holiday_calendar": {
+                "source": HOLIDAY_SOURCE,
+                "covers_this_year": holidays_published_for(today),
+                "note": None
+                if holidays_published_for(today)
+                else "This Jalali year is not in the published holiday table: only the fixed Solar Hijri holidays are known, religious holidays are not.",
+            },
         }
         if not isinstance(overview, Exception):
             result["bourse"] = shape.shape_overview(overview)
+            note = _calendar_check(now, result["bourse"].get("as_of"))
+            if note:
+                result["calendar_check"] = note
         if not isinstance(dates, Exception):
             result["gateway"] = [
                 {"market": clean(d.get("stockType")), "open_time": d.get("openTime"), "close_time": d.get("closeTime"), "is_open": d.get("isOpen")}

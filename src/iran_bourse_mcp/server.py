@@ -102,7 +102,9 @@ Market = Annotated[str | None, Field(description="'bourse' or 'fara' (Fara Bours
 
 @tool()
 async def market_status() -> dict:
-    """Is the Tehran market open right now? Tehran time, session hours, bourse state and totals (وضعیت بازار)."""
+    """Is the Tehran market open right now, and when does it open next? Tehran time, today's status (open, before_open, after_close, weekend or holiday),
+    the public holiday if any, next_session (skipping weekends and holidays), the next upcoming_holidays, the bourse state and totals (وضعیت بازار).
+    Holidays come from the official calendar of 1405; days the exchange closes without notice are flagged in calendar_check when its own data disagrees."""
     return await svc().market_status()
 
 
