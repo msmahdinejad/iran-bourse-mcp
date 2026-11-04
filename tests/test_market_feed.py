@@ -142,6 +142,15 @@ def test_shape_market_row_buy_queue_book_and_names():
     assert row["security_type"] == "سهام" and row["market"] == "بورس" and row["fara"] is False and row["status"] == "مجاز"
 
 
+def test_sector_codes_one_to_nine_are_zero_padded_in_the_feed_but_not_in_the_static_table():
+    static = [{"type": "IndustrialGroup", "code": 1, "name": "زراعت و خدمات وابسته   "}, *STATIC]
+    industries = M.industry_names(static)
+    assert industries["1"] == industries["01"] == "زراعت و خدمات وابسته"
+    assert industries["27"] == "فلزات اساسی"
+    row = M.shape_market_row(feed_row("کشت", "IRO1KKKK0001", "555", sector="01 "), industries=industries)
+    assert row["industry"] == "زراعت و خدمات وابسته" and row["sector_code"] == "01"  # no gateway row to fall back on
+
+
 def test_shape_market_row_sell_queue_untraded_tal_and_fund():
     sell = M.shape_market_row(FEED[1])
     assert sell["at_lower_limit"] and sell["sell_queue_probable"] and sell["market"] == "فرابورس" and sell["fara"] is True

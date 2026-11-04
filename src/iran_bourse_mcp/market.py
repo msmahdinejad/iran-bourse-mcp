@@ -218,5 +218,5 @@ def industry_names(static: list[dict]) -> dict[str, str]:
         if item.get("type") == "IndustrialGroup":
             code = str(item.get("code")).strip()
             if code and clean(item.get("name")):
-                out[code] = clean(item.get("name")) or ""
+                out[code] = out[code.zfill(2)] = clean(item.get("name")) or ""  # the feed writes codes 1-9 as 01-09
     return out
