@@ -1,0 +1,107 @@
+1
+00:00:00,700 --> 00:00:07,134
+The Tehran Stock Exchange. Every day: thousands of symbols, millions of numbers.
+
+2
+00:00:07,534 --> 00:00:12,007
+Now ask an AI: what's today's buy queue?
+
+3
+00:00:12,307 --> 00:00:15,420
+The answer? I don't have access.
+
+4
+00:00:16,320 --> 00:00:18,771
+Iran Bourse MCP.
+
+5
+00:00:19,020 --> 00:00:23,658
+The Tehran exchange, right inside your AI assistant.
+
+6
+00:00:24,270 --> 00:00:29,163
+The same question; this time, a real answer. In one call.
+
+7
+00:00:31,320 --> 00:00:37,676
+Sharper: every single Foolad trade, from 10:00 to 10:01.
+
+8
+00:00:38,526 --> 00:00:44,471
+With time, price and volume; it even points out the biggest trade.
+
+9
+00:00:45,270 --> 00:00:48,054
+And now, the hard one.
+
+10
+00:00:48,820 --> 00:00:54,711
+Stocks whose volume doubled its average, that rose yesterday, and are up today too.
+
+11
+00:00:55,111 --> 00:00:57,707
+The agent writes the filter itself.
+
+12
+00:00:59,370 --> 00:01:04,288
+Of 625 shares, only 35 meet every condition.
+
+13
+00:01:05,220 --> 00:01:10,749
+Without MCP: 22 requests, and 7 million tokens of raw data.
+
+14
+00:01:11,020 --> 00:01:15,920
+With MCP: one call, and just 723 tokens.
+
+15
+00:01:16,800 --> 00:01:19,008
+Ten thousand times fewer.
+
+16
+00:01:19,670 --> 00:01:21,869
+And that's just the start.
+
+17
+00:01:22,270 --> 00:01:24,093
+Options.
+
+18
+00:01:24,120 --> 00:01:26,100
+Index history.
+
+19
+00:01:26,120 --> 00:01:28,508
+Capital-increase calendar.
+
+20
+00:01:28,620 --> 00:01:30,810
+Fund rankings.
+
+21
+00:01:30,870 --> 00:01:32,799
+Halted symbols.
+
+22
+00:01:32,870 --> 00:01:34,954
+And top lists.
+
+23
+00:01:36,320 --> 00:01:37,500
+Forty tools.
+
+24
+00:01:37,520 --> 00:01:41,425
+Read-only, open source, and free.
+
+25
+00:01:42,320 --> 00:01:45,879
+On seventeen assistants; installed with one command.
+
+26
+00:01:47,970 --> 00:01:50,117
+Iran Bourse MCP.
+
+27
+00:01:50,520 --> 00:01:53,813
+The exchange, for AI.

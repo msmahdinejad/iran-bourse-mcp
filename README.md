@@ -20,6 +20,13 @@
 > Unofficial. Not affiliated with TSETMC, the Tehran Stock Exchange, Fara Bourse or Codal. Information only, **not investment advice**.
 
 <div align="center">
+
+[![Watch the 2-minute launch film](docs/assets/film/readme-poster.jpg)](https://msmahdinejad.github.io/iran-bourse-mcp/#film)
+
+**[▶ Watch the 2-minute film](https://msmahdinejad.github.io/iran-bourse-mcp/#film)** · [Download MP4 (22.4 MB)](docs/assets/film/iran-bourse-mcp-film-16x9-social.mp4) · [Vertical 9:16, Full HD and 4K](https://github.com/msmahdinejad/iran-bourse-mcp/releases/tag/launch-film)
+
+<br>
+
 <img src="docs/assets/demo.svg" alt="An agent reviewing Foolad through iran-bourse-mcp" width="860">
 
 [▶ 15-second tour (MP4)](docs/assets/promo.mp4) · [GIF for sharing](docs/assets/promo.gif)

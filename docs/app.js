@@ -21,6 +21,12 @@
       "scr.c2.h": "3,700 instruments, real money, order book", "scr.c2.p": "Shares, funds, bonds, options and futures from the exchange's own feed, with real vs legal flow, a five-level book, base volume and fund NAV.",
       "scr.c3.h": "Safe, and it explains itself", "scr.c3.p": "Conditions are parsed, never executed. Mistakes come back with suggestions, 15 presets are built in, and every hit shows the numbers behind it.",
       "scr.link": "Read the screener guide: every field, function and preset.", "scr.col.symbol": "Symbol", "scr.col.y": "Yesterday", "scr.col.t": "Today", "scr.col.v": "Volume vs 20-day avg", "scr.col.val": "Value (bn rial)", "nav.bench": "Benchmarks", "nav.install": "Install", "nav.tools": "Tools", "nav.faq": "FAQ",
+      "nav.film": "Film", "film.eyebrow": "Launch film, 2 min", "film.h2": "Two minutes. The whole market, answering an AI.",
+      "film.lead": "Real answers from the real server: a buy queue in one call, every Foolad trade of a single minute, and a market-wide screen that costs about 10,000 times fewer tokens.",
+      "film.wide": "Wide 16:9", "film.tall": "Vertical 9:16", "film.note": "Every number on screen is real tool output captured on 4 Nov 2026, with the market closed. The benchmark is small and single-model.",
+      "film.dl.h": "Download", "film.dl.lead": "Free to download and share.", "film.dl.social": "Web and social", "film.dl.hd": "Full HD", "film.dl.uhd": "4K master", "film.dl.subs": "Subtitles (SRT)", "film.dl.all": "all files",
+      "film.share.h": "Share", "film.share.native": "Share…", "film.share.copylink": "Copy link", "film.share.text": "Ready-made post", "film.share.copytext": "Copy text", "film.embed.h": "Embed", "film.embed.copy": "Copy code",
+      "film.post": "40 read-only MCP tools that give any AI agent the Tehran Stock Exchange: live quotes, every trade, a stock screener, options, funds and Codal. Free and open source. Watch the 2-minute film:",
       "copy": "Copy", "copied": "Copied", "replay": "Replay", "works": "Works with",
       "hero.eyebrow": "Model Context Protocol · open source · MIT",
       "hero.h1": "Your AI agent, on the <em>Tehran Stock Exchange.</em>",
@@ -64,6 +70,12 @@
       "scr.c2.h": "۳٬۷۰۰ نماد، پول حقیقی، عمق بازار", "scr.c2.p": "سهام، صندوق، اوراق، اختیار و آتی از فید خودِ بورس، همراه با حقیقی/حقوقی، عمق ۵ سطری، حجم مبنا و NAV صندوق.",
       "scr.c3.h": "امن، و خودش را توضیح می‌دهد", "scr.c3.p": "شرط‌ها فقط تحلیل می‌شوند و هرگز اجرا نمی‌شوند. خطا با پیشنهاد اصلاح برمی‌گردد، ۱۵ فیلتر آماده دارد و هر نتیجه اعدادِ پشتش را نشان می‌دهد.",
       "scr.link": "راهنمای اسکرینر: همه‌ی فیلدها، توابع و فیلترهای آماده.", "scr.col.symbol": "نماد", "scr.col.y": "دیروز", "scr.col.t": "امروز", "scr.col.v": "حجم نسبت به میانگین ۲۰ روزه", "scr.col.val": "ارزش (میلیارد ریال)", "nav.bench": "بنچمارک", "nav.install": "نصب", "nav.tools": "ابزارها", "nav.faq": "سؤالات",
+      "nav.film": "فیلم", "film.eyebrow": "فیلم معرفی، ۲ دقیقه", "film.h2": "دو دقیقه؛ کل بازار، در جواب یک هوش مصنوعی.",
+      "film.lead": "پاسخ‌های واقعی از خود سرور: صف خرید با یک فراخوانی، تک‌تک معامله‌های فولاد در یک دقیقه، و اسکرینرِ کلِ بازار با حدود ۱۰٬۰۰۰ برابر توکنِ کمتر.",
+      "film.wide": "افقی ۱۶:۹", "film.tall": "عمودی ۹:۱۶", "film.note": "هر عددی که در فیلم می‌بینید خروجی واقعی ابزار است (۱۴۰۵/۰۸/۱۳، بازار بسته بود). بنچمارک کوچک و تک‌مدلی است.",
+      "film.dl.h": "دانلود", "film.dl.lead": "رایگان؛ دانلود کنید و منتشر کنید.", "film.dl.social": "وب و شبکه‌های اجتماعی", "film.dl.hd": "فول‌اچ‌دی", "film.dl.uhd": "مستر 4K", "film.dl.subs": "زیرنویس (SRT)", "film.dl.all": "همهٔ فایل‌ها",
+      "film.share.h": "انتشار", "film.share.native": "اشتراک‌گذاری…", "film.share.copylink": "کپی پیوند", "film.share.text": "متن آمادهٔ پست", "film.share.copytext": "کپی متن", "film.embed.h": "جاسازی", "film.embed.copy": "کپی کد",
+      "film.post": "ام‌سی‌پیِ بورسِ ایران: ۴۰ ابزارِ فقط‌خواندنی که بورس تهران را مستقیم در اختیارِ هر دستیار هوش مصنوعی می‌گذارد: قیمت زنده، ریز معامله‌ها، اسکرینر، اختیار معامله، صندوق‌ها و کدال. رایگان و متن‌باز. فیلم ۲ دقیقه‌ای:",
       "copy": "کپی", "copied": "کپی شد", "replay": "پخش دوباره", "works": "سازگار با",
       "hero.eyebrow": "Model Context Protocol · متن‌باز · MIT",
       "hero.h1": "ایجنت هوش مصنوعی‌تان، روی <em>بورس تهران.</em>",
@@ -425,8 +437,51 @@
     $("#scr-table").innerHTML = "<thead><tr><th>" + t("scr.col.symbol") + "</th><th>" + t("scr.col.y") + "</th><th>" + t("scr.col.t") + "</th><th>" + t("scr.col.v") + "</th><th>" + t("scr.col.val") + "</th></tr></thead><tbody>" +
       s.rows.map(function (r) { return "<tr><td>" + esc(r.symbol) + '</td><td class="num">' + pct(r.yesterday_pct) + '</td><td class="num">' + pct(r.today_pct) + '</td><td class="num">' + nf(r.volume_x, 1) + '\u00d7</td><td class="num">' + nf(r.value_billion_rial, 0) + "</td></tr>"; }).join("") + "</tbody>";
   }
-  function renderAll() { renderTape(); renderWorks(); renderPanel(); renderStats(); renderBench(); renderScreener(); renderInstall(); renderExamples(); renderTools(); renderTrust(); renderFaq(); typeInto("t-bad", true); typeInto("t-good", true); $("#ver").textContent = "v" + (D.version || "0.1.0"); }
+  /* ------------------------------------------------------------------ launch film: player, download, share, embed */
+  var FILM = {
+    page: "https://msmahdinejad.github.io/iran-bourse-mcp/",
+    wide: { src: "assets/film/iran-bourse-mcp-film-16x9-social.mp4", poster: "assets/film/poster-16x9.jpg" },
+    tall: { src: "assets/film/iran-bourse-mcp-film-9x16-social.mp4", poster: "assets/film/poster-9x16.jpg" }
+  };
+  function filmUrl() { return FILM.page + "#film"; }
+  function filmPost() { return t("film.post"); }
+  function filmTracks() {
+    var v = $("#film-video"); if (!v || !v.textTracks) return;
+    // the film already carries its own Persian words on screen: English subtitles are on for English readers, Persian ones stay in the CC menu
+    for (var i = 0; i < v.textTracks.length; i++) { var tr = v.textTracks[i]; tr.mode = tr.language === "en" && lang !== "fa" ? "showing" : "disabled"; }
+  }
+  function renderFilm() {
+    var post = $("#film-post"); if (!post) return;
+    var url = filmUrl(), text = filmPost(), enc = encodeURIComponent;
+    post.value = text + " " + url;
+    $("#sh-telegram").href = "https://t.me/share/url?url=" + enc(url) + "&text=" + enc(text);
+    $("#sh-whatsapp").href = "https://wa.me/?text=" + enc(text + " " + url);
+    $("#sh-x").href = "https://twitter.com/intent/tweet?text=" + enc(text) + "&url=" + enc(url);
+    $("#sh-linkedin").href = "https://www.linkedin.com/sharing/share-offsite/?url=" + enc(url);
+    $("#film-embed").value = '<iframe src="' + FILM.page + 'embed.html" title="iran-bourse-mcp launch film" width="640" height="360" style="border:0;max-width:100%" allow="fullscreen" allowfullscreen loading="lazy"></iframe>';
+    filmTracks();
+  }
+  function initFilm() {
+    var stage = $("#film-stage"), video = $("#film-video"); if (!stage || !video) return;
+    function setRatio(r) {
+      if (stage.getAttribute("data-ratio") === r) return;
+      stage.setAttribute("data-ratio", r); video.pause();
+      video.setAttribute("poster", FILM[r].poster); video.querySelector("source").setAttribute("src", FILM[r].src); video.load();
+      $$(".film-toggle .seg").forEach(function (b) { b.setAttribute("aria-pressed", b.getAttribute("data-ratio") === r ? "true" : "false"); });
+    }
+    $$(".film-toggle .seg").forEach(function (b) { b.addEventListener("click", function () { setRatio(b.getAttribute("data-ratio")); }); });
+    video.addEventListener("loadedmetadata", filmTracks);
+    var native = $("#film-native");
+    if (navigator.share) { native.hidden = false; native.addEventListener("click", function () { navigator.share({ title: "iran-bourse-mcp", text: filmPost(), url: filmUrl() }).catch(function () { }); }); }
+    $("#film-copylink").addEventListener("click", function () { copyText(filmUrl(), this); });
+    $("#film-copypost").addEventListener("click", function () { copyText($("#film-post").value, this); });
+    $("#film-copyembed").addEventListener("click", function () { copyText($("#film-embed").value, this); });
+    $("#film-embed").addEventListener("focus", function () { this.select(); });
+    renderFilm();
+  }
+  function renderAll() { renderFilm(); renderTape(); renderWorks(); renderPanel(); renderStats(); renderBench(); renderScreener(); renderInstall(); renderExamples(); renderTools(); renderTrust(); renderFaq(); typeInto("t-bad", true); typeInto("t-good", true); $("#ver").textContent = "v" + (D.version || "0.1.0"); }
   applyLang();
+  initFilm();
   initTerminals();
   fetch("https://api.github.com/repos/msmahdinejad/iran-bourse-mcp").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j && typeof j.stargazers_count === "number") $("#stars").textContent = "★ " + j.stargazers_count; }).catch(function () { });
 })();

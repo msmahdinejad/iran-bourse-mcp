@@ -21,6 +21,13 @@
 > غیررسمی است و هیچ ارتباطی با TSETMC، بورس تهران، فرابورس یا کدال ندارد. فقط اطلاعات است و **توصیه سرمایه‌گذاری نیست**.
 
 <div align="center">
+
+[![فیلم ۲ دقیقه‌ایِ معرفی](docs/assets/film/readme-poster.jpg)](https://msmahdinejad.github.io/iran-bourse-mcp/#film)
+
+**[▶ دیدنِ فیلم ۲ دقیقه‌ای](https://msmahdinejad.github.io/iran-bourse-mcp/#film)** · [دانلود MP4 (22.4 MB)](docs/assets/film/iran-bourse-mcp-film-16x9-social.mp4) · [نسخهٔ عمودی ۹:۱۶، فول‌اچ‌دی و 4K](https://github.com/msmahdinejad/iran-bourse-mcp/releases/tag/launch-film)
+
+<br>
+
 <img src="docs/assets/demo.svg" alt="یک ایجنت فولاد را با iran-bourse-mcp بررسی می‌کند" width="860">
 </div>
 

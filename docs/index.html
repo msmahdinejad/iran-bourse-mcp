@@ -21,6 +21,9 @@
 {"@context":"https://schema.org","@type":"SoftwareApplication","name":"iran-bourse-mcp","applicationCategory":"DeveloperApplication","operatingSystem":"Windows, macOS, Linux","description":"Open-source MCP server giving AI agents complete Tehran Stock Exchange (TSETMC) and Codal data.","url":"https://msmahdinejad.github.io/iran-bourse-mcp/","codeRepository":"https://github.com/msmahdinejad/iran-bourse-mcp","license":"https://opensource.org/licenses/MIT","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"author":{"@type":"Person","name":"Mohammad Saleh Mahdinejad"},"inLanguage":["en","fa"]}
 </script>
 
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"VideoObject","name":"iran-bourse-mcp launch film","description":"Two minutes: an AI agent reads the Tehran Stock Exchange through iran-bourse-mcp: a buy queue in one call, every trade of one minute, and a market-wide screen with about 10,000 times fewer tokens.","thumbnailUrl":"https://msmahdinejad.github.io/iran-bourse-mcp/assets/film/poster-16x9.jpg","uploadDate":"2026-11-05","duration":"PT1M56S","contentUrl":"https://msmahdinejad.github.io/iran-bourse-mcp/assets/film/iran-bourse-mcp-film-16x9-social.mp4","embedUrl":"https://msmahdinejad.github.io/iran-bourse-mcp/embed.html","inLanguage":"fa"}
+</script>
 </head>
 <body>
 
@@ -31,6 +34,7 @@
       iran-bourse-mcp
     </a>
     <nav class="nav-links" aria-label="Sections">
+      <a href="#film" data-i18n="nav.film">Film</a>
       <a href="#why" data-i18n="nav.why">Why</a>
       <a href="#screener" data-i18n="nav.screener">Screener</a>
       <a href="#benchmarks" data-i18n="nav.bench">Benchmarks</a>
@@ -81,6 +85,72 @@
     </div>
 
     <div class="stats" id="stats"></div>
+  </div>
+</section>
+
+<section id="film">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow" data-i18n="film.eyebrow">Launch film, 2 min</p>
+      <h2 data-i18n="film.h2">Two minutes. The whole market, answering an AI.</h2>
+      <p class="lead" data-i18n="film.lead">Real answers from the real server: a buy queue in one call, every Foolad trade of a single minute, and a market-wide screen that costs about 10,000 times fewer tokens.</p>
+    </div>
+    <div class="film-layout">
+      <div class="film-player">
+        <div class="film-stage" id="film-stage" data-ratio="wide">
+          <video id="film-video" controls playsinline preload="metadata" poster="assets/film/poster-16x9.jpg" aria-label="iran-bourse-mcp launch film, 2 minutes">
+            <source src="assets/film/iran-bourse-mcp-film-16x9-social.mp4" type="video/mp4">
+            <track kind="subtitles" srclang="en" label="English" src="assets/film/captions.en.vtt">
+            <track kind="captions" srclang="fa" label="فارسی" src="assets/film/captions.fa.vtt">
+            <a href="assets/film/iran-bourse-mcp-film-16x9-social.mp4">Download the film (MP4)</a>
+          </video>
+        </div>
+        <div class="film-toggle" role="group" aria-label="Format">
+          <button type="button" class="seg" data-ratio="wide" aria-pressed="true" data-i18n="film.wide">Wide 16:9</button>
+          <button type="button" class="seg" data-ratio="tall" aria-pressed="false" data-i18n="film.tall">Vertical 9:16</button>
+        </div>
+        <p class="film-note" data-i18n="film.note">Every number on screen is real tool output captured on 4 Nov 2026, with the market closed. The benchmark is small and single-model.</p>
+      </div>
+      <div class="film-panels">
+        <div class="film-card" id="film-dl">
+          <h3 data-i18n="film.dl.h">Download</h3>
+          <p class="film-sub" data-i18n="film.dl.lead">Free to download and share.</p>
+          <div class="dl-grid">
+            <span class="dl-l" data-i18n="film.dl.social">Web and social</span>
+            <a class="dl-btn" href="assets/film/iran-bourse-mcp-film-16x9-social.mp4" download>16:9<small>MP4, 22.4 MB</small></a>
+            <a class="dl-btn" href="assets/film/iran-bourse-mcp-film-9x16-social.mp4" download>9:16<small>MP4, 19.4 MB</small></a>
+            <span class="dl-l" data-i18n="film.dl.hd">Full HD</span>
+            <a class="dl-btn" href="https://github.com/msmahdinejad/iran-bourse-mcp/releases/download/launch-film/iran-bourse-mcp-film-16x9-1080p.mp4" rel="noopener">16:9<small>MP4, 36.6 MB</small></a>
+            <a class="dl-btn" href="https://github.com/msmahdinejad/iran-bourse-mcp/releases/download/launch-film/iran-bourse-mcp-film-9x16-1080p.mp4" rel="noopener">9:16<small>MP4, 32.2 MB</small></a>
+            <span class="dl-l" data-i18n="film.dl.uhd">4K master</span>
+            <a class="dl-btn" href="https://github.com/msmahdinejad/iran-bourse-mcp/releases/download/launch-film/iran-bourse-mcp-film-16x9-4k.mp4" rel="noopener">16:9<small>MP4, 176.0 MB</small></a>
+            <a class="dl-btn" href="https://github.com/msmahdinejad/iran-bourse-mcp/releases/download/launch-film/iran-bourse-mcp-film-9x16-4k.mp4" rel="noopener">9:16<small>MP4, 138.7 MB</small></a>
+          </div>
+          <p class="film-subs"><span data-i18n="film.dl.subs">Subtitles (SRT)</span>:
+            <a href="assets/film/captions.fa.srt" download>فارسی</a> · <a href="assets/film/captions.en.srt" download>English</a>
+            · <a href="https://github.com/msmahdinejad/iran-bourse-mcp/releases/tag/launch-film" target="_blank" rel="noopener" data-i18n="film.dl.all">all files</a></p>
+        </div>
+        <div class="film-card" id="film-share">
+          <h3 data-i18n="film.share.h">Share</h3>
+          <div class="share-grid">
+            <button type="button" class="share-btn primary" id="film-native" hidden data-i18n="film.share.native">Share…</button>
+            <a class="share-btn" id="sh-telegram" target="_blank" rel="noopener">Telegram</a>
+            <a class="share-btn" id="sh-whatsapp" target="_blank" rel="noopener">WhatsApp</a>
+            <a class="share-btn" id="sh-x" target="_blank" rel="noopener">X</a>
+            <a class="share-btn" id="sh-linkedin" target="_blank" rel="noopener">LinkedIn</a>
+            <button type="button" class="share-btn" id="film-copylink" data-i18n="film.share.copylink">Copy link</button>
+          </div>
+          <label class="film-label" for="film-post" data-i18n="film.share.text">Ready-made post</label>
+          <textarea id="film-post" rows="4"></textarea>
+          <div class="film-actions"><button type="button" class="mini-btn" id="film-copypost" data-i18n="film.share.copytext">Copy text</button></div>
+        </div>
+        <div class="film-card" id="film-embed-card">
+          <h3 data-i18n="film.embed.h">Embed</h3>
+          <textarea id="film-embed" class="mono" rows="3" readonly></textarea>
+          <div class="film-actions"><button type="button" class="mini-btn" id="film-copyembed" data-i18n="film.embed.copy">Copy code</button></div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
