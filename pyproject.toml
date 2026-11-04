@@ -1,12 +1,11 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-fancy-pypi-readme"]
 build-backend = "hatchling.build"
 
 [project]
 name = "iran-bourse-mcp"
-dynamic = ["version"]
+dynamic = ["version", "readme"]
 description = "MCP server giving AI agents complete, clean, analysis-ready Tehran Stock Exchange (TSETMC) and Codal data: quotes, order book, tick trades, real/legal flow, shareholders, filings and more."
-readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
 authors = [{ name = "Mohammad Saleh Mahdinejad" }]
@@ -29,17 +28,37 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/msmahdinejad/iran-bourse-mcp"
+Homepage = "https://msmahdinejad.github.io/iran-bourse-mcp/"
+Source = "https://github.com/msmahdinejad/iran-bourse-mcp"
+Documentation = "https://github.com/msmahdinejad/iran-bourse-mcp/blob/main/docs/TOOLS.md"
+Changelog = "https://github.com/msmahdinejad/iran-bourse-mcp/blob/main/CHANGELOG.md"
 Issues = "https://github.com/msmahdinejad/iran-bourse-mcp/issues"
 
 [project.scripts]
 iran-bourse-mcp = "iran_bourse_mcp.cli:main"
+
+[tool.hatch.metadata.hooks.fancy-pypi-readme]
+# PyPI shows the README without the repository around it: make relative images and links absolute.
+content-type = "text/markdown"
+fragments = [{ path = "README.md" }]
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = 'src="docs/assets/'
+replacement = 'src="https://msmahdinejad.github.io/iran-bourse-mcp/assets/'
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '\]\((?!https?://|#|mailto:)([^)\s]+)\)'
+replacement = '](https://github.com/msmahdinejad/iran-bourse-mcp/blob/main/\1)'
 
 [tool.hatch.version]
 path = "src/iran_bourse_mcp/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/iran_bourse_mcp"]
+
+[tool.hatch.build.targets.sdist]
+# Source, tests and the written docs; not the promo video, site assets or local tooling folders.
+include = ["/src", "/tests", "/benchmarks", "/scripts", "/docs/*.md", "/README.md", "/README.fa.md", "/CHANGELOG.md", "/LICENSE", "/pyproject.toml"]
 
 [dependency-groups]
 dev = [

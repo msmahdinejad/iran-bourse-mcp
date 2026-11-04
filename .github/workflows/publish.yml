@@ -1,10 +1,11 @@
 name: Publish to PyPI
 
 # Enable by configuring PyPI "trusted publishing" for this repository, then set the repository
-# variable PUBLISH_PYPI=true and push a tag like v0.2.0.
+# variable PUBLISH_PYPI=true and push a tag like v0.3.0, or run this workflow by hand. Steps: docs/RELEASING.md.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 jobs:
   publish:
