@@ -27,6 +27,7 @@ uv run python scripts/smoke_live.py
 5. **Be gentle with upstream.** Reuse the cache, keep concurrency low, never loop over the whole market per symbol.
 6. **Tool docstrings are prompts.** The first sentence says what it returns and includes the Persian term people actually type.
 7. Run `uv run python scripts/gen_tools_doc.py` when tools or parameters change.
+8. **Every tool needs a contract scenario** (recorded real responses, replayed offline). A new tool fails `tests/contract` until it has one; see [tests/README.md](tests/README.md).
 
 ## Generated files
 
