@@ -1,0 +1,8 @@
+{
+ "scenario": "supervisor_messages_market",
+ "tool": "supervisor_messages",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_Msg_GetMsgByFlow_1_30-573cfe7f"
+ ]
+}

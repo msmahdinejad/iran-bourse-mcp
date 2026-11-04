@@ -1,0 +1,8 @@
+{
+ "scenario": "fund_ranking",
+ "tool": "fund_ranking",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_Fund_GetFunds_5-4124e25e"
+ ]
+}

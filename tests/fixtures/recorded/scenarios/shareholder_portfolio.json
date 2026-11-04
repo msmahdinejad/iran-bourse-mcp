@@ -1,0 +1,8 @@
+{
+ "scenario": "shareholder_portfolio",
+ "tool": "shareholder_portfolio",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_Shareholder_GetShareHolderCompanyList_1460960-236b9296"
+ ]
+}

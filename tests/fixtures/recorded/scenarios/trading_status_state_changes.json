@@ -1,0 +1,8 @@
+{
+ "scenario": "trading_status_state_changes",
+ "tool": "trading_status",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_MarketData_GetInstrumentStateTop_200-d1b1423d"
+ ]
+}

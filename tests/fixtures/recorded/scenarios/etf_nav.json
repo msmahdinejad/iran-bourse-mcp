@@ -1,0 +1,10 @@
+{
+ "scenario": "etf_nav",
+ "tool": "etf_nav",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_ClosingPrice_GetClosingPriceInfo_17914401175772326-ff81c513",
+  "cdn__api_Fund_GetETFByInsCode_17914401175772326-c210aeb2",
+  "cdn__api_Instrument_GetInstrumentSearch-b2463fc3"
+ ]
+}

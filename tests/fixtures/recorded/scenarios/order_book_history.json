@@ -1,0 +1,10 @@
+{
+ "scenario": "order_book_history",
+ "tool": "order_book_history",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_BestLimits_3722699128879020_20261103-89b94a68",
+  "cdn__api_Instrument_GetInstrumentSearch-b280283b",
+  "cdn__api_MarketData_GetStaticThreshold_3722699128879020_20261-c7f66bab"
+ ]
+}

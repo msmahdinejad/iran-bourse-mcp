@@ -1,0 +1,8 @@
+{
+ "scenario": "indices",
+ "tool": "indices",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_Index_GetIndexB1LastAll_All_1-357a63c4"
+ ]
+}

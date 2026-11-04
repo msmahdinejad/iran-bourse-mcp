@@ -1,0 +1,11 @@
+{
+ "scenario": "top_movers_real_inflow",
+ "tool": "top_movers",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_ClientType_GetClientTypeAll-187a8bc4",
+  "cdn__api_ClosingPrice_GetMarketWatch-f1595858",
+  "cdn__api_StaticData_GetStaticData-fe76bd40",
+  "webgw__InstrumentProvider_api_v1_MarketWatch_MarketWatchCash_fa-cd561d07"
+ ]
+}

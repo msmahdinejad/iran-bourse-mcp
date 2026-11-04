@@ -1,0 +1,8 @@
+{
+ "scenario": "futures_market",
+ "tool": "futures_market",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_Instrument_GetInstrumentFutureMarketWatch_0-936b6021"
+ ]
+}

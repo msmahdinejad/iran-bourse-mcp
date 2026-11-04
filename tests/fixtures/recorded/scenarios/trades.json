@@ -1,0 +1,10 @@
+{
+ "scenario": "trades",
+ "tool": "trades",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_ClosingPrice_GetClosingPriceInfo_3722699128879020-601a3b3a",
+  "cdn__api_Instrument_GetInstrumentSearch-b280283b",
+  "cdn__api_Trade_GetTrade_3722699128879020-65bd8d2d"
+ ]
+}

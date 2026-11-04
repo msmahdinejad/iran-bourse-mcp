@@ -1,0 +1,8 @@
+{
+ "scenario": "search_symbol",
+ "tool": "search_symbol",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_Instrument_GetInstrumentSearch-e76af0c4"
+ ]
+}

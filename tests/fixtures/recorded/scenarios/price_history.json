@@ -1,0 +1,9 @@
+{
+ "scenario": "price_history",
+ "tool": "price_history",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_ClosingPrice_GetClosingPriceDailyList_46348559193224-d884a3dc",
+  "cdn__api_Instrument_GetInstrumentSearch-e76af0c4"
+ ]
+}

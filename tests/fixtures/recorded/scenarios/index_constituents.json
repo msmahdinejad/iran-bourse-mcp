@@ -1,0 +1,11 @@
+{
+ "scenario": "index_constituents",
+ "tool": "index_constituents",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_ClosingPrice_GetIndexCompany_32453344048876642-cdba927c",
+  "cdn__api_Index_GetIndexB1LastAll_All_1-357a63c4",
+  "cdn__api_Index_GetIndexB1LastAll_All_2-56da3c98",
+  "cdn__api_Index_GetInstEffect_20261105_1_9999-facd1b41"
+ ]
+}

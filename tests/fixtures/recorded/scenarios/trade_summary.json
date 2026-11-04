@@ -1,0 +1,11 @@
+{
+ "scenario": "trade_summary",
+ "tool": "trade_summary",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_ClosingPrice_GetClosingPriceDailyList_37226991288790-626862f7",
+  "cdn__api_ClosingPrice_GetClosingPriceInfo_3722699128879020-601a3b3a",
+  "cdn__api_Instrument_GetInstrumentSearch-b280283b",
+  "cdn__api_Trade_GetTradeHistory_3722699128879020_20261102_fals-c9946f06"
+ ]
+}

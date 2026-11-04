@@ -1,0 +1,16 @@
+{
+ "scenario": "screen_stocks",
+ "tool": "screen_stocks",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_ClosingPrice_GetInstrmentsHistoryInDay_20261028-fa5508b9",
+  "cdn__api_ClosingPrice_GetInstrmentsHistoryInDay_20261031-3d69bf56",
+  "cdn__api_ClosingPrice_GetInstrmentsHistoryInDay_20261101-531f31bf",
+  "cdn__api_ClosingPrice_GetInstrmentsHistoryInDay_20261102-296119b2",
+  "cdn__api_ClosingPrice_GetInstrmentsHistoryInDay_20261103-afbe9290",
+  "cdn__api_ClosingPrice_GetMarketWatch-f1595858",
+  "cdn__api_MarketData_GetMarketOverview_1-7b68d0b6",
+  "cdn__api_StaticData_GetStaticData-fe76bd40",
+  "webgw__InstrumentProvider_api_v1_MarketWatch_MarketWatchCash_fa-cd561d07"
+ ]
+}

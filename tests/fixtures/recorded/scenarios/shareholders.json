@@ -1,0 +1,10 @@
+{
+ "scenario": "shareholders",
+ "tool": "shareholders",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_Instrument_GetInstrumentInfo_46348559193224090-73110f46",
+  "cdn__api_Instrument_GetInstrumentSearch-e76af0c4",
+  "cdn__api_Shareholder_GetInstrumentShareHolderLast_46348559193-f306fb8c"
+ ]
+}

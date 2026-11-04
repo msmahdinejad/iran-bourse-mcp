@@ -1,0 +1,1 @@
+{"request":{"method":"GET","url":"https://cdn.tsetmc.com/api/Fund/GetETFByInsCode/17914401175772326"},"response":{"status":200,"content_type":"application/json; charset=utf-8","json":{"etf":{"insCode":"17914401175772326","deven":20261104,"hEven":180412,"pRedTran":91505.0,"pSubTran":92809.0,"iClose":0}}},"trimmed":[]}

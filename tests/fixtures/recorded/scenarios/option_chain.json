@@ -1,0 +1,8 @@
+{
+ "scenario": "option_chain",
+ "tool": "option_chain",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_Instrument_GetInstrumentOptionMarketWatch_0-c9321c54"
+ ]
+}

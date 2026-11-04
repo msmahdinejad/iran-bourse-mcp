@@ -1,0 +1,16 @@
+{
+ "scenario": "symbol_overview",
+ "tool": "symbol_overview",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_BestLimits_46348559193224090-80e7fe5c",
+  "cdn__api_ClientType_GetClientType_46348559193224090_1_0-83f8ee04",
+  "cdn__api_ClosingPrice_GetClosingPriceInfo_46348559193224090-d9c9fb13",
+  "cdn__api_Instrument_GetInstrumentIdentity_46348559193224090-df7e9a85",
+  "cdn__api_Instrument_GetInstrumentInfo_46348559193224090-73110f46",
+  "cdn__api_Instrument_GetInstrumentSearch-e76af0c4",
+  "cdn__api_Msg_GetMsgByInsCode_46348559193224090-7afaa8f0",
+  "cdn__api_Shareholder_GetInstrumentShareHolderLast_46348559193-f306fb8c",
+  "codal__api_search_v2_q-9b051636"
+ ]
+}

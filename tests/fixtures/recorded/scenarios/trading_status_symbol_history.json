@@ -1,0 +1,10 @@
+{
+ "scenario": "trading_status_symbol_history",
+ "tool": "trading_status",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_Instrument_GetInstrumentSearch-e76af0c4",
+  "cdn__api_MarketData_GetInstrumentStateAll_46348559193224090-a0116d60",
+  "cdn__api_Supervision_GetSupervisionByInsCode_4634855919322409-d09279b8"
+ ]
+}

@@ -1,0 +1,9 @@
+{
+ "scenario": "supervisor_messages_symbol",
+ "tool": "supervisor_messages",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_Instrument_GetInstrumentSearch-e76af0c4",
+  "cdn__api_Msg_GetMsgByInsCode_46348559193224090-7afaa8f0"
+ ]
+}

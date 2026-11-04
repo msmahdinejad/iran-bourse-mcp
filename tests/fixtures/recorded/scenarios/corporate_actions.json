@@ -1,0 +1,10 @@
+{
+ "scenario": "corporate_actions",
+ "tool": "corporate_actions",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_ClosingPrice_GetPriceAdjustList_46348559193224090-0200fc75",
+  "cdn__api_Instrument_GetInstrumentSearch-e76af0c4",
+  "cdn__api_Instrument_GetInstrumentShareChange_4634855919322409-69696d46"
+ ]
+}

@@ -1,0 +1,9 @@
+{
+ "scenario": "trading_status_suspended",
+ "tool": "trading_status",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_Supervision_GetSupervisionListBySourceID_1_3-283e6b28",
+  "cdn__api_Supervision_GetSupervisionListBySourceID_2_3-f1b0382e"
+ ]
+}

@@ -1,0 +1,10 @@
+{
+ "scenario": "index_history_intraday",
+ "tool": "index_history",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_Index_GetIndexB1LastAll_All_1-357a63c4",
+  "cdn__api_Index_GetIndexB1LastAll_All_2-56da3c98",
+  "cdn__api_Index_GetIndexB1LastDay_32097828799138957-e740ece6"
+ ]
+}

@@ -1,0 +1,9 @@
+{
+ "scenario": "codal_company",
+ "tool": "codal_company",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_Codal_GetCodalPublisherBySymbol-59f1350e",
+  "cdn__api_Instrument_GetInstrumentSearch-e76af0c4"
+ ]
+}

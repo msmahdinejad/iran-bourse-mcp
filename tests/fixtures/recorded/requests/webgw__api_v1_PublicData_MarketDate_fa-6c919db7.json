@@ -1,0 +1,1 @@
+{"request":{"method":"GET","url":"https://webgw.tse.ir/api/v1/PublicData/MarketDate/fa"},"response":{"status":200,"content_type":"application/json; charset=utf-8","json":[{"stockTypeId":"Tehran","stockType":"بورس","openTime":"9:00","closeTime":"12:30","isOpen":false},{"stockTypeId":"IFB","stockType":"فرابورس","openTime":"9:00","closeTime":"12:30","isOpen":false}]},"trimmed":[]}

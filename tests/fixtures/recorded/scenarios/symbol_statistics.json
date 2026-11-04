@@ -1,0 +1,9 @@
+{
+ "scenario": "symbol_statistics",
+ "tool": "symbol_statistics",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_Instrument_GetInstrumentSearch-e76af0c4",
+  "cdn__api_MarketData_GetInstrumentStatistic_46348559193224090-ff7283a4"
+ ]
+}

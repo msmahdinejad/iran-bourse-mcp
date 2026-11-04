@@ -1,0 +1,8 @@
+{
+ "scenario": "top_lists_gainers",
+ "tool": "top_lists",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_ClosingPrice_GetTradeTop_PClosingTop_1_10-d710eeb1"
+ ]
+}

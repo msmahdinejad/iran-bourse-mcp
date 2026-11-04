@@ -1,0 +1,10 @@
+{
+ "scenario": "market_status",
+ "tool": "market_status",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_MarketData_GetMarketOverview_1-7b68d0b6",
+  "cdn__api_StaticData_GetTime-a089aab1",
+  "webgw__api_v1_PublicData_MarketDate_fa-6c919db7"
+ ]
+}

@@ -1,0 +1,9 @@
+{
+ "scenario": "capital_calendar_recent",
+ "tool": "capital_calendar",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_ClosingPrice_GetPriceAdjustByFlow_1_300-842167ca",
+  "cdn__api_Instrument_GetInstrumentShareChangeByFlow_1_10-9843803b"
+ ]
+}

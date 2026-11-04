@@ -1,0 +1,10 @@
+{
+ "scenario": "quote",
+ "tool": "quote",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_ClosingPrice_GetClosingPriceInfo_46348559193224090-d9c9fb13",
+  "cdn__api_Instrument_GetInstrumentInfo_46348559193224090-73110f46",
+  "cdn__api_Instrument_GetInstrumentSearch-e76af0c4"
+ ]
+}

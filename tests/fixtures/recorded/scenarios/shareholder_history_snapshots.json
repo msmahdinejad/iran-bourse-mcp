@@ -1,0 +1,9 @@
+{
+ "scenario": "shareholder_history_snapshots",
+ "tool": "shareholder_history",
+ "recorded_at": "2026-11-05T01:04:50",
+ "requests": [
+  "cdn__api_Instrument_GetInstrumentSearch-e76af0c4",
+  "cdn__api_Shareholder_46348559193224090_20261103-c4a0bb75"
+ ]
+}
