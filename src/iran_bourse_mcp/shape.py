@@ -216,7 +216,13 @@ def book_metrics(bids: list[dict], asks: list[dict]) -> dict:
 
 def shape_order_book(rows: list[dict], upper: float | None, lower: float | None) -> dict:
     bids, asks = _levels(rows)
-    return {
+    outside = 0
+    for level in (*bids, *asks):  # after the close the book can already hold next-session orders beyond today's limits
+        price = level["price"]
+        if price is not None and ((upper and price > upper) or (lower and price < lower)):
+            level["outside_price_limits"] = True
+            outside += 1
+    out = {
         "bids": bids,
         "asks": asks,
         **book_metrics(bids, asks),
@@ -224,6 +230,9 @@ def shape_order_book(rows: list[dict], upper: float | None, lower: float | None)
         "price_limits": {"upper": upper, "lower": lower},
         "units": "price in rial, volume in shares",
     }
+    if outside:
+        out["note"] = f"{outside} level(s) are priced outside today's limits (orders for the next session): flagged outside_price_limits."
+    return out
 
 
 def reconstruct_book(rows: list[dict]) -> list[dict]:
@@ -435,7 +444,7 @@ def aggregate_ticks(
         "completeness": completeness,
         "bars": bars,
         "pressure_estimate": {
-            "method": "tick rule: volume of trades printed above/below the previous trade price",
+            "method": "classic tick rule: a trade above the previous price counts as up, below as down, and a trade at an unchanged price keeps the previous direction",
             "uptick_volume_pct": _r(up / total_volume * 100),
             "downtick_volume_pct": _r(down / total_volume * 100),
             "neutral_volume_pct": _r(neutral / total_volume * 100),
@@ -670,7 +679,7 @@ def shape_watch_row(row: dict) -> dict:
         "sell_queue_probable": bool(at_lower and not buy_qty),
         "best_bid": {"price": _f(_v(row.get("buyPrice"))), "volume": _i(buy_qty), "orders": _i(_v(row.get("buyCount")))},
         "best_ask": {"price": _f(_v(row.get("sellPrice"))), "volume": _i(sell_qty), "orders": _i(_v(row.get("sellCount")))},
-        "pe": _f(_v(row.get("pe"))),
+        "pe": next((p for p in (_f(_v(row.get("pe"))),) if p is not None and p > 0), None),
         "eps": _f(_v(row.get("eps"))),
         "market_cap": _i(_v(row.get("marketValue"))),
         "effect_on_index": effect,

@@ -29,6 +29,8 @@ from .text import ascii_digits, clean, match_key
 MARKET_FLOW = {"bourse": 1, "fara": 2, "fara-bourse": 2, "ifb": 2}
 MAX_ROWS = 5000
 QUEUE_CANDIDATES = 400  # every limit-locked symbol (about 200 on a strong day); one BestLimits call each
+CODAL_SCAN_PAGES = 8  # pages of 20 filings read while a title filter is looking for matches
+SECTION_TIMEOUT = 8.0  # seconds an optional symbol_overview section may take before it is reported as unavailable
 SESSION_WINDOW = (83000, 123500)  # HHMMSS: pre-open through just after close
 
 
@@ -43,6 +45,13 @@ def _flow(market: str | None) -> int:
     if flow is None:
         raise InputError("market must be 'bourse' or 'fara'.")
     return flow
+
+
+def _check_type(security_type: str | None) -> None:
+    try:
+        marketfeed.check_security_type(security_type)
+    except ValueError as exc:
+        raise InputError(str(exc)) from exc
 
 
 def _clamp(value: int, low: int, high: int) -> int:
@@ -181,6 +190,7 @@ class Bourse:
         only_traded: bool = True,
     ) -> tuple[int, list[dict]]:
         """Shaped market rows after the common universe filters; returns (all rows, kept rows)."""
+        _check_type(security_type)
         rows, self.market_source = await self._market_rows()
         total = len(rows)
 
@@ -294,7 +304,7 @@ class Bourse:
         limit = _clamp(limit, 1, 100)
 
         if kind in ("gainers", "losers"):
-            rows.sort(key=lambda r: r["last_pct"] if r["last_pct"] is not None else 0, reverse=(kind == "gainers"))
+            rows.sort(key=lambda r: (r["close_pct"] if r["close_pct"] is not None else 0, r["value"] or 0), reverse=(kind == "gainers"))
         elif kind in ("value", "volume", "trades"):
             rows.sort(key=lambda r: r[kind] or 0, reverse=True)
         elif kind in ("buy_queue", "sell_queue"):
@@ -505,6 +515,10 @@ class Bourse:
 
     async def industry_summary(self, market: str | None = None, limit: int = 15) -> dict:
         watch = await self.market_watch(market=market, security_type="سهام", only_traded=True, limit=700, detail="full")
+        try:
+            flows = await self._client_flows_by_instrument(watch["rows"])
+        except (NotAvailable, UpstreamError):
+            flows = {}
         groups: dict[str, list[dict]] = {}
         for r in watch["rows"]:
             groups.setdefault(r["industry"] or "?", []).append(r)
@@ -528,6 +542,7 @@ class Bourse:
                     "index_effect": shape._r(sum(r["effect_on_index"] or 0 for r in rows)),
                     "top_gainer": {"symbol": best["symbol"], "pct": best["last_pct"]},
                     "top_loser": {"symbol": worst["symbol"], "pct": worst["last_pct"]},
+                    "real_net_value_estimated": _real_net_value(rows, flows) if flows else None,
                     "in_buy_queue": sum(1 for r in rows if r["buy_queue_probable"]),
                     "in_sell_queue": sum(1 for r in rows if r["sell_queue_probable"]),
                 }
@@ -544,10 +559,11 @@ class Bourse:
         cut = lambda r: {"symbol": r["symbol"], "effect_on_index": r["effect_on_index"], "last_pct": r["last_pct"], "industry": r["industry"]}  # noqa: E731
         return {"positive": [cut(r) for r in pos], "negative": [cut(r) for r in neg], "unit": "index points"}
 
-    async def market_snapshot(self, date: str | int, sort_by: str = "value", limit: int = 30, security_type: str | None = None) -> dict:
+    async def market_snapshot(self, date: str | int, sort_by: str = "value", limit: int = 30, security_type: str | None = "stock") -> dict:
         deven = _date_arg(date)
         if deven is None:
             raise InputError("date is required")
+        _check_type(security_type)
         rows = await self.api.prices_on_day(deven)
         if not rows:
             return {"date": fmt_date(deven), "jdate": jdate(deven), "count": 0, "rows": [], "note": "No data (holiday or future date?)."}
@@ -574,12 +590,15 @@ class Bourse:
                     "instrument_id": r.get("instrumentID"),
                 }
             )
-        if security_type:
-            prefix = {"stock": ("IRO",), "fund": ("IRT",), "bond": ("IRB",)}.get(security_type.lower())
-            if not prefix:
-                raise InputError("security_type must be stock, fund or bond")
-            shaped = [r for r in shaped if (r["instrument_id"] or "").startswith(prefix)]
-        shaped = [r for r in shaped if (r["trades"] or 0) > 0]
+        live_types: dict[str, str] = {}
+        try:  # today's instruments carry their exact type (and TAL segments) in the live feed
+            live_types = {r["instrument_id"]: r["security_type"] for r in (await self._market_rows())[0]}
+        except (NotAvailable, UpstreamError):
+            pass
+        for r in shaped:
+            r["type"] = live_types.get(r["instrument_id"]) or marketfeed.type_from_instrument_id(r["instrument_id"])
+        shaped = [r for r in shaped if marketfeed.security_type_matches(r["type"], security_type)]
+        shaped = [r for r in shaped if (r["trades"] or 0) > 0 and (r["yesterday"] or 0) > 1]  # a reference price of 1 is an unpriced contract
         key = "change_pct" if sort_by == "change_pct" else sort_by
         shaped.sort(key=lambda r: (r[key] is None, -(r[key] or 0)))
         return {
@@ -615,7 +634,7 @@ class Bourse:
 
     # ------------------------------------------------------------------ symbol level
     async def search_symbol(self, query: str, limit: int = 15) -> dict:
-        rows = await self.api.search(clean(query) or query)
+        rows = await self.api.search(ascii_digits(clean(query) or query))
         out = []
         for r in rows[: _clamp(limit, 1, 50)]:
             out.append(
@@ -793,9 +812,10 @@ class Bourse:
         }
         if days:
             daily = await self.api.daily_prices(inst.ins_code)
-            dates = [int(r["dEven"]) for r in sorted(daily, key=lambda r: r["dEven"], reverse=True) if (r.get("zTotTran") or 0) > 0][:days]
+            dates = [int(r["dEven"]) for r in sorted(daily, key=lambda r: r["dEven"], reverse=True) if (r.get("zTotTran") or 0) > 0][: days + 2]
             results = await asyncio.gather(*(self.api.client_type_history(inst.ins_code, d) for d in dates), return_exceptions=True)
-            rows = [dict(r, recDate=r.get("recDate") or d) for d, r in zip(dates, results, strict=True) if isinstance(r, dict) and r]
+            # today's history is not always published yet: ask for two extra dates and keep the newest `days` that exist
+            rows = [dict(r, recDate=r.get("recDate") or d) for d, r in zip(dates, results, strict=True) if isinstance(r, dict) and r][:days]
             series = shape.shape_client_type_history(rows)
             net = [s["real_net_value"] for s in series if s["real_net_value"] is not None]
             out["history"] = series
@@ -936,19 +956,35 @@ class Bourse:
             if deven:
                 jy, jm, jd = _jalali(deven)
                 params[key] = f"{jy:04d}/{jm:02d}/{jd:02d}"
-        data = await self.api.codal_search(**params)
-        letters = [shape.shape_codal_letter(r, CODAL_SITE) for r in data.get("Letters", [])]
-        if title_contains:
-            needle = match_key(title_contains)
-            letters = [r for r in letters if needle in match_key(r["title"])]
-        return {
-            "total_matches": data.get("Total"),
-            "pages": data.get("Page"),
-            "page": params["PageNumber"],
-            "returned": len(letters[: _clamp(limit, 1, 100)]),
-            "filings": letters[: _clamp(limit, 1, 100)],
+        wanted = _clamp(limit, 1, 100)
+        needle = match_key(title_contains) if title_contains else None
+        letters: list[dict] = []
+        scanned = pages_read = 0
+        current, total_pages, total = params["PageNumber"], None, None
+        while True:  # a title filter is applied here, so keep reading pages until enough titles match
+            params["PageNumber"] = current
+            data = await self.api.codal_search(**params)
+            total, total_pages = data.get("Total"), data.get("Page")
+            page_letters = [shape.shape_codal_letter(r, CODAL_SITE) for r in data.get("Letters", [])]
+            scanned += len(page_letters)
+            pages_read += 1
+            letters += [r for r in page_letters if needle is None or needle in match_key(r["title"])]
+            exhausted = not page_letters or bool(total_pages and current >= total_pages)
+            if needle is None or len(letters) >= wanted or exhausted or pages_read >= CODAL_SCAN_PAGES:
+                break
+            current += 1
+        out: dict[str, Any] = {
+            "total_matches": total if needle is None else None,
+            "total_before_title_filter": total if needle else None,
+            "pages": total_pages,
+            "page": params["PageNumber"] if needle is None else current - pages_read + 1,
+            "returned": len(letters[:wanted]),
+            "filings": letters[:wanted],
             "note": "published/sent are Jalali timestamps as shown on Codal. Pass 'page' to read older filings.",
         }
+        if needle:
+            out["title_filter"] = {"scanned_filings": scanned, "scanned_pages": pages_read, "next_page": None if exhausted else current + 1}
+        return {k: v for k, v in out.items() if v is not None}
 
     async def codal_company(self, symbol: str) -> dict:
         inst = await self._inst(symbol)
@@ -977,8 +1013,8 @@ class Bourse:
         async def safe(name: str, coro: Any) -> Any:
             """Optional sections must not sink the whole dossier; say which ones are missing instead."""
             try:
-                return await coro
-            except UpstreamError:
+                return await asyncio.wait_for(coro, timeout=SECTION_TIMEOUT)
+            except (UpstreamError, asyncio.TimeoutError):
                 missing.append(name)
                 return None
 
@@ -1015,6 +1051,17 @@ class Bourse:
 
 
 # ---------------------------------------------------------------------- module helpers
+def _real_net_value(rows: list[dict], flows: dict[str, dict]) -> int:
+    """Estimated real-person net inflow of a group of symbols: net real volume x each symbol's vwap, rial."""
+    total = 0.0
+    for r in rows:
+        f = flows.get(r["instrument_id"])
+        if f:
+            net = (shape._f(f.get("buy_I_Volume")) or 0) - (shape._f(f.get("sell_I_Volume")) or 0)
+            total += net * (r["vwap"] or r["last"] or 0)
+    return int(total)
+
+
 async def _just(value: Any) -> Any:
     return value
 

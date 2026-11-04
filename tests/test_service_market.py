@@ -229,8 +229,9 @@ async def test_industry_summary_and_index_contributors(bourse):
 
 
 async def test_market_snapshot(bourse):
-    out = await bourse.market_snapshot("2026-11-04", sort_by="volume", limit=2)
+    out = await bourse.market_snapshot("2026-11-04", sort_by="volume", limit=2, security_type="all")
     assert out["traded_instruments"] == 5 and out["rows"][0]["volume"] >= out["rows"][1]["volume"]
+    assert (await bourse.market_snapshot("2026-11-04"))["traded_instruments"] == 4  # stocks only by default: options and funds are not stocks
     assert (await bourse.market_snapshot("2026-11-04", security_type="fund"))["traded_instruments"] == 1
     assert (await bourse.market_snapshot("2026-11-01"))["count"] == 0
     with pytest.raises(InputError):

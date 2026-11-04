@@ -27,6 +27,20 @@ TERMS: dict[str, dict[str, str]] = {
     "قیمت پایانی": {"en": "closing price", "meaning": "Volume-weighted average price of the last trading period, used by the exchange as the day's closing price."},
     "آخرین معامله": {"en": "last trade price", "meaning": "Price of the very last trade. Differs from the closing price."},
     "دامنه نوسان": {"en": "daily price limit", "meaning": "Allowed range around the reference price (typically ±3% to ±5% for stocks, other for funds). price_limits.upper/lower."},
+    "حجم مبنا": {
+        "en": "base volume",
+        "meaning": "The exchange's reference volume for a symbol, used to size order and price rules. Nearly every symbol reports 1, so 'volume above base volume' only means 'traded at all'.",
+    },
+    "P/E": {"en": "price to earnings", "meaning": "Closing price divided by earnings per share (EPS). Missing for loss-making companies; compare within an industry, not across them."},
+    "NAV": {
+        "en": "net asset value (funds)",
+        "meaning": "Per-unit redemption value of a fund (قیمت ابطال). A fund trading below its NAV is at a discount, above it at a premium (حباب).",
+    },
+    "حباب": {"en": "premium over NAV", "meaning": "For funds: (market price / NAV - 1) x 100. Positive means the units trade above their redemption value; negative means a discount."},
+    "TAL": {
+        "en": "closing-price (TAL) segment",
+        "meaning": "Symbols ending in a digit such as 3 that trade only at the closing price. Their daily limits are equal, so limit and queue logic does not apply; the exchange's own tables hide them by default.",
+    },
     "قیمت مجاز": {"en": "allowed price band", "meaning": "Same as the daily price limit for the day."},
     "تعدیل قیمت": {"en": "price adjustment", "meaning": "Base price change on the ex-date of a capital increase or dividend. Use adjusted=true in price_history for continuous series."},
     "سهامدار عمده": {"en": "major shareholder", "meaning": "Holder with roughly 1% or more of the shares, as listed by TSETMC."},

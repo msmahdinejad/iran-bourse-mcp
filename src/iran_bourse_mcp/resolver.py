@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 
 from .api import TseApi
-from .text import clean, match_key
+from .text import ascii_digits, clean, match_key
 
 _INS_CODE = re.compile(r"^\d{12,20}$")
 
@@ -92,7 +92,7 @@ class Resolver:
         )
 
     async def _by_symbol(self, ref: str) -> Instrument:
-        rows = await self._api.search(clean(ref) or ref)
+        rows = await self._api.search(ascii_digits(clean(ref) or ref))
         if not rows:
             raise SymbolError(f"No instrument matches {ref!r}.")
         key = match_key(ref)

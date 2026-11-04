@@ -44,7 +44,14 @@ How to work:
 - This is information, not investment advice.
 """
 
-mcp = FastMCP("iran-bourse", instructions=INSTRUCTIONS)
+try:  # SDK 2.x takes the version in its constructor; clients show it as serverInfo.version
+    mcp = FastMCP("iran-bourse", instructions=INSTRUCTIONS, version=__version__)
+except TypeError:  # SDK 1.x leaves it empty unless the low-level server is told
+    mcp = FastMCP("iran-bourse", instructions=INSTRUCTIONS)
+    try:
+        mcp._mcp_server.version = __version__
+    except AttributeError:  # pragma: no cover
+        pass
 _service: Bourse | None = None
 
 

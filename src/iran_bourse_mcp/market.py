@@ -29,10 +29,18 @@ TYPE_TAL, TYPE_HOUSING, TYPE_ENERGY, TYPE_OTHER = "معاملات پایانی T
 _BY_YVAL = {code: name for name, codes in TYPE_GROUPS for code in codes}
 MARKET_BY_FLOW = {1: "بورس", 2: "فرابورس", 3: "بازار مشتقه", 4: "فرابورس - بازار پایه", 6: "بورس انرژی", 7: "بورس کالا"}
 BOARD_TITLES = {
-    "N1": "بازار اول (تابلوی اصلی) بورس", "N2": "بازار دوم (تابلوی اصلی) بورس", "Z1": "بازار دوم فرابورس",
-    "1Z": "بازار اول فرابورس", "T2": "بازار ابزارهای نوین مالی فرابورس", "C1": "بازار پایه نارنجی فرابورس",
-    "P1": "بازار پایه زرد فرابورس", "F1": "بازار عادی آتی", "N4": "بازار اوراق بدهی", "5A": "بازار صندوق های قابل معامله",
+    "N1": "بازار اول (تابلوی اصلی) بورس", "N2": "بازار دوم (تابلوی اصلی) بورس", "Z1": "بازار دوم فرابورس", "1Z": "بازار اول فرابورس",
+    "P1": "بازار پایه زرد فرابورس", "C1": "بازار پایه نارنجی فرابورس", "L1": "بازار پایه قرمز فرابورس", "V1": "بازار نوآفرین - رشد",
+    "F1": "بازار عادی آتی", "N4": "بازار اوراق بدهی", "20": "بازار ابزارهای مشتقه", "13": "بازار ابزارهای مشتقه",
+    "T1": "بازار ابزارهای نوین مالی فرابورس", "T2": "بازار ابزارهای نوین مالی فرابورس", "1A": "بازار ابزارهای نوین مالی فرابورس",
+    "2A": "بازار ابزارهای نوین مالی فرابورس", "5A": "بازار صندوق های قابل معامله", "51": "بازار صندوق های قابل معامله",
+    "H1": "بازار صندوق های قابل معامله", "QS": "صندوق های کالایی", "Q1": "بورس کالا",
 }
+_ID_PREFIX_TYPES = (  # instrument-id prefix -> type, for end-of-day tables that carry no type code
+    ("IRO1", "سهام"), ("IRO3", "سهام"), ("IRO5", "سهام"), ("IRO7", "بازار پایه فرابورس"), ("IRO6", "تسهیلات مسکن"), ("IRO4", "آتی"),
+    ("IRO9", "اختیار معامله"), ("IROF", "اختیار معامله"), ("IROA", "اختیار معامله"), ("IROB", "اختیار معامله"),
+    ("IRT", "صندوق سرمایه گذاری"), ("IRB", "اوراق بدهی"), ("IRR", "حق تقدم"), ("IRK", "بورس کالا"), ("IRE", "انرژی"),
+)
 BOURSE_DERIVATIVE_CODES = frozenset({320, 321, 602, 603})  # options listed on the Tehran exchange (flow 3 is shared)
 
 # English words an agent may use for ``security_type`` -> the Persian type name above
@@ -58,6 +66,14 @@ def classify_instrument(raw: dict) -> str:
     return _BY_YVAL.get(_i(raw.get("yVal")) or -1, TYPE_OTHER)
 
 
+def type_from_instrument_id(instrument_id: str | None) -> str:
+    """Best-effort type of an instrument from its id (end-of-day tables have no type code; TAL rows cannot be told apart)."""
+    for prefix, name in _ID_PREFIX_TYPES:
+        if (instrument_id or "").startswith(prefix):
+            return name
+    return TYPE_OTHER
+
+
 def market_of(raw: dict) -> str:
     return MARKET_BY_FLOW.get(_i(raw.get("flow")) or 0, "سایر")
 
@@ -66,6 +82,23 @@ def is_fara(raw: dict) -> bool:
     """tsetmc.com's own split: flow 2 and 4, plus derivatives that do not belong to the Tehran exchange."""
     flow, yval = _i(raw.get("flow")), _i(raw.get("yVal"))
     return flow in (2, 4) or (flow == 3 and yval not in BOURSE_DERIVATIVE_CODES)
+
+
+def check_security_type(wanted: str | None) -> None:
+    """Reject a ``security_type`` that matches no instrument class, so a typo is an error rather than an empty result."""
+    if wanted is None or not str(wanted).strip():
+        return
+    key = str(wanted).strip().casefold()
+    if key in ("all", "*", "همه") or key in TYPE_WORDS:
+        return
+    needle = clean(wanted) or ""
+    known = (*(name for name, _ in TYPE_GROUPS), TYPE_TAL, TYPE_HOUSING, TYPE_ENERGY, TYPE_OTHER)
+    if any(needle in name or name in needle for name in known):
+        return
+    raise ValueError(
+        f"security_type '{wanted}' is not recognised. Use stock, fund, bond, option, future, rights, commodity, base, housing, energy, tal or all "
+        "(or a Persian word such as 'سهام' or 'صندوق')."
+    )
 
 
 def security_type_matches(actual: str | None, wanted: str | None) -> bool:
@@ -102,6 +135,7 @@ def shape_market_row(raw: dict, *, industries: dict[str, str] | None = None, gat
     at_lower = bool(traded and limited and last is not None and last <= lower)
     shares = _f(raw.get("ztd"))
     pe = _f(raw.get("pe"))
+    pe = pe if pe is not None and pe > 0 else None  # a loss-maker has no meaningful P/E
     sector = (raw.get("csv") or "").strip()
     gw = gateway or {}
 
