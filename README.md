@@ -480,7 +480,7 @@ _Six tasks, one model, runs per task: 1 (2 for T2 and T6 in the shell and MCP ar
 
 <div align="center"><img src="docs/assets/architecture.svg" alt="Architecture of iran-bourse-mcp" width="860"></div>
 
-Pure transformation logic (`shape.py`) is separated from I/O so every number can be tested offline. Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+Pure transformation logic (`shape.py`) is separated from I/O so every number can be tested offline. Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) ([فارسی](docs/ARCHITECTURE.fa.md)).
 
 ## The Iranian IP requirement
 
@@ -513,7 +513,7 @@ iran-bourse-mcp serve --transport streamable-http --host 127.0.0.1 --port 8000
 - Persian/Arabic letter variants are interchangeable on input (`کگل` = `كگل`) and normalised on output.
 - The market trades Saturday-Wednesday 09:00-12:30 Tehran time, except on official public holidays. `market_status` knows the 1405 holiday calendar (`holiday`, `next_session`, `upcoming_holidays`); for years not yet in the table only the fixed Solar Hijri holidays are known. The exchange also closes on some days without a holiday; `market_status` flags it when the exchange's own data disagrees with the calendar. Outside the session you get the last session's data.
 - **Order-book history for the current trading day may be partial.** TSETMC publishes the full intraday book history only after the day ends. `order_book_history` tells you when it is cut short (`events_span`, `warning`). Use `order_book` for the live book.
-- The unofficial endpoints can change without notice. Every quirk we found is in [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md).
+- The unofficial endpoints can change without notice. Every quirk we found is in [docs/DATA_SOURCES.md](docs/DATA_SOURCES.md) ([فارسی](docs/DATA_SOURCES.fa.md)).
 - Requests are cached briefly (seconds for live data, hours for history) and limited to 6 in flight. Please be gentle: this is somebody else's server.
 
 ## Troubleshooting

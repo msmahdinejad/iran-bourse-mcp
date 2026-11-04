@@ -4,7 +4,7 @@
 MCP client (Claude, Cursor, ...)
         │  stdio / streamable-http
 ┌───────▼────────┐
-│ server.py      │  FastMCP/MCPServer: 38 read-only tools, 4 prompts, 1 resource.
+│ server.py      │  FastMCP/MCPServer: 40 read-only tools, 4 prompts, 1 resource.
 │                │  Expected errors become readable ToolErrors.
 ├────────────────┤
 │ service.py     │  `Bourse`: one coroutine per tool. Orchestrates calls, joins sources,
@@ -16,6 +16,7 @@ MCP client (Claude, Cursor, ...)
 │                │  filter language of `screen_stocks`. derivatives.py, indices.py, funds.py,
 │                │  toplists.py, calendar_events.py, status.py: options and futures, indices,
 │                │  funds, the exchange's best-of lists, capital-increase calendar, trading status.
+│                │  commodity.py, energy.py: Iran Mercantile Exchange and Energy Exchange data.
 ├────────────────┤
 │ clients.py     │  Install recipes for 17 agents (snippets, deep links, safe config merge).
 │ cli.py         │  serve | doctor | tools | call | config | install.

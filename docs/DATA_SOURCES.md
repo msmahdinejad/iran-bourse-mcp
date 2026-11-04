@@ -1,14 +1,16 @@
 # Data sources and known quirks
 
-Three public, **unofficial** sources are used. None has documented stability guarantees. Every item below was observed on the live servers (2 to 4 November 2026) while building this project.
+Public, **unofficial** sources are used. None has documented stability guarantees. Every item below was observed on the live servers (2 to 5 November 2026) while building this project.
 
 | Source | Base URL | Key for an instrument | Used for |
 |---|---|---|---|
-| TSETMC API | `https://cdn.tsetmc.com/api` | `insCode` (numeric string) | quotes, history, order book, ticks, real/legal, shareholders, messages, Codal attachments |
-| TSE gateway | `https://webgw.tse.ir` | `instrumentId` (e.g. `IRO1FOLD0001`) | whole-market watch (590 rows incl. P/E, EPS, industry, board, limits), market open flags |
+| TSETMC API | `https://cdn.tsetmc.com/api` | `insCode` (numeric string) | quotes, history, order book, ticks, real/legal, shareholders, messages, Codal attachments; the whole-market feed (about 3,700 instruments with a five-level book), options and futures, indices, funds, the exchange's best-of lists, supervision and trading states |
+| TSE gateway | `https://webgw.tse.ir` | `instrumentId` (e.g. `IRO1FOLD0001`) | fallback and enrichment for the market watch (582 shares incl. industry and sub-industry names, status, effect on the index), market open flags |
 | Codal search | `https://search.codal.ir/api/search/v2/q` | `Symbol` | filings with page/PDF/Excel/attachment links |
+| IME and Iran Energy Exchange | `https://www.ime.co.ir`, `https://webapi.iee.ir` | contract symbol, auction id | `commodity_market`, `energy_market` (own section below) |
+| time.ir | `https://www.time.ir` | none | the official public-holiday calendar embedded in `dates.py` (read once, not called at run time) |
 
-`instrumentId` (gateway) and `insCode` (TSETMC) are joined through `GetInstrmentsHistoryInDay`, which carries both.
+`instrumentId` (gateway) and `insCode` (TSETMC) are joined through `GetInstrmentsHistoryInDay`, which carries both; the market-watch feed carries both too (`insID`, `insCode`).
 
 All requests need a browser-like `User-Agent`; without one TSETMC answers 403.
 
@@ -21,17 +23,29 @@ All requests need a browser-like `User-Agent`; without one TSETMC answers 403.
 | `order_book_history` | `BestLimits/{ins}/{date}`, `MarketData/GetStaticThreshold/{ins}/{date}` |
 | `trades`, `trade_summary` | `Trade/GetTrade/{ins}` (latest day), `Trade/GetTradeHistory/{ins}/{date}/false`, totals from `ClosingPrice/GetClosingPriceDailyList` |
 | `price_history` | `ClosingPrice/GetClosingPriceDailyList/{ins}/0` |
-| `real_legal_flow` | `ClientType/GetClientType/{ins}/1/0`, `ClientType/GetClientTypeHistory/{ins}/{date}` |
-| `top_movers` (real_*) | `ClientType/GetClientTypeAll`, `ClosingPrice/GetInstrmentsHistoryInDay/{date}`, gateway market watch |
-| queues in `top_movers` | gateway market watch to find limit-locked symbols, then `BestLimits/{ins}` for the true queue size |
+| `real_legal_flow` | `ClientType/GetClientType/{ins}/1/0`, `ClientType/GetClientTypeHistory/{ins}` (all days in one call, exact rial values), `.../{ins}/{date}` for one day |
+| `market_watch`, `top_movers`, `industry_summary` | `ClosingPrice/GetMarketWatch?market=0&industrialGroup=&showTraded=false&withBestLimits=true&hEven=0&RefID=0` (every instrument with a five-level book), `StaticData/GetStaticData` (industry names); the gateway market watch only as fallback and for sub-industry names and status |
+| `top_movers` (real_*) | `ClientType/GetClientTypeAll`, `ClosingPrice/GetInstrmentsHistoryInDay/{date}`, the market-watch feed |
+| queues in `top_movers` | the market-watch feed to find limit-locked symbols, then `BestLimits/{ins}` for the true queue size |
+| `screen_stocks`, `screener_reference` | today: the market-watch feed and `ClientType/GetClientTypeAll`; past days: `ClosingPrice/GetInstrmentsHistoryInDay/{date}`, one request per trading day for the whole market, up to 60 days |
 | `shareholders` | `Shareholder/GetInstrumentShareHolderLast/{ins}` |
-| `shareholder_history` | `Shareholder/{ins}/{date}` |
+| `shareholder_history` | `Shareholder/{ins}/{date}`, and for one holder `Shareholder/GetShareHolderHistory/{ins}/{id}/{top}` |
 | `shareholder_portfolio` | `Shareholder/GetShareHolderCompanyList/{holderId}` |
 | `market_holder_moves` | `Shareholder/GetShareHolderChanges/false` |
 | `corporate_actions` | `ClosingPrice/GetPriceAdjustList/{ins}`, `Instrument/GetInstrumentShareChange/{ins}` |
 | `symbol_statistics` | `MarketData/GetInstrumentStatistic/{ins}` |
 | `etf_nav` | `Fund/GetETFByInsCode/{ins}` |
 | `indices`, `market_overview` | `Index/GetIndexB1LastAll/All/{flow}`, `MarketData/GetMarketOverview/{flow}` (`flow` 1 = bourse, 2 = Fara Bourse) |
+| `option_chain` | `Instrument/GetInstrumentOptionMarketWatch/{flow}` |
+| `futures_market` | `Instrument/GetInstrumentFutureMarketWatch/0` |
+| `index_history` | `Index/GetIndexB2History/{ins}` (daily since 2008), `Index/GetIndexB1LastDay/{ins}` (today, five-minute path) |
+| `index_constituents` | `ClosingPrice/GetIndexCompany/{ins}`, `Index/GetInstEffect/{date}/{flow}/{top}` (effect in index points) |
+| `fund_ranking` | `Fund/GetFunds/{type}` |
+| `top_lists` | `ClosingPrice/GetTradeTop/{kind}/{flow}/{top}`, `BestLimits/GetBestLimitsTop/{kind}/{flow}/{top}`, `ClosingPrice/GetMarketCap/{kind}/{flow}/{top}`, `MarketData/GetSectorTop/{top}` |
+| `capital_calendar` | `Instrument/GetInstrumentShareChangeByFlow/{flow}/10`, `ClosingPrice/GetPriceAdjustByFlow/{flow}/{top}` |
+| `trading_status` | `Supervision/GetSupervisionListBySourceID/{source}/{type}`, `Supervision/GetSupervisionByInsCode/{ins}`, `MarketData/GetInstrumentStateTop/{n}`, `MarketData/GetInstrumentStateAll/{ins}` |
+| `commodity_market`, `energy_market` | the IME and Energy Exchange services of the section below |
+| `market_status` | `MarketData/GetMarketOverview/{flow}`, gateway `MarketDate`, `StaticData/GetTime`; the holiday calendar is built into `dates.py` |
 | `supervisor_messages` | `Msg/GetMsgByInsCode/{ins}`, `Msg/GetMsgByFlow/{flow}/{top}` |
 | `codal_filings` | Codal search API |
 | `codal_company` | `Codal/GetCodalPublisherBySymbol/{symbol}` |
@@ -47,7 +61,7 @@ All requests need a browser-like `User-Agent`; without one TSETMC answers 403.
 7. **`Shareholder/{ins}/{date}` returns each holder under two dates** (a current and a neighbouring snapshot). `shareholders` uses `GetInstrumentShareHolderLast` (clean, 1%+ holders); `shareholder_history` groups the dated rows and computes differences.
 8. **ETF endpoint is stock-hostile.** `GetETFByInsCode` returns HTTP 500 for non-fund instruments. `etf_nav` converts that to a clear "not a fund" answer.
 9. **Search is fuzzy.** `GetInstrumentSearch` returns about 41 hits for any query. We pick the exact normalised symbol match (Arabic ي/ك and Persian ی/ک are equal), preferring the lowest `flow` id when a symbol exists on several boards, and otherwise fail with suggestions.
-10. **The gateway's market watch cannot confirm a queue.** A limit-up symbol with no visible sell volume looks like a buy queue, but in our check 85 symbols looked like queues from the watch alone while 83 were real, and the best-bid fields are unreliable outside the session. `top_movers(kind="buy_queue")` therefore confirms every limit-locked candidate against its real order book (one `BestLimits` call each, about ten seconds on a day with ~200 limit-up symbols).
+10. **A market-watch row cannot confirm a queue.** A limit-up symbol with no visible sell volume looks like a buy queue, but in our check of the gateway's watch 85 symbols looked like queues while 83 were real, and the best-bid fields are unreliable outside the session. `top_movers(kind="buy_queue")` therefore confirms every limit-locked candidate against its real order book (one `BestLimits` call each, about ten seconds on a day with ~200 limit-up symbols).
 11. **Adjusted prices are inferred.** TSETMC's `GetPriceAdjustList` covers dividend adjustments but omits many capital increases (e.g. فولاد 2026-03-30, 1500bn to 1935bn shares, factor 0.775). We infer adjustment events from the series itself: on an ex-date `priceYesterday` no longer equals the previous `pClosing`. Differences under 0.1% are treated as tick rounding. Very old rows (before about 2014) sometimes lack this continuity.
 12. **Dates.** `dEven` is a Gregorian `YYYYMMDD` integer, `hEven` is `HHMMSS` (no leading zero, so `90013` is 09:00:13). `GetChartData` uses a nonstandard timestamp, so we do not use it.
 13. **Text.** TSETMC stores Arabic letters (ي ك). We normalise returned text to Persian letters.
@@ -55,6 +69,21 @@ All requests need a browser-like `User-Agent`; without one TSETMC answers 403.
 15. **Overloaded upstream.** The exchange servers occasionally answer 502/503 under load. Requests are retried with backoff; a persistent failure is reported as an overloaded server, not as an IP problem.
 16. **Codal.** The documented `codal.ir` pages are JavaScript templates; the working source is the public search API (`search.codal.ir/api/search/v2/q`). Its relative PDF link (`DownloadFile.aspx?...`) resolves against the site root, not `/Reports/`.
 17. **Payload sizes.** A day of ticks is about 3 MB, order-book history 3 MB, supervisor messages for one symbol 3.5 MB, full daily price history 1.5 MB. Responses are cached for a short time and summarised before they reach the model.
+18. **Two market-watch feeds.** The gateway lists 582 shares. `ClosingPrice/GetMarketWatch`, the feed tsetmc.com's own table and filter box run on, returns about 3,700 instruments (shares, base market, funds, bonds, rights, options, futures, commodities) with a five-level book in `blDs`, base volume `bv`, share count `ztd`, fund NAV `pRedTran`, open interest `buyOP`, instrument type code `yVal`, board `cGrValCot` and sector code `csv`. `pe` is a string or null, and zero or negative for loss-makers, which we report as no P/E. The whole-market tools use this feed; the gateway stays as a fallback and for industry and sub-industry names.
+19. **Sector codes are zero-padded in the feed.** `csv` is `01` to `09` where the static industry table has `1` to `9`; they are compared as numbers (40 of 3,680 rows otherwise lost their industry).
+20. **Orders outside the day's price limits cannot trade.** An ask above the ceiling or a bid below the floor can sit in the book but never executes, so it does not break a queue: a buy queue is the price at the ceiling with nothing tradable offered. Boards F3, G3 and U3 (TAL) have equal limits, which makes queue logic meaningless there.
+21. **A whole market per day in one request.** `GetInstrmentsHistoryInDay/{date}` is about 0.9 MB and holds only the instruments that traded; a listed symbol that is absent traded nothing that day (the screener counts zero volume from its first listing, and treats days before listing as unknown). One request per day takes 0.1 to 0.3 s.
+22. **Client-type history in one call.** `ClientType/GetClientTypeHistory/{ins}` without a date returns every day with exact rial values, so `real_legal_flow(days=N)` needs one request, not N.
+23. **Tickers are not unique.** A symbol can exist as several records, old ones dead; resolving to the wrong one made about 5% of symbols fail with HTTP 500. The resolver prefers the record that traded most recently.
+24. **Codal paging.** The search API returns pages of 20 filings. `codal_filings(title_contains=...)` filters titles itself: it reads up to 8 pages and keeps the matches (one page missed most hits).
+25. **Rate limiting is per host.** An HTTP 429 puts that host on a 60-second cool-down, and the error says rate-limited instead of blaming the IP. Requests to other hosts continue.
+26. **Adjustment chains break on silent days.** The `priceYesterday` chain used to infer capital-increase adjustments (quirk 11) is not linked across days on which a symbol did not trade; the adjuster skips days without a close and links the traded days across the gap.
+27. **Calendar quirks.** The exchange also closes on days that are not holidays (4 to 6 July 2026, for instance). `market_status` knows the official holidays and says so when the exchange's own newest data disagrees with its calendar; see the next section.
+28. **Small oddities seen on 5 November.** `exchange_server_time` (`GetTime`) is UTC in `MM/DD/YYYY` form; the holder-history endpoint stamps its newest row with the next trading day.
+
+## Public holidays (`market_status`)
+
+The exchange trades Saturday to Wednesday except on official public holidays. No exchange endpoint lists them, so `dates.py` carries two tables: the fixed Solar Hijri holidays (Nowruz 1 to 4 Farvardin, 12 and 13 Farvardin, 14 and 15 Khordad, 22 Bahman, 29 Esfand), valid for every year, and the official calendar of Jalali year 1405 as published by time.ir (read on 5 November 2026: 23 holidays that do not fall on a Friday, religious ones included). Religious holidays follow the moon and are announced year by year, so a year that is not in the table only gets the fixed ones, and the output says so. The tests compare both tables with the exchange's own history: every Saturday to Wednesday since 2019 without an entry in the total index history (162 days) is stored in `tests/fixtures/exchange_closed_weekdays.json`, every fixed and every published holiday that fell on a Saturday to Wednesday up to now is one of them, and the only closures the calendar does not explain are 4 to 6 July 2026, which the exchange decided itself.
 
 ## Commodity and energy exchanges (IME, Iran Energy Exchange)
 
@@ -122,7 +151,7 @@ Found in the bundle of `main.tsetmc.com` (the pages «بورس انرژی»). Th
 | Endpoint | Observed |
 |---|---|
 | `Energy/GetGetAuctionListItemByType/{active\|ready\|ended\|mazad}/{top}/{isDPE}` | `auctionListItem`; **only** `isDPE` 2 (13 `ended` bond price-discovery auctions of 2019 to 2021), 4 (green electricity, 5 `ready`) and 5 (free electricity, 3 `ready`) returned rows; 0, 1, 3, 6 to 11 and -1 are empty for every type, so the physical rings cannot be listed this way |
-| `Energy/GetAuctionById/{id}` | 4 to 10 KB; 56 fields incl. `auctionVol`, `volUnitTitle`, `priceUnitTitle`, `baseVolUnitTitle` (`كيلوگرم`), `stepTitle`; `idn` and `instrumentID` come back 0. It also answers for physical-ring auctions that the list below does not show (96520, liquid nitrogen) |
+| `Energy/GetAuctionById/{id}` | 4 to 10 KB; 56 fields incl. `auctionVol`, `volUnitTitle`, `priceUnitTitle`, `baseVolUnitTitle` (`كيلوگرم`), `stepTitle`; `idn` and `instrumentID` come back 0. It also answers for physical-ring auctions that the list above does not show (96520, liquid nitrogen) |
 | `Energy/GetAuctionOrderById/{id}/{A\|V}` | `A` = buy orders (page header «سفارش خرید»), `V` = sell orders: `[{"orderCount":3,"orderPrice":6.5,"orderQuantity":4000.0}]` |
 | `Energy/GetAuctionTradeById/{id}`, `Energy/GetInstrumentTradeByAuctionId/{id}` | `[{"tradeDate":"2026-11-04T12:52:00.130","tradedPrice":180000.0,"tradedQuantity":60.0}]` |
 | `Energy/GetAuctionOverview/0`, `Energy/GetPowerOverview/{60\|62\|64\|69}` | auction totals (`totalCount`, `totalValue`, all 0 on a closed day); per-flow electricity totals (`f60_MarketActivityQTotCap` 476,929,008,000, `f60_MarketActivityZTotTran` 6) and `marketStateTitle` `بسته`; flows 6 and 71 answer HTTP 500 |
@@ -150,4 +179,4 @@ IME and the Energy Exchange publish after the session; both are closed Thursday 
 
 ## Not covered (yet)
 
-Option Greeks and implied volatility (`option_chain` gives moneyness, intrinsic and time value only), index weights (the exchange publishes none; `index_constituents` gives each stock's effect in index points instead), the Persian public-holiday calendar (holidays are not modelled; the commodity tools simply report an empty session), IME's sub-market (`"fari":true`) and its gold, silver and certificate portals, TSETMC's `Energy` auction endpoints and electricity bids (`GetBestLimitsTopPower`), and the Energy Exchange's derivative and certificate statistics (their instruments are in `top_lists`).
+Option Greeks and implied volatility (`option_chain` gives moneyness, intrinsic and time value only), index weights (the exchange publishes none; `index_constituents` gives each stock's effect in index points instead), the holiday table for Jalali year 1406 and any closure the exchange decides without notice, IME's sub-market (`"fari":true`) and its gold, silver and certificate portals, TSETMC's `Energy` auction endpoints and electricity bids (`GetBestLimitsTopPower`), and the Energy Exchange's derivative and certificate statistics (their instruments are in `top_lists`).
