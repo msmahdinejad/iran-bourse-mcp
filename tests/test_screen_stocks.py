@@ -172,3 +172,24 @@ async def test_screener_reference_tool(bourse):
     assert "fields" in await bourse.screener_reference()
     with pytest.raises(InputError):
         await bourse.screener_reference("nope")
+
+
+class GappyApi(ScreenApi):
+    """ب did not trade on 2 Nov; ه is missing from the oldest day because it was not listed yet."""
+
+    async def prices_on_day(self, deven):
+        rows = await super().prices_on_day(deven)
+        drop = {20261102: "IRO1BBBB0001", 20261101: "IRO1EEEE0001"}.get(deven)
+        return [r for r in rows if r.get("instrumentID") != drop]
+
+
+async def test_silent_days_count_as_zero_volume_but_unlisted_days_do_not():
+    b = Bourse()
+    b.api = GappyApi()
+    b.resolver._api = b.api
+    out = await b.screen_stocks(filter="volume > 0", columns=["symbol", "avg(volume, 3) as avg3", "volume[2] as vol_2_days_ago"], limit=10)
+    rows = {r["symbol"]: r for r in out["rows"]}
+    assert rows["ب"]["avg3"] == pytest.approx((2_000_000 + 0 + 2_000_000) / 3) and rows["ب"]["vol_2_days_ago"] == 0
+    assert rows["ه"]["avg3"] == pytest.approx(1_000_000)  # only the two sessions it traded in
+    streak = await b.screen_stocks(filter="close_pct < 0 and all(close_pct < 0, 3)")
+    assert streak["matched"] == 0  # a silent day has no price change, so the streak is broken

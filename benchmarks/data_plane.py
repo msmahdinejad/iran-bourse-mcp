@@ -162,6 +162,22 @@ async def raw_price_history(raw: Raw) -> None:
     await raw.get(f"{CDN}/ClosingPrice/GetClosingPriceDailyList/{ins}/0")
 
 
+async def raw_screen(raw: Raw) -> None:
+    """The market watch plus the 20 previous trading days' end-of-day tables: the minimum needed to compute the screen."""
+    import datetime as dt
+
+    await raw.get(f"{WEBGW}/InstrumentProvider/api/v1/MarketWatch/MarketWatchCash/fa")
+    overview =(await raw.get(f"{CDN}/MarketData/GetMarketOverview/1"))["marketOverview"]["marketActivityDEven"]
+    day = dt.date(overview // 10000, overview // 100 % 100, overview % 100)
+    found = 0
+    while found < 20:
+        day -= dt.timedelta(days=1)
+        if day.weekday() in (3, 4):  # Thursday, Friday
+            continue
+        rows = (await raw.get(f"{CDN}/ClosingPrice/GetInstrmentsHistoryInDay/{day:%Y%m%d}"))["closingPriceDailyHistoryWithInstDetails"]
+        found += 1 if len(rows) > 100 else 0
+
+
 TASKS = [
     ("quote", "Live quote with correct % change", raw_quote, "quote", {"symbol": SYMBOL}),
     ("order_book", "Order book with queue detection", raw_order_book, "order_book", {"symbol": SYMBOL}),
@@ -171,6 +187,13 @@ TASKS = [
     ("buy_queues", "Market-wide ranking of buy queues", raw_buy_queues, "top_movers", {"kind": "buy_queue", "limit": 10}),
     ("codal_5", "Latest 5 Codal filings with links", raw_codal, "codal_filings", {"symbol": SYMBOL, "limit": 5}),
     ("price_history_1y", "One year of daily prices, adjusted", raw_price_history, "price_history", {"symbol": SYMBOL, "limit": 250, "adjusted": True}),
+    (
+        "screen_surge",
+        "Screen the market: volume > 2x 20-day average, up yesterday and today",
+        raw_screen,
+        "screen_stocks",
+        {"filter": "volume > 2 * avg(volume, 20) and close_pct[1] > 1 and close_pct > 0 and value > 5B", "limit": 10},
+    ),
 ]
 
 
@@ -247,9 +270,11 @@ async def traps() -> list[dict]:
 
 
 # ------------------------------------------------------------------------------ main
-async def run(repeats: int) -> dict:
+async def run(repeats: int, only: set[str] | None = None) -> dict:
     results = []
     for key, title, raw_route, tool, args in TASKS:
+        if only and key not in only:
+            continue
         raw_runs, mcp_runs = [], []
         for _ in range(repeats):
             await asyncio.sleep(3)  # be polite: the exchange throttles bursts
@@ -288,6 +313,8 @@ async def run(repeats: int) -> dict:
         results.append(row)
         print(f"{key:18} raw {row['raw']['requests']:>3} req {row['raw']['seconds']:>5.1f}s {row['raw']['tokens']:>9,} tok | "
               f"mcp {row['mcp']['seconds']:>5.1f}s {row['mcp']['tokens']:>6,} tok | x{row['token_reduction']}")
+    if only:  # partial run: the caller merges these rows into an existing result file
+        return {"tasks": results}
     browser = await browser_baseline()
     return {
         "generated": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
@@ -324,9 +351,23 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", default="benchmarks/results/data_plane.json")
     parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument("--only", help="comma-separated task ids; their rows are merged into the existing --out file")
     args = parser.parse_args()
-    data = asyncio.run(run(args.repeats))
+    only = {t.strip() for t in args.only.split(",")} if args.only else None
+    data = asyncio.run(run(args.repeats, only))
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+    if only:
+        merged = json.loads(Path(args.out).read_text(encoding="utf-8"))
+        known = {t["id"]: i for i, t in enumerate(merged["tasks"])}
+        for row in data["tasks"]:
+            if row["id"] in known:
+                merged["tasks"][known[row["id"]]] = row
+            else:
+                merged["tasks"].append(row)
+        merged["generated"] = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
+        Path(args.out).write_text(json.dumps(merged, ensure_ascii=False, indent=2), encoding="utf-8")
+        print("merged", sorted(only), "into", args.out)
+        raise SystemExit(0)
     Path(args.out).write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     print("\ntraps:")
     for t in data["traps"]:

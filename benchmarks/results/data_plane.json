@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-04 09:16:52 UTC",
+  "generated": "2026-11-04 15:51:55 UTC",
   "tokenizer": "tiktoken o200k_base (proxy)",
   "repeats": 3,
   "tasks": [
@@ -146,6 +146,24 @@
       },
       "token_reduction": 31.3,
       "byte_reduction": 34.3
+    },
+    {
+      "id": "screen_surge",
+      "title": "Screen the market: volume > 2x 20-day average, up yesterday and today",
+      "raw": {
+        "requests": 22,
+        "seconds": 5.75,
+        "bytes": 19215105,
+        "tokens": 7437128
+      },
+      "mcp": {
+        "requests": 1,
+        "seconds": 3.94,
+        "bytes": 2050,
+        "tokens": 723
+      },
+      "token_reduction": 10286.5,
+      "byte_reduction": 9373.2
     }
   ],
   "traps": [

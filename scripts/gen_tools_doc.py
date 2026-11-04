@@ -13,6 +13,7 @@ from iran_bourse_mcp.server import mcp
 GROUPS = {
     "Market": ["market_status", "market_overview", "indices", "market_watch", "top_movers", "industry_summary", "index_contributors", "market_snapshot", "market_holder_moves", "supervisor_messages"],
     "Symbol": ["search_symbol", "symbol_overview", "quote", "order_book", "order_book_history", "trades", "trade_summary", "price_history", "real_legal_flow", "shareholders", "shareholder_history", "shareholder_portfolio", "corporate_actions", "symbol_statistics", "etf_nav"],
+    "Screener": ["screen_stocks", "screener_reference"],
     "Codal": ["codal_filings", "codal_company"],
     "Help": ["glossary"],
 }

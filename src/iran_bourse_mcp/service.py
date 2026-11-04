@@ -410,13 +410,17 @@ class Bourse:
         )
 
         wanted = {r["instrument_id"] for r in universe}
-        by_instrument: dict[str, list[dict]] = {i: [] for i in wanted}
-        missing_day: dict[str, Any] = {}
-        for _, rows in tables:
-            present = {r.get("instrumentID"): r for r in rows if r.get("instrumentID") in wanted}
-            for iid, bucket in by_instrument.items():
-                raw = present.get(iid)
-                bucket.append(screener.build_history_day(raw) if raw else missing_day)
+        per_day = [{r.get("instrumentID"): r for r in rows if r.get("instrumentID") in wanted} for _, rows in tables]
+        by_instrument: dict[str, list[dict]] = {}
+        for iid in wanted:
+            # The end-of-day table lists only symbols that traded. A silent day after the symbol's first appearance
+            # counts as zero volume; days before it first appeared stay unknown.
+            sequence = [day.get(iid) for day in per_day]
+            first_seen = max((i for i, raw in enumerate(sequence) if raw), default=-1)
+            by_instrument[iid] = [
+                screener.build_history_day(raw) if raw else (screener.NOT_TRADED if i < first_seen else screener.NO_DATA)
+                for i, raw in enumerate(sequence)
+            ]
 
         matched: list[screener.Ctx] = []
         for row in universe:

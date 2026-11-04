@@ -308,3 +308,27 @@ def test_every_example_in_the_reference_compiles():
 
 def test_tidy_cells():
     assert S.tidy(5.0) == 5 and S.tidy(1.23456789) == 1.2346 and S.tidy(float("nan")) is None and S.tidy("x") == "x" and S.tidy(True) is True
+
+
+def test_filters_written_for_the_exchange_filter_box_work():
+    """The names and JavaScript spellings of tsetmc.com's own filter box are accepted."""
+    row = {"last": 1030.0, "yesterday": 1000.0, "upper_limit": 1030.0, "volume": 5e6, "close_pct": 3.0, "last_pct": 3.0,
+           "real_buy_volume": 900.0, "real_sell_volume": 100.0, "value": 5e9, "trades": 40.0, "symbol": "x"}
+    assert ok("pl === tmax && tvol > 1000000 && pcp >= 3 && plp !== 0", row)
+    assert ok("Math.abs(pl - py) >= 30 and tval > 4B and tno > 10", row)
+    assert ok("ct.Buy_I_Volume > ct.Sell_I_Volume", row) and not ok("ct.Buy_I_Volume < ct.Sell_I_Volume", row)
+    assert ok("l18 == 'x'", row)
+    assert S.compile_filter("pl > pf and pd1 > 0 and qo1 == 0").fields == {"last", "open", "bid_price", "ask_volume"}
+
+
+def test_adjust_history_links_traded_days_across_a_silent_day():
+    # the bonus issue happened on the first traded day after a day without trades
+    days = [
+        {"close": 1000.0, "yesterday": 990.0, "high": 1010.0},  # yesterday
+        S.NOT_TRADED,  # 2 days ago: no trades
+        {"close": 990.0, "yesterday": 985.0, "high": 995.0},  # 3 days ago
+    ]
+    days = [dict(d) for d in days]
+    S.adjust_history(500.0, days)  # today's reference 500 vs yesterday's close 1000: a 2-for-1 event
+    assert days[0]["close"] == 500.0 and days[2]["close"] == pytest.approx(495.0)
+    assert days[1] == {"volume": 0.0, "value": 0.0, "trades": 0.0}  # the silent day is untouched

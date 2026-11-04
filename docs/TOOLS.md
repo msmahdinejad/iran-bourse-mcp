@@ -243,6 +243,34 @@ Fund/ETF issue and redemption NAV vs market price: premium/discount (صدور و
 |---|---|---|
 | `symbol`* | string | Persian symbol such as 'فولاد', or an insCode |
 
+## Screener
+
+### `screen_stocks`
+
+Stock screener (فیلتر نویسی): the filter box of tsetmc.com driven by an expression. Returns only the stocks that pass your condition right now, using today's live values plus up to 60 past trading days (close[1], avg(volume, 20), count(close_pct > 0, 3)) and real/legal money flow, in one call with a validated, safe expression (nothing is executed).
+
+| parameter | type | description |
+|---|---|---|
+| `filter` | string | Condition checked for every stock, e.g. "volume > 2 * avg(volume, 20) and close_pct > 1". Today: last close open high low yesterday last_pct close_pct volume value(rial) trades pe eps market_cap bid_volume ask_volume at_upper_limit buy_queue real_net_value real_buyer_power industry symbol. Past days: close[1] (yesterday), avg(volume, 20), highest(high, 10), count(close_pct > 0, 5), all(close_pct < 0, 3). Operators: and or not, has(industry, 'بانک'), 5B = 5 billion rial. All fields and functions: screener_reference. |
+| `preset` | string | Ready-made filter, e.g. volume_surge, smart_money, breakout_20d, buy_queue (screener_reference lists them). ANDed with filter. |
+| `market` | string | 'bourse' or 'fara' (Fara Bourse). Omit for both where applicable. |
+| `security_type` | string | Substring of the security type, default 'سهام' (stocks) (default `سهام`) |
+| `industry` | string | Industry name substring, e.g. 'بانک' |
+| `columns` | array | Expressions to show, optionally 'expr as label'. Default: symbol, last, close_pct, volume, value plus the fields and window values the filter uses. |
+| `sort` | string | Expression to sort by, e.g. 'volume / avg(volume, 20)'. Default: the preset's, else value. |
+| `descending` | boolean |  |
+| `limit` | integer |  (default `30`) |
+| `include_untraded` | boolean | Also consider symbols with no trades today (default `False`) |
+| `adjusted` | boolean | Adjust past prices for capital increases and dividends so close[5] is comparable with close (default `True`) |
+
+### `screener_reference`
+
+Fields, functions, ready-made presets and examples for screen_stocks filters. Call it when a filter is rejected or you need a field name.
+
+| parameter | type | description |
+|---|---|---|
+| `topic` | string | overview (default), fields, functions, presets, syntax, examples or all (default `overview`) |
+
 ## Codal
 
 ### `codal_filings`

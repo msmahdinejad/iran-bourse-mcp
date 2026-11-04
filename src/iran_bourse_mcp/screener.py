@@ -57,8 +57,8 @@ def _f(name: str, kind: str, unit: str, label: str, doc: str, **kw: Any) -> Fiel
 
 FIELDS: tuple[Field, ...] = (
     # identity
-    _f("symbol", "text", "text", "نماد", "Ticker, e.g. فولاد."),
-    _f("name", "text", "text", "نام شرکت", "Company name."),
+    _f("symbol", "text", "text", "نماد", "Ticker, e.g. فولاد.", aliases=("l18",)),
+    _f("name", "text", "text", "نام شرکت", "Company name.", aliases=("l30",)),
     _f("industry", "text", "text", "گروه صنعت", "Industry group, e.g. 'فلزات اساسی'. Use has(industry, 'فلزات') or industry in ('بانکها', 'خودرو')."),
     _f("sub_industry", "text", "text", "زیرگروه صنعت", "Industry sub-group."),
     _f("market", "text", "text", "بازار", "'بورس' or 'فرابورس'."),
@@ -72,16 +72,18 @@ FIELDS: tuple[Field, ...] = (
     _f("high", "num", "rial", "بیشترین قیمت", "Day high.", history=True, aliases=("pmax", "max_price")),
     _f("low", "num", "rial", "کمترین قیمت", "Day low.", history=True, aliases=("pmin", "min_price")),
     _f("yesterday", "num", "rial", "قیمت دیروز", "Reference price: previous day's adjusted close.", history=True, aliases=("py", "yesterday_price")),
-    _f("last_pct", "num", "%", "درصد آخرین معامله", "Last trade vs reference price, in percent.", history=True, aliases=("pl_pct",)),
-    _f("close_pct", "num", "%", "درصد قیمت پایانی", "Close vs reference price, in percent.", history=True, aliases=("pc_pct",)),
+    _f("last_change", "num", "rial", "تغییر آخرین معامله", "Last trade minus reference price.", history=True, aliases=("plc",)),
+    _f("close_change", "num", "rial", "تغییر قیمت پایانی", "Close minus reference price.", history=True, aliases=("pcc",)),
+    _f("last_pct", "num", "%", "درصد آخرین معامله", "Last trade vs reference price, in percent.", history=True, aliases=("plp",)),
+    _f("close_pct", "num", "%", "درصد قیمت پایانی", "Close vs reference price, in percent.", history=True, aliases=("pcp",)),
     _f("vwap", "num", "rial", "میانگین قیمت معاملات", "value / volume.", history=True),
     # activity (history-capable)
     _f("volume", "num", "shares", "حجم معاملات", "Traded volume in shares.", history=True, aliases=("tvol", "vol")),
     _f("value", "num", "rial", "ارزش معاملات", "Traded value in rial (1B = one billion rial = 100M toman).", history=True, aliases=("tval",)),
     _f("trades", "num", "count", "تعداد معاملات", "Number of trades.", history=True, aliases=("tno",)),
     # limits and order book (today only)
-    _f("upper_limit", "num", "rial", "حد مجاز بالا", "Upper price limit (سقف قیمت).", aliases=("pmaxlim", "max_limit")),
-    _f("lower_limit", "num", "rial", "حد مجاز پایین", "Lower price limit (کف قیمت).", aliases=("pminlim", "min_limit")),
+    _f("upper_limit", "num", "rial", "حد مجاز بالا", "Upper price limit (سقف قیمت).", aliases=("tmax", "max_limit")),
+    _f("lower_limit", "num", "rial", "حد مجاز پایین", "Lower price limit (کف قیمت).", aliases=("tmin", "min_limit")),
     _f("bid_price", "num", "rial", "بهترین قیمت خرید", "Best bid price.", aliases=("pd1",)),
     _f("bid_volume", "num", "shares", "حجم بهترین خرید", "Volume at the best bid.", aliases=("qd1",)),
     _f("bid_orders", "num", "count", "تعداد سفارش خرید", "Orders at the best bid.", aliases=("zd1",)),
@@ -106,14 +108,14 @@ FIELDS: tuple[Field, ...] = (
     _f("from_low_pct", "num", "%", "فاصله از کف روز", "(last / low - 1) x 100."),
     _f("to_upper_limit_pct", "num", "%", "فاصله تا سقف مجاز", "(upper_limit / last - 1) x 100."),
     # real / legal (today only, from the exchange's client-type table)
-    _f("real_buy_volume", "num", "shares", "حجم خرید حقیقی", "Real-person buy volume.", flows=True, aliases=("buy_i_volume",)),
-    _f("real_sell_volume", "num", "shares", "حجم فروش حقیقی", "Real-person sell volume.", flows=True, aliases=("sell_i_volume",)),
-    _f("real_buy_count", "num", "count", "تعداد خریدار حقیقی", "Number of real-person buyers.", flows=True, aliases=("buy_count_i",)),
-    _f("real_sell_count", "num", "count", "تعداد فروشنده حقیقی", "Number of real-person sellers.", flows=True, aliases=("sell_count_i",)),
-    _f("legal_buy_volume", "num", "shares", "حجم خرید حقوقی", "Legal-entity buy volume.", flows=True, aliases=("buy_n_volume",)),
-    _f("legal_sell_volume", "num", "shares", "حجم فروش حقوقی", "Legal-entity sell volume.", flows=True, aliases=("sell_n_volume",)),
-    _f("legal_buy_count", "num", "count", "تعداد خریدار حقوقی", "Number of legal-entity buyers.", flows=True, aliases=("buy_count_n",)),
-    _f("legal_sell_count", "num", "count", "تعداد فروشنده حقوقی", "Number of legal-entity sellers.", flows=True, aliases=("sell_count_n",)),
+    _f("real_buy_volume", "num", "shares", "حجم خرید حقیقی", "Real-person buy volume.", flows=True, aliases=("buy_i_volume", "ct_buy_i_volume")),
+    _f("real_sell_volume", "num", "shares", "حجم فروش حقیقی", "Real-person sell volume.", flows=True, aliases=("sell_i_volume", "ct_sell_i_volume")),
+    _f("real_buy_count", "num", "count", "تعداد خریدار حقیقی", "Number of real-person buyers.", flows=True, aliases=("buy_count_i", "ct_buy_counti")),
+    _f("real_sell_count", "num", "count", "تعداد فروشنده حقیقی", "Number of real-person sellers.", flows=True, aliases=("sell_count_i", "ct_sell_counti")),
+    _f("legal_buy_volume", "num", "shares", "حجم خرید حقوقی", "Legal-entity buy volume.", flows=True, aliases=("buy_n_volume", "ct_buy_n_volume")),
+    _f("legal_sell_volume", "num", "shares", "حجم فروش حقوقی", "Legal-entity sell volume.", flows=True, aliases=("sell_n_volume", "ct_sell_n_volume")),
+    _f("legal_buy_count", "num", "count", "تعداد خریدار حقوقی", "Number of legal-entity buyers.", flows=True, aliases=("buy_count_n", "ct_buy_countn")),
+    _f("legal_sell_count", "num", "count", "تعداد فروشنده حقوقی", "Number of legal-entity sellers.", flows=True, aliases=("sell_count_n", "ct_sell_countn")),
     _f("real_net_volume", "num", "shares", "خالص حجم خرید حقیقی", "Real buy volume - real sell volume (>0 = real-person inflow).", flows=True),
     _f("real_net_value", "num", "rial", "خالص ورود پول حقیقی (تخمین)", "Estimate: real_net_volume x vwap.", flows=True),
     _f("legal_net_volume", "num", "shares", "خالص حجم خرید حقوقی", "Legal buy volume - legal sell volume.", flows=True),
@@ -166,6 +168,8 @@ def build_today(row: dict, flow: dict | None = None) -> dict[str, Any]:
         "security_type": row.get("security_type"), "status": row.get("status"),
         "last": last, "close": row.get("close"), "open": open_, "high": high, "low": low, "yesterday": yest,
         "last_pct": row.get("last_pct"), "close_pct": row.get("close_pct"), "vwap": row.get("vwap"),
+        "last_change": None if last is None or yest is None else last - yest,
+        "close_change": None if row.get("close") is None or yest is None else row["close"] - yest,
         "volume": row.get("volume"), "value": row.get("value"), "trades": row.get("trades"),
         "upper_limit": upper, "lower_limit": limits.get("lower"),
         "bid_price": bid.get("price"), "bid_volume": bid.get("volume"), "bid_orders": bid.get("orders"),
@@ -211,11 +215,16 @@ def build_history_day(raw: dict) -> dict[str, Any]:
     return {
         "open": price("priceFirst"), "high": price("priceMax"), "low": price("priceMin"), "close": close, "last": last,
         "yesterday": yest, "close_pct": _pct(close, yest), "last_pct": _pct(last, yest),
+        "close_change": None if close is None or yest is None else close - yest,
+        "last_change": None if last is None or yest is None else last - yest,
         "volume": volume, "value": value, "trades": _num(raw.get("zTotTran")), "vwap": _div(value, volume),
     }
 
 
-_PRICE_KEYS = ("open", "high", "low", "close", "last", "yesterday", "vwap")
+NOT_TRADED: dict[str, Any] = {"volume": 0.0, "value": 0.0, "trades": 0.0}  # listed, but silent that day
+NO_DATA: dict[str, Any] = {}  # not listed yet (or the table is missing)
+
+_PRICE_KEYS = ("open", "high", "low", "close", "last", "yesterday", "vwap", "close_change", "last_change")
 
 
 def adjust_history(today_yesterday: float | None, days: list[dict[str, Any]], *, tolerance: float = 1e-3) -> list[dict[str, Any]]:
@@ -227,9 +236,11 @@ def adjust_history(today_yesterday: float | None, days: list[dict[str, Any]], *,
     factor = 1.0
     newer_yesterday = today_yesterday
     for day in days:
-        raw_yesterday = day.get("yesterday")
         close = day.get("close")
-        if newer_yesterday and close:
+        if close is None:  # a silent or unknown day: link the traded days on either side of it instead
+            continue
+        raw_yesterday = day.get("yesterday")
+        if newer_yesterday:
             ratio = newer_yesterday / close
             if abs(ratio - 1) > tolerance:
                 factor *= ratio
@@ -331,6 +342,9 @@ def _suffix(match: re.Match[str]) -> str:
 
 
 def _plain(segment: str) -> str:
+    segment = re.sub(r"\bMath\.", "", segment)  # Math.abs(x), Math.max(a, b) from the exchange's JavaScript filters
+    segment = re.sub(r"\bct\.(\w+)", r"ct_\1", segment)  # ct.Buy_I_Volume -> ct_buy_i_volume (an alias)
+    segment = segment.replace("===", "==").replace("!==", "!=")
     segment = _SUFFIX.sub(_suffix, segment)
     segment = segment.replace("&&", " and ").replace("||", " or ").replace("<>", "!=")
     segment = re.sub(r"!(?!=)", " not ", segment)
@@ -800,6 +814,7 @@ SYNTAX = (
     "History: close[1] is yesterday's close; avg(volume, 20) averages the 20 trading days before today; count(close_pct > 0, 5) counts rising days.",
     "Inside aggregates every field means 'that day': count(close > open, 3) counts days whose close was above their own open.",
     "Missing data makes a comparison unknown (not true), so a row with no history never matches a history condition.",
+    "A past day on which the symbol did not trade counts as zero volume/value/trades (prices unknown); days before its listing are unknown.",
     "Prices are rial. History is adjusted for capital increases/dividends so close[5] is comparable with close.",
 )
 
