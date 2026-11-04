@@ -1,0 +1,10 @@
+{
+ "scenario": "energy_overview",
+ "tool": "energy_market",
+ "recorded_at": "2026-11-05T01:28:03",
+ "requests": [
+  "iee__api_Home_GetTodayMarketsValues-bc9ae9d5",
+  "iee__api_PhysicalMarket_GetPhysicalMarketAtAGlance-76765e7b",
+  "iee__api_PowerMarket_GetPowerMarketAtAGlance-181bde6c"
+ ]
+}

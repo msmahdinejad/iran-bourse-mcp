@@ -1,0 +1,8 @@
+{
+ "scenario": "commodity_trades",
+ "tool": "commodity_market",
+ "recorded_at": "2026-11-05T01:28:03",
+ "requests": [
+  "ime__imedata_asmx_GetAmareMoamelatList-3e134e9c"
+ ]
+}

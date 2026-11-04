@@ -1,0 +1,11 @@
+{
+ "scenario": "commodity_summary",
+ "tool": "commodity_market",
+ "recorded_at": "2026-11-05T01:28:03",
+ "requests": [
+  "ime__imedata_asmx_GetHajmArzeshMoamelatDateGrid-b1e6265d",
+  "ime__imedata_asmx_GetHomeExchangeRateData-6c008d09",
+  "ime__imedata_asmx_GetHomeFizikiWithDateGrid-012e640a",
+  "ime__imedata_asmx_GetHomeNamaWithDateGrid-73e810a6"
+ ]
+}

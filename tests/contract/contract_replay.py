@@ -34,6 +34,7 @@ SCENARIO_MODULES = (
     "contract_scenarios_market",
     "contract_scenarios_symbol",
     "contract_scenarios_other",
+    "contract_scenarios_exchanges",
 )
 HOSTS = {
     "cdn.tsetmc.com": "cdn",

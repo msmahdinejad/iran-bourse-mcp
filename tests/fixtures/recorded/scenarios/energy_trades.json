@@ -1,0 +1,9 @@
+{
+ "scenario": "energy_trades",
+ "tool": "energy_market",
+ "recorded_at": "2026-11-05T01:28:03",
+ "requests": [
+  "iee__api_PhysicalMarket_GetTradesStatistics-93750b5f",
+  "iee__api_PowerMarket_GetPowerTradesStatistics-074de99c"
+ ]
+}

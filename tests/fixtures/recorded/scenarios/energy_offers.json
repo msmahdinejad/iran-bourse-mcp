@@ -1,0 +1,9 @@
+{
+ "scenario": "energy_offers",
+ "tool": "energy_market",
+ "recorded_at": "2026-11-05T01:28:03",
+ "requests": [
+  "iee__api_PhysicalMarket_GetPhysicalMarketOffersAuction-aaee12ca",
+  "iee__api_PowerMarket_GetPowerMarketAuctionAnnouncements-fa0de938"
+ ]
+}
