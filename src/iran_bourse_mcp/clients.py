@@ -100,6 +100,8 @@ def _clients() -> list[Client]:
             docs="https://developers.openai.com/codex/mcp",
             command=f"codex mcp add {SERVER_NAME} -- {mcp_cmd}",
             paths={"all": "~/.codex/config.toml"},
+            note="`uvx --version` must work in the shell that starts Codex. For scripted `codex exec` runs use the config.toml form (required = true), "
+                 "or `uv tool install` the package so the server starts in about a second.",
         ),
         Client(
             "gemini-cli", "Gemini CLI", "cli", config_key="mcpServers", auto_install=True,
@@ -229,7 +231,12 @@ def snippet(client_id: str, src: str | None = None) -> str:
         lines += ["# Run once in your terminal:", client.command, ""]
     if client_id == "codex":
         toml_args = ", ".join(json.dumps(a) for a in args)
-        lines += [f"# or add to {client.paths['all']}:", f"[mcp_servers.{SERVER_NAME}]", f'command = "{cmd}"', f"args = [{toml_args}]", ""]
+        lines += [
+            f"# or add to {client.paths['all']}:", f"[mcp_servers.{SERVER_NAME}]", f'command = "{cmd}"', f"args = [{toml_args}]",
+            "startup_timeout_sec = 60  # the first start downloads the packages",
+            "required = true           # `codex exec` waits for the server instead of starting its first turn without the tools",
+            "",
+        ]
     elif client_id == "goose":
         lines += ["# One-click link:", goose_deeplink(src), "", "# or in `goose configure`, use this command:", shell_command(src), ""]
     elif client_id == "generic":
