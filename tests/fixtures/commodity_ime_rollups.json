@@ -1,0 +1,18 @@
+{
+ "_note": "POST https://www.ime.co.ir/SubSystems/IME/Services/Home/imedata.asmx/GetHomeFizikiWithDateGrid, GetHomeNamaWithDateGrid, GetHajmArzeshMoamelatDateGrid, GetHomeExchangeRateData, recorded 2026-11-05. rings and markets are for 1405/08/13; daily covers 1405/07/29 to 1405/08/14 (Thursday 1405/08/14 has no row); usd is the newest two days. Nothing trimmed. thursday is GetAmareMoamelatList for 1405/08/14, which answers an empty list.",
+ "rings": {
+  "d": "[{\"ID\": 1, \"xRingName\": \"صنعتی\", \"Value\": 109469008.0, \"Volume\": 129433.0, \"OfferVolume\": 295659.0}, {\"ID\": 3, \"xRingName\": \"پتروشیمی و فرآورده های نفتی\", \"Value\": 64593018.0, \"Volume\": 48937.0, \"OfferVolume\": 73617.0}, {\"ID\": 7, \"xRingName\": \"بازار فرعی\", \"Value\": 6635328.0, \"Volume\": 3359.0, \"OfferVolume\": 44780.0}]"
+ },
+ "markets": {
+  "d": "[{\"name\": \"بازار فيزيکي\", \"Id\": \"1\", \"TradeValue\": 180697354.0, \"TradeVolume\": 181729.0}, {\"name\": \"بازار آتي\", \"Id\": \"2\", \"TradeValue\": null, \"TradeVolume\": null}, {\"name\": \"بازار اختيارمعامله\", \"Id\": \"3\", \"TradeValue\": 596889.0, \"TradeVolume\": 1225103.0}, {\"name\": \"بازار مالي\", \"Id\": \"4\", \"TradeValue\": 110082224.0, \"TradeVolume\": 1923605654.0}, {\"name\": \"بازار گواهي سپرده\", \"Id\": \"5\", \"TradeValue\": 17083042.0, \"TradeVolume\": 2205067.0}]"
+ },
+ "daily": {
+  "d": "[{\"TradeDate\": \"1405/07/29\", \"TradeValue\": 342041263.0, \"TradeVolume\": 390663.0}, {\"TradeDate\": \"1405/08/02\", \"TradeValue\": 310427838.0, \"TradeVolume\": 351874.0}, {\"TradeDate\": \"1405/08/03\", \"TradeValue\": 471536892.0, \"TradeVolume\": 1961895.0}, {\"TradeDate\": \"1405/08/04\", \"TradeValue\": 340218087.0, \"TradeVolume\": 301853.0}, {\"TradeDate\": \"1405/08/05\", \"TradeValue\": 275263551.0, \"TradeVolume\": 372053.0}, {\"TradeDate\": \"1405/08/06\", \"TradeValue\": 234656370.0, \"TradeVolume\": 240229.0}, {\"TradeDate\": \"1405/08/09\", \"TradeValue\": 87480813.0, \"TradeVolume\": 129806.0}, {\"TradeDate\": \"1405/08/10\", \"TradeValue\": 560466284.0, \"TradeVolume\": 2117406.0}, {\"TradeDate\": \"1405/08/11\", \"TradeValue\": 305910657.0, \"TradeVolume\": 324583.0}, {\"TradeDate\": \"1405/08/12\", \"TradeValue\": 240972231.0, \"TradeVolume\": 384753.0}, {\"TradeDate\": \"1405/08/13\", \"TradeValue\": 180697354.0, \"TradeVolume\": 181729.0}]"
+ },
+ "usd": {
+  "d": "[{\"Tarikh\": \"1405/08/13\", \"Nerkh\": 1878192.0, \"Sharh\": \"دلار\"}, {\"Tarikh\": \"1405/08/12\", \"Nerkh\": 1874444.0, \"Sharh\": \"دلار\"}]"
+ },
+ "thursday": {
+  "d": "[]"
+ }
+}

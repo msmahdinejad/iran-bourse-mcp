@@ -117,7 +117,11 @@ class Http:
             self._evict(oldest)
 
     async def get(self, url: str, *, ttl: float = 0.0, retries: int = 4, as_json: bool = True) -> Any:
-        key = f"{'j' if as_json else 't'}:{url}"
+        return await self._request("GET", url, None, ttl=ttl, retries=retries, as_json=as_json)
+
+    async def _request(self, method: str, url: str, payload: Any, *, ttl: float, retries: int, as_json: bool) -> Any:
+        body = None if payload is None else json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+        key = f"{'j' if as_json else 't'}:{url}" if method == "GET" else f"j:{method}:{url}#{body}"
         cached = self._cache_get(key)
         if cached is not None:
             return cached
@@ -137,7 +141,10 @@ class Http:
         for attempt in range(retries):
             try:
                 async with self._sem:
-                    response = await client.get(url)
+                    if method == "POST" and body is not None:  # the ASMX services want a JSON body with this exact content type
+                        response = await client.post(url, content=body.encode("utf-8"), headers={"Content-Type": "application/json; charset=utf-8"})
+                    else:
+                        response = await client.get(url)
             except (httpx.TimeoutException, httpx.TransportError) as exc:
                 last_error = exc
                 await asyncio.sleep(0.5 * (2**attempt))
@@ -207,3 +214,7 @@ class Http:
 
     async def get_text(self, url: str, *, ttl: float = 0.0, retries: int = 4) -> str:
         return await self.get(url, ttl=ttl, retries=retries, as_json=False)
+
+    async def post_json(self, url: str, payload: Any, *, ttl: float = 0.0, retries: int = 4) -> Any:
+        """POST a JSON body and read a JSON answer (read-only lookups on services that take their arguments as a body)."""
+        return await self._request("POST", url, payload, ttl=ttl, retries=retries, as_json=True)

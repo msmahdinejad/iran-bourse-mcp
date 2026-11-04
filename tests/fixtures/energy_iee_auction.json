@@ -1,0 +1,159 @@
+{
+ "_note": "GET https://webapi.iee.ir/api/PhysicalMarket/GetMarketAuctionDetails/96519 and GetMarketAuctionDetailsTradeOnDay/96519, recorded 2026-11-05. CSO of Shazand, 2026-11-04. Nothing trimmed.",
+ "detail": {
+  "results": [
+   {
+    "id": 789695,
+    "instrumentDisplayName": "سی اس او",
+    "energySymbol": "DSOSZCABEX0050818",
+    "auctionDesc": "سی اس او شرکت پالایش نفت امام خمینی(ره) شازند (عرضه توسط شازند) در رینگ داخلی",
+    "producerName": "پالایش نفت امام خمینی(ره) شازند",
+    "stepTitle": "توقف مازاد عرضه",
+    "stepCode": "98",
+    "deliveryLocationName": "درب کارخانه/شبکه سراسری برق",
+    "auctionVolume": "7,000 تن",
+    "maxBuyVolume": "7,000 تن",
+    "auctionMaxVolume": "0 تن",
+    "tradeTypeTitle": "نقدی",
+    "basePrice": "979,177 ریال",
+    "minimumPurchase": "200 تن",
+    "minimumPurchaseForPriceDiscovery": "40 تن",
+    "referencePrice": "0.00",
+    "priceUnitTitle": "ریال",
+    "remainedTime": "0",
+    "auctionTime": "12:20:00",
+    "auctionDate": "1405/08/13",
+    "currencyRatio": "0",
+    "volumeUnitTitle": "تن",
+    "convertPriceVolume": 1000,
+    "volumeUnitCodePrice": "2000",
+    "volumeUnitTitlePrice": "کیلوگرم",
+    "lotSize": 100,
+    "deliveryPeriod": "",
+    "termsOfPayment": "شيوه تسويه بصورت خارج از پاياپاي با امکان تسويه نقدي مي‌باشد. واريز ده درصد ارزش معامله بعنوان پيش پرداخت، نيم ساعت قبل از شروع عرضه الزامي مي‌باشد.",
+    "clearingType": "خارج از پایاپای (با امکان تسویه نقدی)",
+    "destination": "داخلي",
+    "buyOrders": [
+     {
+      "id": "64e8166d-0dba-472a-9bb5-3732a1d0f677",
+      "totalQuantity": 3900,
+      "price": 979177,
+      "orderCount": 4,
+      "totalQuantityString": "3,900",
+      "priceString": "979,177",
+      "orderCountString": "4"
+     }
+    ],
+    "saleOrders": [
+     {
+      "id": "75a9edc8-f635-4034-b7ab-f02f78d7d0fa",
+      "totalQuantity": 7000,
+      "price": 979177,
+      "orderCount": 1,
+      "totalQuantityString": "7,000",
+      "priceString": "979,177",
+      "orderCountString": "1"
+     }
+    ],
+    "tradeDetails": [],
+    "tradeHistories": null
+   }
+  ],
+  "pagedMetaData": [
+   {
+    "currentPage": 1,
+    "totalPages": 1,
+    "pageSize": 1,
+    "totalCount": 1,
+    "hasPrevious": false,
+    "hasNext": false
+   }
+  ],
+  "isSuccess": true,
+  "isFailed": false,
+  "errors": [],
+  "successes": [
+   "عملیات موفق"
+  ]
+ },
+ "trades": {
+  "results": [
+   {
+    "id": "dd6caef8-bdc0-4c73-a6dc-37c5cd1fdffe",
+    "count": 4,
+    "auctionIdn": 96519,
+    "tradedPrice": 979177,
+    "tradeDateShamsi": "1405/08/13",
+    "tradedQuantity": 500,
+    "volumeUnitTitle": "تن",
+    "priceUnitTitle": "ریال",
+    "priceOnVolumeUnit": "ریال/کیلوگرم",
+    "tradedValue": 489588500000,
+    "energySymbol": "DSOSZCABEX0050818",
+    "tradedQuantityString": "500",
+    "tradedPriceString": "979,177"
+   },
+   {
+    "id": "28eeb46a-32c9-4bab-81a3-7b2fb26c8b9e",
+    "count": 4,
+    "auctionIdn": 96519,
+    "tradedPrice": 979177,
+    "tradeDateShamsi": "1405/08/13",
+    "tradedQuantity": 200,
+    "volumeUnitTitle": "تن",
+    "priceUnitTitle": "ریال",
+    "priceOnVolumeUnit": "ریال/کیلوگرم",
+    "tradedValue": 195835400000,
+    "energySymbol": "DSOSZCABEX0050818",
+    "tradedQuantityString": "200",
+    "tradedPriceString": "979,177"
+   },
+   {
+    "id": "f250e0ed-0792-477c-a7a9-c3f0eddc72e5",
+    "count": 4,
+    "auctionIdn": 96519,
+    "tradedPrice": 979177,
+    "tradeDateShamsi": "1405/08/13",
+    "tradedQuantity": 200,
+    "volumeUnitTitle": "تن",
+    "priceUnitTitle": "ریال",
+    "priceOnVolumeUnit": "ریال/کیلوگرم",
+    "tradedValue": 195835400000,
+    "energySymbol": "DSOSZCABEX0050818",
+    "tradedQuantityString": "200",
+    "tradedPriceString": "979,177"
+   },
+   {
+    "id": "185cf25f-eb5f-4421-995a-1efb8bea2059",
+    "count": 4,
+    "auctionIdn": 96519,
+    "tradedPrice": 979177,
+    "tradeDateShamsi": "1405/08/13",
+    "tradedQuantity": 3000,
+    "volumeUnitTitle": "تن",
+    "priceUnitTitle": "ریال",
+    "priceOnVolumeUnit": "ریال/کیلوگرم",
+    "tradedValue": 2937531000000,
+    "energySymbol": "DSOSZCABEX0050818",
+    "tradedQuantityString": "3,000",
+    "tradedPriceString": "979,177"
+   }
+  ],
+  "pagedMetaData": [
+   {
+    "currentPage": 1,
+    "totalPages": 1,
+    "pageSize": 1,
+    "totalCount": 1,
+    "hasPrevious": false,
+    "hasNext": false
+   }
+  ],
+  "isSuccess": true,
+  "isFailed": false,
+  "errors": [],
+  "successes": [
+   "عملیات موفق"
+  ]
+ }
+}

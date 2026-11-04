@@ -1,0 +1,101 @@
+{
+ "_note": "GET https://webapi.iee.ir/api/PhysicalMarket/GetPhysicalMarketOffersAuction?Lang=fa&PageNumber=1&PageSize=4, recorded 2026-11-05. Page 1 of 3; the exchange had 10 announced offers.",
+ "results": [
+  {
+   "auctionIdn": 96551,
+   "auctionDesc": null,
+   "instrumentDisplayName": "گاز مایع",
+   "auctionVolume": "1,000 تن",
+   "auctionVolumeTooltip": "1,000",
+   "basePrice": "هر تن -160 پریمیوم دلاری(مرکز مبادله- مطابق مکانیزم مصوب هیئت مدیره بورس انرژی ایران)",
+   "basePriceTooltip": "-160",
+   "auctionDateShamsi": "1405/08/17",
+   "auctionTime": "14:00:00",
+   "supplier": "شرکت ملی گازایران",
+   "referencePrice": "750.00",
+   "tradeType": "کشف پریمیوم",
+   "fileSize": null,
+   "fileName": null,
+   "detailId": null,
+   "targetMarketName": "بین الملل",
+   "stepCode": "3",
+   "stepTitle": "آماده عرضه"
+  },
+  {
+   "auctionIdn": 96547,
+   "auctionDesc": null,
+   "instrumentDisplayName": "گاز مایع",
+   "auctionVolume": "500 تن",
+   "auctionVolumeTooltip": "500",
+   "basePrice": "هر تن -160 پریمیوم دلاری(مرکز مبادله- مطابق مکانیزم مصوب هیئت مدیره بورس انرژی ایران)",
+   "basePriceTooltip": "-160",
+   "auctionDateShamsi": "1405/08/17",
+   "auctionTime": "14:20:00",
+   "supplier": "شرکت ملی گازایران",
+   "referencePrice": "750.00",
+   "tradeType": "کشف پریمیوم",
+   "fileSize": null,
+   "fileName": null,
+   "detailId": null,
+   "targetMarketName": "بین الملل",
+   "stepCode": "3",
+   "stepTitle": "آماده عرضه"
+  },
+  {
+   "auctionIdn": 96545,
+   "auctionDesc": null,
+   "instrumentDisplayName": "گاز مایع",
+   "auctionVolume": "21,000 تن",
+   "auctionVolumeTooltip": "21,000",
+   "basePrice": "هر تن -190 پریمیوم دلاری(مرکز مبادله- مطابق مکانیزم مصوب هیئت مدیره بورس انرژی ایران)",
+   "basePriceTooltip": "-190",
+   "auctionDateShamsi": "1405/08/17",
+   "auctionTime": "14:40:00",
+   "supplier": "شرکت ملی گازایران",
+   "referencePrice": "750.00",
+   "tradeType": "کشف پریمیوم",
+   "fileSize": null,
+   "fileName": null,
+   "detailId": null,
+   "targetMarketName": "بین الملل",
+   "stepCode": "3",
+   "stepTitle": "آماده عرضه"
+  },
+  {
+   "auctionIdn": 96546,
+   "auctionDesc": null,
+   "instrumentDisplayName": "گاز مایع",
+   "auctionVolume": "100,000 تن",
+   "auctionVolumeTooltip": "100,000",
+   "basePrice": "هر تن -160 پریمیوم دلاری(مرکز مبادله- مطابق مکانیزم مصوب هیئت مدیره بورس انرژی ایران)",
+   "basePriceTooltip": "-160",
+   "auctionDateShamsi": "1405/08/17",
+   "auctionTime": "15:00:00",
+   "supplier": "شرکت ملی گازایران",
+   "referencePrice": "750.00",
+   "tradeType": "کشف پریمیوم",
+   "fileSize": null,
+   "fileName": null,
+   "detailId": null,
+   "targetMarketName": "بین الملل",
+   "stepCode": "3",
+   "stepTitle": "آماده عرضه"
+  }
+ ],
+ "pagedMetaData": [
+  {
+   "currentPage": 1,
+   "totalPages": 3,
+   "pageSize": 4,
+   "totalCount": 10,
+   "hasPrevious": false,
+   "hasNext": true
+  }
+ ],
+ "isSuccess": true,
+ "isFailed": false,
+ "errors": [],
+ "successes": [
+  "عملیات موفق"
+ ]
+}
