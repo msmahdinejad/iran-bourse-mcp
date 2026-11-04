@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
 import sys
 from types import SimpleNamespace
 from urllib.parse import quote
@@ -16,6 +17,7 @@ from contract_replay import (
     Scenario,
     UnmatchedRequest,
     frozen_clock,
+    load_recorded,
     replay_scenario,
     request_id,
     request_key,
@@ -28,6 +30,7 @@ from iran_bourse_mcp import dates
 
 SEARCH = "https://cdn.tsetmc.com/api/Instrument/GetInstrumentSearch/" + quote("فولاد")
 WATCH = "https://cdn.tsetmc.com/api/ClosingPrice/GetMarketWatch?market=0&industrialGroup=&showTraded=false"
+IME = "https://www.ime.co.ir/SubSystems/IME/Services/Home/imedata.asmx/GetHomeNamaWithDateGrid"
 
 
 def recorded(url: str, body: object = None, status: int = 200) -> Recorded:
@@ -114,6 +117,99 @@ async def test_other_host_or_method_is_not_matched():
     async with httpx.AsyncClient(transport=replay.transport) as client:
         with pytest.raises(UnmatchedRequest):
             await client.post(SEARCH)
+
+
+def post_recorded(body: object, payload: object = None) -> Recorded:
+    return Recorded(
+        "POST",
+        IME,
+        200,
+        "application/json; charset=utf-8",
+        payload if payload is not None else {"d": "[]"},
+        request_body=body,
+    )
+
+
+def test_a_request_body_is_part_of_the_identity_and_a_request_without_one_is_unchanged():
+    a = {"Language": 8, "GregorianFromDate": "1405/08/13", "GregorianToDate": "1405/08/13"}
+    shuffled = dict(reversed(list(a.items())))
+    assert request_key("POST", IME, a) == request_key(
+        "post", IME, shuffled
+    )  # key order is irrelevant
+    assert request_key("POST", IME, a) != request_key(
+        "POST", IME, {**a, "GregorianToDate": "1405/08/14"}
+    )
+    assert request_key("POST", IME, a) != request_key("POST", IME)
+    assert request_id("POST", IME, a) == request_id("POST", IME, shuffled)
+    assert request_id("POST", IME, a) != request_id("POST", IME, {**a, "Language": 9})
+    # a request without a body keeps the key and the file name it had before bodies were recorded
+    assert request_key("GET", SEARCH, None) == request_key("GET", SEARCH)
+    assert request_key("GET", WATCH) == (
+        "GET https://cdn.tsetmc.com/api/ClosingPrice/GetMarketWatch?industrialGroup=&market=0&showTraded=false"
+    )
+    assert request_id("GET", SEARCH) == request_id("GET", SEARCH, None)
+    assert request_id("POST", IME, a).startswith(
+        "ime__imedata_asmx_GetHomeNamaWithDateGrid-"
+    )  # the service name survives
+
+
+def test_a_recording_with_a_body_round_trips_and_a_legacy_file_has_none(tmp_path):
+    body = {"Language": 8, "fari": False, "GregorianFromDate": "1405/08/13"}
+    rec = post_recorded(body)
+    stored = json.loads(rec.to_file())
+    assert stored["request"] == {"method": "POST", "url": IME, "body": body}
+    save_recorded(rec, tmp_path)
+    assert (
+        load_recorded(rec.id, tmp_path).request_body == body
+        and load_recorded(rec.id, tmp_path).id == rec.id
+    )
+    plain = json.loads(recorded(SEARCH).to_file())
+    assert plain["request"] == {"method": "GET", "url": SEARCH}  # no "body" key when there is none
+    assert Recorded.from_file(json.dumps(plain)).request_body is None
+    assert rec.describe() == IME + ' {"GregorianFromDate":"1405/08/13","Language":8,"fari":false}'
+    assert recorded(SEARCH).describe() == SEARCH
+
+
+async def test_replay_tells_apart_requests_that_differ_only_in_their_body():
+    one_day = {"Language": 8, "GregorianFromDate": "1405/08/13", "GregorianToDate": "1405/08/13"}
+    two_days = {**one_day, "GregorianFromDate": "1405/08/12"}
+    replay = Replay([post_recorded(one_day, {"d": "one"}), post_recorded(two_days, {"d": "two"})])
+    async with httpx.AsyncClient(transport=replay.transport) as client:
+        assert (await client.post(IME, json=dict(reversed(list(two_days.items()))))).json() == {
+            "d": "two"
+        }
+        assert (await client.post(IME, json=one_day)).json() == {"d": "one"}
+        with pytest.raises(
+            UnmatchedRequest, match="1405/08/11"
+        ):  # the body is named, so the missing recording is easy to find
+            await client.post(IME, json={**one_day, "GregorianFromDate": "1405/08/11"})
+        with pytest.raises(UnmatchedRequest):
+            await client.post(IME)  # no body
+        with pytest.raises(UnmatchedRequest):
+            await client.get(IME)  # a GET does not match a POST recording
+    assert replay.unused() == []
+    assert "1405/08/11" in replay.unmatched[0] and replay.unmatched[0].startswith(f"POST {IME} ")
+
+
+async def test_a_recording_with_a_body_that_was_never_sent_is_reported_stale_with_its_body():
+    sent = {"Language": 8, "GregorianFromDate": "1405/08/13"}
+    never = {"Language": 8, "GregorianFromDate": "1405/08/12"}
+    replay = Replay([post_recorded(sent), post_recorded(never)])
+    async with httpx.AsyncClient(transport=replay.transport) as client:
+        assert (await client.post(IME, json=sent)).status_code == 200
+    assert (
+        replay.unused() == [post_recorded(never).describe()] and "1405/08/12" in replay.unused()[0]
+    )
+
+
+def test_recordings_lookup_by_url_or_body_fragment():
+    items = Recordings(
+        [post_recorded({"Language": 8, "MainCat": 1}), post_recorded({"Language": 8, "MainCat": 3})]
+    )
+    assert len(items.find("GetHomeNamaWithDateGrid")) == 2
+    assert items.get('"MainCat":3').request_body == {"Language": 8, "MainCat": 3}
+    with pytest.raises(AssertionError, match="found 2"):
+        items.get("Language")
 
 
 def test_recordings_lookup_by_url_fragment():

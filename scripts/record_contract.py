@@ -1,4 +1,4 @@
-"""Record the contract-test fixtures (tests/fixtures/recorded) from the live TSETMC and Codal servers.
+"""Record the contract-test fixtures (tests/fixtures/recorded) from the live TSETMC, Codal, IME and Iran Energy Exchange servers.
 
     uv run python scripts/record_contract.py                       # list scenarios and their recordings (offline)
     uv run python scripts/record_contract.py --record              # record every scenario, then verify it by replay
@@ -10,7 +10,8 @@ Every scenario (tests/contract/contract_scenarios_*.py) calls one MCP tool throu
 for Codal, which answers HTTP 429 to a shared IP quickly), a long wait before retrying a 429, and scenarios that failed are
 retried in later rounds. Responses are trimmed to a bounded size (whole-market feeds to one fixed set of about 150
 instruments, long histories to their newest rows; every field of every kept row is kept and what was cut is written into
-the file), and only the status, the content type and the body are stored: no request headers, cookies or tokens.
+the file), and only the status, the content type and the body are stored: no request headers, cookies or tokens. A request
+that sends a JSON body (the IME's POSTs) is recorded with that body, which is part of its identity.
 
 Re-record everything (no --only) when you want a consistent snapshot: scenarios share their requests, so recording one
 scenario alone refreshes the requests it uses for the others too.
@@ -233,6 +234,76 @@ def cap_rows(key: str, n: int) -> Callable[[Any, TrimContext], list[dict]]:
     return lambda body, ctx: keep_first(body, key, n)
 
 
+POWER_HELD_KEPT = 3
+
+
+def trim_power_announcements(body: Any, ctx: TrimContext) -> list[dict]:
+    """The Energy Exchange's electricity announcements are an archive (about 9,600 records, 6 KB each, newest first).
+
+    Keep every announcement that has not been held yet (``auctionState`` empty) and the first few held ones, in order.
+    """
+    rows = _list(body, "results")
+    held = 0
+    kept = []
+    for row in rows:
+        if not row.get("auctionState"):
+            kept.append(row)
+        elif held < POWER_HELD_KEPT:
+            held += 1
+            kept.append(row)
+    if len(kept) == len(rows):
+        return []
+    body["results"] = kept
+    return [
+        {
+            "path": "results",
+            "kept": len(kept),
+            "of": len(rows),
+            "rule": f"every announcement not held yet, then the first {POWER_HELD_KEPT} held ones",
+        }
+    ]
+
+
+IME_ROWS_PER_HALL = 12  # IME's physical-market list: a session is 180 to 400 rows (180 KB and more)
+IME_IDLE_OFFERS = 4
+
+
+def trim_ime_trades(body: Any, ctx: TrimContext) -> list[dict]:
+    """The ASMX answer is ``{"d": "<JSON array as a string>"}``: keep the biggest traded rows of every hall and a few idle offers.
+
+    Rows keep every field and the exchange's order; ``d`` stays a string, as the service expects it.
+    """
+    inner = body.get("d") if isinstance(body, dict) else None
+    if not isinstance(inner, str):
+        raise RecordingError("expected a JSON string under 'd' to trim")
+    rows = json.loads(inner)
+    traded = [i for i, row in enumerate(rows) if (row.get("Quantity") or 0) > 0]
+    keep: set[int] = set()
+    for hall in {rows[i].get("Talar") for i in traded}:
+        ranked = sorted(
+            (i for i in traded if rows[i].get("Talar") == hall),
+            key=lambda i: rows[i].get("TotalPrice") or 0,
+            reverse=True,
+        )
+        keep.update(ranked[:IME_ROWS_PER_HALL])
+    keep.update(
+        [i for i, row in enumerate(rows) if not (row.get("Quantity") or 0) > 0][:IME_IDLE_OFFERS]
+    )
+    if len(keep) == len(rows):
+        return []
+    body["d"] = json.dumps(
+        [rows[i] for i in sorted(keep)], ensure_ascii=False, separators=(",", ":")
+    )
+    return [
+        {
+            "path": "d",
+            "kept": len(keep),
+            "of": len(rows),
+            "rule": f"the {IME_ROWS_PER_HALL} largest traded rows (by TotalPrice) of each hall, then the first {IME_IDLE_OFFERS} offers that did not trade",
+        }
+    ]
+
+
 @dataclass(frozen=True)
 class Rule:
     pattern: str  # matched against host + path
@@ -274,6 +345,8 @@ RULES = (
     Rule(r"/Trade/GetTrade/\d+$", cap_rows("trade", 3000)),
     Rule(r"/Trade/GetTradeHistory/", cap_rows("tradeHistory", 3000)),
     Rule(r"/BestLimits/\d+/\d+$", cap_rows("bestLimitsHistory", 4000)),
+    Rule(r"imedata\.asmx/GetAmareMoamelatList$", trim_ime_trades),
+    Rule(r"/PowerMarket/GetPowerMarketAuctionAnnouncements$", trim_power_announcements),
 )
 
 
@@ -283,6 +356,21 @@ def trim(url: httpx.URL, body: Any, ctx: TrimContext) -> list[dict]:
 
 
 # ------------------------------------------------------------------------------ the recording transport
+def request_body(request: httpx.Request) -> Any:
+    """The JSON a request sends (the IME's ASMX services are POSTed), ``None`` when it sends nothing.
+
+    Only a JSON body is recorded; anything else is refused rather than stored half-understood.
+    """
+    if not request.content:
+        return None
+    try:
+        return json.loads(request.content)
+    except ValueError as exc:
+        raise RecordingError(
+            f"{request.method} {request.url} sends a body that is not JSON"
+        ) from exc
+
+
 class RecordingTransport(httpx.AsyncBaseTransport):
     """Forwards requests to the real servers one at a time, politely, and keeps trimmed copies of the answers.
 
@@ -317,7 +405,7 @@ class RecordingTransport(httpx.AsyncBaseTransport):
         self.used, self.errors = {}, []
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-        key = cr.request_key(request.method, str(request.url))
+        key = cr.request_key(request.method, str(request.url), request_body(request))
         rec = self.cache.get(key)
         if rec is None:
             try:
@@ -333,7 +421,13 @@ class RecordingTransport(httpx.AsyncBaseTransport):
     async def _record(self, request: httpx.Request) -> cr.Recorded:
         status, content_type, content = await self._fetch(request)
         text = content.decode("utf-8", errors="replace")
-        rec = cr.Recorded(request.method, str(request.url), status, content_type)
+        rec = cr.Recorded(
+            request.method,
+            str(request.url),
+            status,
+            content_type,
+            request_body=request_body(request),
+        )
         is_json = False
         if text.lstrip()[:1] in ("{", "["):
             try:
@@ -370,7 +464,7 @@ class RecordingTransport(httpx.AsyncBaseTransport):
     async def _fetch(self, request: httpx.Request) -> tuple[int, str | None, bytes]:
         """The upstream answer, untrimmed. Each request goes out once: the market feed is needed twice (instrument set, scenario)."""
         url = str(request.url)
-        key = cr.request_key(request.method, url)
+        key = cr.request_key(request.method, url, request_body(request))
         if key in self._raw:
             return self._raw[key]
         host = request.url.host
@@ -389,7 +483,12 @@ class RecordingTransport(httpx.AsyncBaseTransport):
                 await response.aclose()
                 self._last[host] = self.clock()
                 status = response.status_code
-                self.log(f"  {request.method} {url[:150]} -> {status} ({len(content):,} bytes)")
+                sent = (
+                    f" {cr.canonical_body(request_body(request))[:120]}" if request.content else ""
+                )
+                self.log(
+                    f"  {request.method} {url[:150]}{sent} -> {status} ({len(content):,} bytes)"
+                )
                 if status not in RETRY_STATUS:
                     break
                 waits = WAIT_429 if status == 429 else WAIT_OTHER

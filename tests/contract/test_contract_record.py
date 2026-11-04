@@ -53,6 +53,18 @@ async def get(transport: rc.RecordingTransport, url: str) -> httpx.Response:
         return await client.get(url)
 
 
+IME = "https://www.ime.co.ir/SubSystems/IME/Services/Home/imedata.asmx"
+
+
+async def post(transport: rc.RecordingTransport, url: str, body: object) -> httpx.Response:
+    async with httpx.AsyncClient(transport=transport) as client:
+        return await client.post(url, json=body)
+
+
+def ime_row(hall: str, total: float, quantity: float = 1.0, **extra) -> dict:
+    return {"Talar": hall, "TotalPrice": total, "Quantity": quantity, "Unit": "تن", **extra}
+
+
 def market_row(
     symbol: str, code: int, value: float, *, upper_locked: bool = False, traded: bool = True
 ) -> dict:
@@ -217,6 +229,107 @@ async def test_market_feeds_are_cut_to_one_instrument_set_and_the_scenario_sees_
     )  # served from the copy already fetched, not asked again
     (client_rec,) = [r for r in transport.cache.values() if "ClientType" in r.url]
     assert client_rec.trimmed[0]["of"] == 61 and client_rec.trimmed[0]["kept"] == 45
+
+
+async def test_a_post_body_is_forwarded_recorded_and_part_of_the_identity():
+    def handler(request):
+        return httpx.Response(
+            200, json={"d": json.dumps([json.loads(request.content)["GregorianFromDate"]])}
+        )
+
+    transport, _, seen = recorder(handler)
+    day13 = {"Language": 8, "GregorianFromDate": "1405/08/13", "GregorianToDate": "1405/08/13"}
+    day12 = {**day13, "GregorianFromDate": "1405/08/12"}
+    url = f"{IME}/GetHomeNamaWithDateGrid"
+    assert (await post(transport, url, day13)).json() == {"d": '["1405/08/13"]'}
+    assert (await post(transport, url, day13)).status_code == 200  # same body: not asked again
+    assert (await post(transport, url, day12)).json() == {
+        "d": '["1405/08/12"]'
+    }  # another body, same URL: asked
+    assert len(seen) == 2 and transport.upstream_requests == 2
+    assert json.loads(seen[0].content) == day13  # the body reached the server untouched
+    assert {r.request_body["GregorianFromDate"] for r in transport.cache.values()} == {
+        "1405/08/13",
+        "1405/08/12",
+    }
+    assert len({r.id for r in transport.cache.values()}) == 2
+    stored = json.loads(next(iter(transport.cache.values())).to_file())
+    assert stored["request"]["body"]["Language"] == 8 and set(stored["request"]) == {
+        "method",
+        "url",
+        "body",
+    }
+
+
+async def test_a_post_with_a_body_that_is_not_json_is_refused():
+    transport, _, _ = recorder(lambda request: httpx.Response(200, json={}))
+    async with httpx.AsyncClient(transport=transport) as client:
+        with pytest.raises(rc.RecordingError, match="not JSON"):
+            await client.post(f"{IME}/GetHomeNamaWithDateGrid", content=b"a=1&b=2")
+    assert not transport.cache
+
+
+async def test_a_get_is_recorded_without_a_body_key():
+    transport, _, _ = recorder(lambda request: httpx.Response(200, json={"x": 1}))
+    await get(transport, f"{CDN}/Instrument/GetInstrumentInfo/1")
+    (rec,) = transport.cache.values()
+    assert rec.request_body is None and "body" not in json.loads(rec.to_file())["request"]
+
+
+def test_the_ime_list_keeps_the_biggest_rows_of_every_hall_and_a_few_idle_offers():
+    rows = [ime_row("A", 100 + i) for i in range(20)] + [ime_row("B", 5.0 + i) for i in range(20)]
+    rows += [ime_row("A", 0.0, quantity=0.0, Price=None, n=i) for i in range(10)]
+    inner = json.dumps(rows, ensure_ascii=False)
+    body = {"d": inner}
+    notes = rc.trim_ime_trades(body, rc.TrimContext(None, NOW))
+    kept = json.loads(body["d"])
+    assert isinstance(body["d"], str)  # still the ASMX shape: a JSON array inside a string
+    traded = [r for r in kept if r["Quantity"] > 0]
+    assert len(traded) == 2 * rc.IME_ROWS_PER_HALL
+    assert {r["TotalPrice"] for r in traded if r["Talar"] == "A"} == {
+        100.0 + i for i in range(8, 20)
+    }  # the 12 largest of A
+    assert {r["TotalPrice"] for r in traded if r["Talar"] == "B"} == {5.0 + i for i in range(8, 20)}
+    idle = [r for r in kept if r["Quantity"] == 0]
+    assert [r["n"] for r in idle] == list(
+        range(rc.IME_IDLE_OFFERS)
+    )  # the first idle offers, every field kept
+    assert kept == [r for r in rows if r in kept]  # the exchange's order
+    assert (
+        notes == [{"path": "d", "kept": len(kept), "of": 50, "rule": notes[0]["rule"]}]
+        and "largest" in notes[0]["rule"]
+    )
+    small = {"d": json.dumps(rows[:3])}
+    assert (
+        rc.trim_ime_trades(small, rc.TrimContext(None, NOW)) == []
+        and json.loads(small["d"]) == rows[:3]
+    )
+    with pytest.raises(rc.RecordingError, match="JSON string"):
+        rc.trim_ime_trades({"d": [1]}, rc.TrimContext(None, NOW))
+
+
+def test_the_ime_rule_matches_the_service_url_only():
+    rule = next(r for r in rc.RULES if "GetAmareMoamelatList" in r.pattern)
+    assert rule.matches(httpx.URL(f"{IME}/GetAmareMoamelatList"))
+    assert not rule.matches(httpx.URL(f"{IME}/GetHomeNamaWithDateGrid"))
+
+
+def test_the_electricity_archive_keeps_the_coming_auctions_and_a_few_held_ones():
+    rows = [{"auctionIdn": 900 + i, "auctionState": ""} for i in range(8)]
+    rows += [{"auctionIdn": 800 + i, "auctionState": "برگزار شده"} for i in range(12)]
+    body = {"results": list(rows), "pagedMetaData": [{"totalCount": 9626}]}
+    notes = rc.trim_power_announcements(body, rc.TrimContext(None, NOW))
+    assert [r["auctionIdn"] for r in body["results"]] == [900 + i for i in range(8)] + [
+        800,
+        801,
+        802,
+    ]
+    assert (
+        notes[0]["kept"] == 11
+        and notes[0]["of"] == 20
+        and body["pagedMetaData"] == [{"totalCount": 9626}]
+    )
+    assert rc.trim_power_announcements({"results": rows[:9]}, rc.TrimContext(None, NOW)) == []
 
 
 async def test_an_untrimmed_giant_is_refused_instead_of_stored():

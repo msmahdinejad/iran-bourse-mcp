@@ -6,7 +6,16 @@ import json
 import re
 from pathlib import Path
 
-from contract_replay import HOSTS, MANIFESTS, RECORDED, REQUESTS, RESPONSE_KEYS, load_scenarios
+from contract_replay import (
+    HOSTS,
+    MANIFESTS,
+    RECORDED,
+    REQUEST_KEYS,
+    REQUESTS,
+    RESPONSE_KEYS,
+    Recorded,
+    load_scenarios,
+)
 
 from iran_bourse_mcp.server import mcp
 
@@ -55,10 +64,18 @@ def test_recordings_keep_only_status_content_type_and_body():
     for path in REQUESTS.glob("*.json"):
         doc = json.loads(path.read_text(encoding="utf-8"))
         assert set(doc) == {"request", "response", "trimmed"}, path.name
-        assert set(doc["request"]) == {"method", "url"}, path.name  # no request headers
+        request = doc["request"]
+        assert {"method", "url"} <= set(request) <= REQUEST_KEYS, path.name  # no request headers
+        assert "body" not in request or request["method"] == "POST", f"{path.name}: body on a GET"
         # no cookies, tokens or other response headers
         assert set(doc["response"]) <= RESPONSE_KEYS, path.name
-        assert doc["request"]["url"].split("/")[2] in HOSTS, f"{path.name}: unexpected host"
+        assert request["url"].split("/")[2] in HOSTS, f"{path.name}: unexpected host"
+
+
+def test_every_recording_is_stored_under_the_name_of_its_request():
+    """The file name is a hash of method, URL and request body: a changed identity rule would orphan old recordings."""
+    for path in REQUESTS.glob("*.json"):
+        assert Recorded.from_file(path.read_text(encoding="utf-8")).id == path.stem, path.name
 
 
 def test_recordings_stay_within_the_size_budget():

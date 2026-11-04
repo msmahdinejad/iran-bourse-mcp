@@ -23,7 +23,7 @@ def _quote(run):
 
 For each scenario the test:
 
-1. loads its recordings from `tests/fixtures/recorded/` and serves them through a [respx](https://lundberg.github.io/respx/) router, matched on method + host + path + query. A request without a recording **fails the test and names its URL**; a recording the tool no longer asks for is reported as stale;
+1. loads its recordings from `tests/fixtures/recorded/` and serves them through a [respx](https://lundberg.github.io/respx/) router, matched on method + host + path + query (and, for the POSTs of the IME's services, the JSON body, whatever its key order). A request without a recording **fails the test and names its URL**; a recording the tool no longer asks for is reported as stale;
 2. freezes `tehran_now()` at the Tehran time the scenario was recorded (every module that imported it is patched), so "today" is the recorded day and results do not depend on when the test runs;
 3. calls the tool through the MCP server object in memory (`mcp.call_tool`: argument validation, error mapping, JSON result) on top of the real `service`, `api` and `client` code. It works on MCP SDK 1.x and 2.x;
 4. runs the scenario's checks: the **exact set of keys** of the result, units and labels, and values compared with the recorded upstream payload they were computed from (`run.rec.body(...)` gives the raw payload), so a changed shaper, a renamed field or a different unit fails. Checks never hard-code a market value; they read it from the recording, except for fixed past days (history does not change), where exact numbers are pinned.
@@ -35,6 +35,7 @@ For each scenario the test:
 ```
 tests/fixtures/recorded/
   requests/<host>__<path>-<hash>.json   one upstream request and its response (compact JSON, shared by scenarios)
+                                        (a request that sends a JSON body keeps it under "request"."body" and the hash covers it)
   scenarios/<id>.json                   the requests a scenario needs and the Tehran time it was recorded at
 ```
 
@@ -53,7 +54,7 @@ Until then `test_every_registered_tool_has_a_contract_scenario` fails and lists 
 
 ## Re-recording
 
-Needs a connection that reaches TSETMC (see the README) and, for Codal, patience.
+Needs a connection that reaches TSETMC (see the README), the IME (`www.ime.co.ir`) and the Iran Energy Exchange (`webapi.iee.ir`) and, for Codal, patience.
 
 ```bash
 uv run python scripts/record_contract.py                 # list scenarios and when each was recorded (offline)

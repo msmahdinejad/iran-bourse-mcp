@@ -35,32 +35,59 @@ SCENARIO_MODULES = (
     "contract_scenarios_symbol",
     "contract_scenarios_other",
 )
-HOSTS = {"cdn.tsetmc.com": "cdn", "webgw.tse.ir": "webgw", "search.codal.ir": "codal"}
+HOSTS = {
+    "cdn.tsetmc.com": "cdn",
+    "webgw.tse.ir": "webgw",
+    "search.codal.ir": "codal",
+    "www.ime.co.ir": "ime",
+    "webapi.iee.ir": "iee",
+}
 RESPONSE_KEYS = {
     "status",
     "content_type",
     "json",
     "text",
 }  # nothing else is stored: no headers or cookies
+REQUEST_KEYS = {
+    "method",
+    "url",
+    "body",
+}  # "body" only on a request that sends one (the IME's POSTs)
 
 
 # ------------------------------------------------------------------------------ request identity
-def request_key(method: str, url: str) -> str:
-    """Method + host + path + query, ignoring query order: the identity under which a response is recorded."""
+def canonical_body(body: Any) -> str:
+    """A JSON request body as one string, independent of key order and spacing."""
+    return json.dumps(body, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def request_key(method: str, url: str, body: Any = None) -> str:
+    """Method + host + path + query (+ JSON body), ignoring query and key order: the identity under which a response is recorded.
+
+    A request without a body keeps the key it always had, so existing recordings stay valid.
+    """
     parsed = httpx.URL(url)
     query = "&".join(
         f"{k}={v}" for k, v in sorted(parse_qsl(parsed.query.decode(), keep_blank_values=True))
     )
-    return f"{method.upper()} {parsed.scheme}://{parsed.host}{parsed.path}" + (
+    key = f"{method.upper()} {parsed.scheme}://{parsed.host}{parsed.path}" + (
         f"?{query}" if query else ""
     )
+    return key if body is None else f"{key} {canonical_body(body)}"
 
 
-def request_id(method: str, url: str) -> str:
-    """File name stem of a recording: readable prefix plus a hash that tells apart queries and Persian path parts."""
+def request_id(method: str, url: str, body: Any = None) -> str:
+    """File name stem of a recording: readable prefix plus a hash that tells apart queries, bodies and Persian path parts.
+
+    A request with a body is named after the last two path parts (``imedata_asmx_GetAmareMoamelatList``): the service
+    name is at the end of a long path, and several bodies share one URL, so the hash carries the difference.
+    """
     parsed = httpx.URL(url)
-    slug = re.sub(r"[^A-Za-z0-9]+", "_", unquote(parsed.path)).strip("_")[:56]
-    digest = hashlib.sha1(request_key(method, url).encode("utf-8")).hexdigest()[:8]
+    path = unquote(parsed.path)
+    if body is not None:
+        path = "/".join(path.strip("/").split("/")[-2:])
+    slug = re.sub(r"[^A-Za-z0-9]+", "_", path).strip("_")[:56]
+    digest = hashlib.sha1(request_key(method, url, body).encode("utf-8")).hexdigest()[:8]
     return f"{HOSTS.get(parsed.host, parsed.host)}__{slug}-{digest}"
 
 
@@ -76,10 +103,17 @@ class Recorded:
     json: Any = None
     text: str | None = None
     trimmed: list[dict] = field(default_factory=list)
+    request_body: Any = None  # the JSON the request sent (POST); None for a request without a body
 
     @property
     def id(self) -> str:
-        return request_id(self.method, self.url)
+        return request_id(self.method, self.url, self.request_body)
+
+    def describe(self) -> str:
+        """The URL, then the compact request body when there is one: what an error message should name."""
+        if self.request_body is None:
+            return self.url
+        return f"{self.url} {canonical_body(self.request_body)}"
 
     @property
     def body(self) -> Any:
@@ -97,11 +131,10 @@ class Recorded:
     def to_file(self) -> str:
         response: dict[str, Any] = {"status": self.status, "content_type": self.content_type}
         response.update({"text": self.text} if self.text is not None else {"json": self.json})
-        doc = {
-            "request": {"method": self.method, "url": self.url},
-            "response": response,
-            "trimmed": self.trimmed,
-        }
+        request: dict[str, Any] = {"method": self.method, "url": self.url}
+        if self.request_body is not None:
+            request["body"] = self.request_body
+        doc = {"request": request, "response": response, "trimmed": self.trimmed}
         return json.dumps(doc, ensure_ascii=False, separators=(",", ":")) + "\n"
 
     @classmethod
@@ -116,6 +149,7 @@ class Recorded:
             response.get("json"),
             response.get("text"),
             doc.get("trimmed", []),
+            doc["request"].get("body"),
         )
 
 
@@ -159,13 +193,14 @@ class Recordings:
         self.items = items
 
     def find(self, fragment: str) -> list[Recorded]:
-        return [r for r in self.items if fragment in r.url]
+        """Recordings with ``fragment`` in their URL (or, for a request that sent a body, in the body too)."""
+        return [r for r in self.items if fragment in r.describe()]
 
     def get(self, fragment: str) -> Recorded:
         found = self.find(fragment)
         if len(found) != 1:
             raise AssertionError(
-                f"expected one recording with {fragment!r} in its URL, found {len(found)}: {[r.url for r in found]}"
+                f"expected one recording with {fragment!r} in its URL, found {len(found)}: {[r.describe() for r in found]}"
             )
         return found[0]
 
@@ -188,7 +223,11 @@ class Replay:
         self._routes = []
         for rec in recordings:
             # respx matches a URL's query exactly; a URL without one must not match the same path with a query
-            lookups = {} if httpx.URL(rec.url).query else {"params__eq": ""}
+            lookups: dict[str, Any] = {} if httpx.URL(rec.url).query else {"params__eq": ""}
+            if (
+                rec.request_body is not None
+            ):  # a request that sends a body is told apart by it (key order is irrelevant)
+                lookups["json"] = rec.request_body
             route = self.router.route(method=rec.method, url=rec.url, **lookups)
             route.mock(side_effect=lambda request, rec=rec: rec.to_response(request))
             self._routes.append(route)
@@ -197,15 +236,17 @@ class Replay:
 
     def _missing(self, request: httpx.Request) -> httpx.Response:
         line = f"{request.method} {request.url}"
+        if request.content:
+            line += f" {request.content.decode('utf-8', errors='replace')}"
         self.unmatched.append(line)
         raise UnmatchedRequest(
             f"no recording for {line} (re-record with scripts/record_contract.py --record --only <scenario>)"
         )
 
     def unused(self) -> list[str]:
-        """URLs of recordings the scenario never requested: the code stopped asking for them, so they are stale."""
+        """Recordings (URL, then body) the scenario never requested: the code stopped asking for them, so they are stale."""
         return [
-            rec.url
+            rec.describe()
             for rec, route in zip(self.recordings, self._routes, strict=True)
             if not route.called
         ]
