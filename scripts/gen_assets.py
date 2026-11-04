@@ -138,7 +138,7 @@ def banner() -> str:
 <text x="64" y="238" font-family="{SANS}" font-size="22" fill="{MUTED}" unicode-bidi="plaintext">بورس تهران، برای ایجنت‌های هوش مصنوعی</text>
 
 <g font-family="{SANS}" font-size="14" font-weight="600">
-<rect x="64" y="268" width="104" height="30" rx="15" fill="none" stroke="{TEAL}"/><text x="116" y="288" text-anchor="middle" fill="{TEAL}">38 tools</text>
+<rect x="64" y="268" width="104" height="30" rx="15" fill="none" stroke="{TEAL}"/><text x="116" y="288" text-anchor="middle" fill="{TEAL}">40 tools</text>
 <rect x="178" y="268" width="104" height="30" rx="15" fill="none" stroke="{LAPIS}"/><text x="230" y="288" text-anchor="middle" fill="{INK}">read-only</text>
 <rect x="292" y="268" width="148" height="30" rx="15" fill="none" stroke="{SAFFRON}"/><text x="366" y="288" text-anchor="middle" fill="{INK}">100% tick coverage</text>
 <rect x="450" y="268" width="66" height="30" rx="15" fill="none" stroke="{MUTED}"/><text x="483" y="288" text-anchor="middle" fill="{INK}">MIT</text>
@@ -240,7 +240,7 @@ def architecture() -> str:
 <text x="281" y="250" text-anchor="middle" font-family="{SANS}" font-size="11" fill="{MUTED}">stdio / HTTP</text>
 <rect x="318" y="30" width="470" height="410" rx="16" fill="{BG0}" fill-opacity=".6" stroke="{TEAL}" stroke-width="1.5" stroke-dasharray="2 4"/>
 <text x="338" y="58" font-family="{SANS}" font-size="13" font-weight="700" letter-spacing="2" fill="{TEAL}">IRAN-BOURSE-MCP</text>
-{box(344, 76, 418, 66, "server.py", ["38 read-only tools · 4 prompts · glossary"], TEAL)}
+{box(344, 76, 418, 66, "server.py", ["40 read-only tools · 4 prompts · glossary"], TEAL)}
 {box(344, 160, 418, 66, "service.py", ["one coroutine per tool · joins sources · validates"], TEAL)}
 {box(344, 244, 418, 76, "shape.py  (pure, tested)", ["queues · book rebuild · ticks · flows · adjustment"], SAFFRON)}
 {box(344, 338, 200, 82, "resolver.py", ["symbol → insCode", "ی/ي ک/ك safe"], TEAL)}
@@ -275,7 +275,7 @@ def social() -> str:
 <text x="80" y="340" font-family="{SANS}" font-size="40" fill="{INK}">The Tehran Stock Exchange, for AI agents.</text>
 <text x="80" y="396" font-family="{SANS}" font-size="32" fill="{MUTED}" unicode-bidi="plaintext">بورس تهران، برای ایجنت‌های هوش مصنوعی</text>
 <g font-family="{SANS}" font-size="22" font-weight="600" fill="{INK}">
-<rect x="80" y="440" width="150" height="46" rx="23" fill="none" stroke="{TEAL}" stroke-width="2"/><text x="155" y="471" text-anchor="middle" fill="{TEAL}">38 tools</text>
+<rect x="80" y="440" width="150" height="46" rx="23" fill="none" stroke="{TEAL}" stroke-width="2"/><text x="155" y="471" text-anchor="middle" fill="{TEAL}">40 tools</text>
 <rect x="244" y="440" width="150" height="46" rx="23" fill="none" stroke="{LAPIS}" stroke-width="2"/><text x="319" y="471" text-anchor="middle">read-only</text>
 <rect x="408" y="440" width="230" height="46" rx="23" fill="none" stroke="{SAFFRON}" stroke-width="2"/><text x="523" y="471" text-anchor="middle">100% tick coverage</text>
 <rect x="652" y="440" width="190" height="46" rx="23" fill="none" stroke="{MUTED}" stroke-width="2"/><text x="747" y="471" text-anchor="middle">works with any agent</text>

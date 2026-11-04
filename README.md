@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-2EC4B6.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%E2%80%933.13-5B7CFA.svg)](pyproject.toml)
 [![MCP SDK 1.x and 2.x](https://img.shields.io/badge/MCP%20SDK-1.x%20%7C%202.x-F5B53D.svg)](https://modelcontextprotocol.io)
-[![Tools](https://img.shields.io/badge/tools-38%20read--only-2EC4B6.svg)](docs/TOOLS.md)
+[![Tools](https://img.shields.io/badge/tools-40%20read--only-2EC4B6.svg)](docs/TOOLS.md)
 [![Stars](https://img.shields.io/github/stars/msmahdinejad/iran-bourse-mcp?style=flat&color=F5B53D)](https://github.com/msmahdinejad/iran-bourse-mcp/stargazers)
 
 **[Website](https://msmahdinejad.github.io/iran-bourse-mcp/)** · **[Install](#install)** · **[Benchmarks](#benchmarks)** · **[Tools](docs/TOOLS.md)** · **[Screener](docs/SCREENER.md)** · **[Real examples](docs/EXAMPLES.md)** · **[Data notes](docs/DATA_SOURCES.md)** · **[راهنمای فارسی](docs/GUIDE.fa.md)** · **[فارسی](README.fa.md)**
@@ -413,6 +413,7 @@ The language is a safe expression grammar (parsed with `ast`, never `eval`), acc
 | Tick-by-tick trades (ریز معاملات) | `trades` (filterable) `trade_summary` (bars, VWAP, biggest trades, price levels, pressure estimate, **coverage check**) |
 | Real vs legal investors (حقیقی/حقوقی) | `real_legal_flow` (per-capita, buyer power, net flow, daily history) |
 | Shareholders (سهامداران عمده) | `shareholders` `shareholder_history` (also one holder's position over time) `shareholder_portfolio` `market_holder_moves` |
+| Commodity and energy exchanges | `commodity_market` (IME physical trades by contract, roll-ups, dollar rate) `energy_market` (Iran Energy Exchange: trades, announced offers, one auction's order levels) |
 | Funds | `fund_ranking` (579 funds: NAV, returns, size, portfolio mix) `etf_nav` (premium/discount to issue and redemption NAV) |
 | Codal | `codal_filings` (links to page, PDF, Excel) `codal_company` |
 | Supervisor notices | `supervisor_messages` |
@@ -545,7 +546,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md), [AGENTS.md](AGENTS.md) and [docs/ARCHITE
 
 ## Roadmap
 
-- IME commodity and energy bourse data
 - Holiday table for Jalali year 1406 (once the official calendar is final)
 - Published PyPI release (`uvx iran-bourse-mcp`)
 

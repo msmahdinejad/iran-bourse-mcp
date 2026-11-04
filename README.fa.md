@@ -9,7 +9,7 @@
 [![CI](https://github.com/msmahdinejad/iran-bourse-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/msmahdinejad/iran-bourse-mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2EC4B6.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%E2%80%933.13-5B7CFA.svg)](pyproject.toml)
-[![Tools](https://img.shields.io/badge/tools-38%20read--only-2EC4B6.svg)](docs/TOOLS.md)
+[![Tools](https://img.shields.io/badge/tools-40%20read--only-2EC4B6.svg)](docs/TOOLS.md)
 [![Stars](https://img.shields.io/github/stars/msmahdinejad/iran-bourse-mcp?style=flat&color=F5B53D)](https://github.com/msmahdinejad/iran-bourse-mcp/stargazers)
 
 **[وب‌سایت](https://msmahdinejad.github.io/iran-bourse-mcp/)** · **[نصب](#نصب)** · **[بنچمارک](#بنچمارک)** · **[راهنمای کامل](docs/GUIDE.fa.md)** · **[مرجع ابزارها](docs/TOOLS.md)** · **[اسکرینر](docs/SCREENER.md)** · **[نمونه خروجی‌ها](docs/EXAMPLES.md)** · **[نکات داده](docs/DATA_SOURCES.md)** · **[English](README.md)**
@@ -107,6 +107,7 @@ uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp c
 | ریز معاملات | `trades` (قابل فیلتر) `trade_summary` (کندل‌های درون‌روزی، VWAP، بزرگ‌ترین معاملات، حجم در هر قیمت، **بررسی کامل بودن داده**) |
 | حقیقی و حقوقی | `real_legal_flow` (سرانه، قدرت خریدار، ورود/خروج پول، تاریخچه روزانه) |
 | سهامداران | `shareholders` `shareholder_history` (و موقعیت یک سهامدار در طول زمان) `shareholder_portfolio` `market_holder_moves` |
+| بورس کالا و بورس انرژی | `commodity_market` (معاملات فیزیکی بورس کالا به تفکیک قرارداد، جمع‌بندی‌ها، نرخ دلار) `energy_market` (معاملات، عرضه‌های اعلام‌شده و سطوح سفارش یک حراج در بورس انرژی) |
 | صندوق‌ها | `fund_ranking` (۵۷۹ صندوق: NAV، بازده، اندازه، ترکیب پرتفوی) `etf_nav` (حباب نسبت به NAV صدور و ابطال) |
 | کدال | `codal_filings` (لینک صفحه، PDF، اکسل) `codal_company` |
 | پیام ناظر | `supervisor_messages` |
