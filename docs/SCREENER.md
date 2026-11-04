@@ -56,8 +56,8 @@ Fields marked **history** also work as `name[k]` and inside the window functions
 
 | Field (aliases) | Persian label | Unit | History | Meaning |
 |---|---|---|---|---|
-| `symbol` | نماد | text |  | Ticker, e.g. فولاد. |
-| `name` | نام شرکت | text |  | Company name. |
+| `symbol`, `l18` | نماد | text |  | Ticker, e.g. فولاد. |
+| `name`, `l30` | نام شرکت | text |  | Company name. |
 | `industry` | گروه صنعت | text |  | Industry group, e.g. 'فلزات اساسی'. Use has(industry, 'فلزات') or industry in ('بانکها', 'خودرو'). |
 | `sub_industry` | زیرگروه صنعت | text |  | Industry sub-group. |
 | `market` | بازار | text |  | 'بورس' or 'فرابورس'. |
@@ -70,14 +70,16 @@ Fields marked **history** also work as `name[k]` and inside the window functions
 | `high`, `pmax`, `max_price` | بیشترین قیمت | rial | yes | Day high. |
 | `low`, `pmin`, `min_price` | کمترین قیمت | rial | yes | Day low. |
 | `yesterday`, `py`, `yesterday_price` | قیمت دیروز | rial | yes | Reference price: previous day's adjusted close. |
-| `last_pct`, `pl_pct` | درصد آخرین معامله | % | yes | Last trade vs reference price, in percent. |
-| `close_pct`, `pc_pct` | درصد قیمت پایانی | % | yes | Close vs reference price, in percent. |
+| `last_change`, `plc` | تغییر آخرین معامله | rial | yes | Last trade minus reference price. |
+| `close_change`, `pcc` | تغییر قیمت پایانی | rial | yes | Close minus reference price. |
+| `last_pct`, `plp` | درصد آخرین معامله | % | yes | Last trade vs reference price, in percent. |
+| `close_pct`, `pcp` | درصد قیمت پایانی | % | yes | Close vs reference price, in percent. |
 | `vwap` | میانگین قیمت معاملات | rial | yes | value / volume. |
 | `volume`, `tvol`, `vol` | حجم معاملات | shares | yes | Traded volume in shares. |
 | `value`, `tval` | ارزش معاملات | rial | yes | Traded value in rial (1B = one billion rial = 100M toman). |
 | `trades`, `tno` | تعداد معاملات | count | yes | Number of trades. |
-| `upper_limit`, `pmaxlim`, `max_limit` | حد مجاز بالا | rial |  | Upper price limit (سقف قیمت). |
-| `lower_limit`, `pminlim`, `min_limit` | حد مجاز پایین | rial |  | Lower price limit (کف قیمت). |
+| `upper_limit`, `tmax`, `max_limit` | حد مجاز بالا | rial |  | Upper price limit (سقف قیمت). |
+| `lower_limit`, `tmin`, `min_limit` | حد مجاز پایین | rial |  | Lower price limit (کف قیمت). |
 | `bid_price`, `pd1` | بهترین قیمت خرید | rial |  | Best bid price. |
 | `bid_volume`, `qd1` | حجم بهترین خرید | shares |  | Volume at the best bid. |
 | `bid_orders`, `zd1` | تعداد سفارش خرید | count |  | Orders at the best bid. |
@@ -92,27 +94,61 @@ Fields marked **history** also work as `name[k]` and inside the window functions
 | `sell_queue` | صف فروش | flag |  | At the lower limit with nothing bid: a probable sell queue. |
 | `pe`, `p_e` | P/E | ratio |  | Price / earnings (null when loss-making). |
 | `eps` | EPS | rial |  | Earnings per share, rial. |
-| `market_cap` | ارزش بازار | rial |  | Market capitalisation, rial. |
+| `market_cap`, `mv`, `market_value` | ارزش بازار | rial |  | Market capitalisation: closing price x shares outstanding, rial. |
 | `index_effect`, `effect_on_index` | تاثیر در شاخص | points |  | Contribution to the total index, in index points. |
+| `base_volume`, `bvol`, `bv` | حجم مبنا | shares |  | Base volume (the exchange's reference volume; 1 for nearly every symbol). |
+| `shares`, `z` | تعداد سهام | count |  | Shares outstanding (units for funds). |
+| `nav`, `predtran` | NAV ابطال صندوق | rial |  | Fund redemption NAV per unit; empty for non-funds. |
+| `nav_premium_pct` | حباب صندوق | % |  | (last / nav - 1) x 100 for funds: positive means trading above redemption NAV. |
+| `open_interest`, `buyop` | موقعیت‌های باز | contracts |  | Open interest of options and futures. |
+| `sector_code`, `cs` | کد گروه صنعت | code |  | Industry-group code of the exchange. |
+| `type_code` | کد نوع ابزار | code |  | The exchange's instrument-type code, e.g. 300 shares, 305 fund, 311 option. |
+| `last_update` | زمان آخرین بروزرسانی | HHMMSS |  | Time this row was last updated, e.g. 123000. |
+| `bid_volume_5` | حجم ۵ سطر خرید | shares |  | Total volume of the five best bids. |
+| `ask_volume_5` | حجم ۵ سطر فروش | shares |  | Total volume of the five best asks. |
 | `gap_pct` | گپ بازگشایی | % |  | (open / yesterday - 1) x 100. |
 | `range_pct` | دامنه نوسان روز | % |  | (high - low) / yesterday x 100. |
 | `from_high_pct` | فاصله از سقف روز | % |  | (last / high - 1) x 100; 0 when trading at the day high. |
 | `from_low_pct` | فاصله از کف روز | % |  | (last / low - 1) x 100. |
 | `to_upper_limit_pct` | فاصله تا سقف مجاز | % |  | (upper_limit / last - 1) x 100. |
-| `real_buy_volume`, `buy_i_volume` | حجم خرید حقیقی | shares |  | Real-person buy volume. |
-| `real_sell_volume`, `sell_i_volume` | حجم فروش حقیقی | shares |  | Real-person sell volume. |
-| `real_buy_count`, `buy_count_i` | تعداد خریدار حقیقی | count |  | Number of real-person buyers. |
-| `real_sell_count`, `sell_count_i` | تعداد فروشنده حقیقی | count |  | Number of real-person sellers. |
-| `legal_buy_volume`, `buy_n_volume` | حجم خرید حقوقی | shares |  | Legal-entity buy volume. |
-| `legal_sell_volume`, `sell_n_volume` | حجم فروش حقوقی | shares |  | Legal-entity sell volume. |
-| `legal_buy_count`, `buy_count_n` | تعداد خریدار حقوقی | count |  | Number of legal-entity buyers. |
-| `legal_sell_count`, `sell_count_n` | تعداد فروشنده حقوقی | count |  | Number of legal-entity sellers. |
+| `real_buy_volume`, `buy_i_volume`, `ct_buy_i_volume` | حجم خرید حقیقی | shares |  | Real-person buy volume. |
+| `real_sell_volume`, `sell_i_volume`, `ct_sell_i_volume` | حجم فروش حقیقی | shares |  | Real-person sell volume. |
+| `real_buy_count`, `buy_count_i`, `ct_buy_counti` | تعداد خریدار حقیقی | count |  | Number of real-person buyers. |
+| `real_sell_count`, `sell_count_i`, `ct_sell_counti` | تعداد فروشنده حقیقی | count |  | Number of real-person sellers. |
+| `legal_buy_volume`, `buy_n_volume`, `ct_buy_n_volume` | حجم خرید حقوقی | shares |  | Legal-entity buy volume. |
+| `legal_sell_volume`, `sell_n_volume`, `ct_sell_n_volume` | حجم فروش حقوقی | shares |  | Legal-entity sell volume. |
+| `legal_buy_count`, `buy_count_n`, `ct_buy_countn` | تعداد خریدار حقوقی | count |  | Number of legal-entity buyers. |
+| `legal_sell_count`, `sell_count_n`, `ct_sell_countn` | تعداد فروشنده حقوقی | count |  | Number of legal-entity sellers. |
 | `real_net_volume` | خالص حجم خرید حقیقی | shares |  | Real buy volume - real sell volume (>0 = real-person inflow). |
 | `real_net_value` | خالص ورود پول حقیقی (تخمین) | rial |  | Estimate: real_net_volume x vwap. |
 | `legal_net_volume` | خالص حجم خرید حقوقی | shares |  | Legal buy volume - legal sell volume. |
 | `real_buyer_power`, `buyer_power` | قدرت خریدار حقیقی | ratio |  | Average real buy size / average real sell size (>1: buyers are bigger). |
 | `real_buy_share` | سهم خرید حقیقی | % |  | Real-person share of all buy volume, percent. |
 | `real_sell_share` | سهم فروش حقیقی | % |  | Real-person share of all sell volume, percent. |
+| `pd2` | قیمت خرید، سطر 2 | rial |  | Order-book level 2: bid price. |
+| `qd2` | حجم خرید، سطر 2 | shares |  | Order-book level 2: bid volume. |
+| `zd2` | تعداد خریدار، سطر 2 | count |  | Order-book level 2: bid orders. |
+| `po2` | قیمت فروش، سطر 2 | rial |  | Order-book level 2: ask price. |
+| `qo2` | حجم فروش، سطر 2 | shares |  | Order-book level 2: ask volume. |
+| `zo2` | تعداد فروشنده، سطر 2 | count |  | Order-book level 2: ask orders. |
+| `pd3` | قیمت خرید، سطر 3 | rial |  | Order-book level 3: bid price. |
+| `qd3` | حجم خرید، سطر 3 | shares |  | Order-book level 3: bid volume. |
+| `zd3` | تعداد خریدار، سطر 3 | count |  | Order-book level 3: bid orders. |
+| `po3` | قیمت فروش، سطر 3 | rial |  | Order-book level 3: ask price. |
+| `qo3` | حجم فروش، سطر 3 | shares |  | Order-book level 3: ask volume. |
+| `zo3` | تعداد فروشنده، سطر 3 | count |  | Order-book level 3: ask orders. |
+| `pd4` | قیمت خرید، سطر 4 | rial |  | Order-book level 4: bid price. |
+| `qd4` | حجم خرید، سطر 4 | shares |  | Order-book level 4: bid volume. |
+| `zd4` | تعداد خریدار، سطر 4 | count |  | Order-book level 4: bid orders. |
+| `po4` | قیمت فروش، سطر 4 | rial |  | Order-book level 4: ask price. |
+| `qo4` | حجم فروش، سطر 4 | shares |  | Order-book level 4: ask volume. |
+| `zo4` | تعداد فروشنده، سطر 4 | count |  | Order-book level 4: ask orders. |
+| `pd5` | قیمت خرید، سطر 5 | rial |  | Order-book level 5: bid price. |
+| `qd5` | حجم خرید، سطر 5 | shares |  | Order-book level 5: bid volume. |
+| `zd5` | تعداد خریدار، سطر 5 | count |  | Order-book level 5: bid orders. |
+| `po5` | قیمت فروش، سطر 5 | rial |  | Order-book level 5: ask price. |
+| `qo5` | حجم فروش، سطر 5 | shares |  | Order-book level 5: ask volume. |
+| `zo5` | تعداد فروشنده، سطر 5 | count |  | Order-book level 5: ask orders. |
 
 ## Functions
 

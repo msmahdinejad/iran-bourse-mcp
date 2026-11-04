@@ -106,7 +106,7 @@
   // ---- static content
   var tape = (S.tape || []).map(function (r) { return '<span><b>' + r.symbol + '</b>' + nf(r.last) + ' <span class="' + (r.pct >= 0 ? "up" : "down") + '">' + (r.pct >= 0 ? "+" : "") + r.pct.toFixed(2) + '%</span></span>'; }).join("");
   $("tape-track").innerHTML = tape + tape + tape;
-  $("pills").innerHTML = ["28 tools", "read-only", "100% tick coverage", "MIT"].map(function (x, i) { return '<div class="pill" style="border-color:' + ["#2ec4b6", "#5b7cfa", "#f5b53d", "#8fa1c7"][i] + '">' + x + '</div>'; }).join("");
+  $("pills").innerHTML = ["38 tools", "read-only", "100% tick coverage", "MIT"].map(function (x, i) { return '<div class="pill" style="border-color:' + ["#2ec4b6", "#5b7cfa", "#f5b53d", "#8fa1c7"][i] + '">' + x + '</div>'; }).join("");
   var chips = ["Claude Code", "Claude Desktop", "Codex", "Gemini CLI", "Cursor", "VS Code", "Windsurf", "Cline", "Zed", "Goose", "OpenCode", "Kiro", "Qwen Code", "JetBrains", "Amp", "any MCP client"];
   $("chips").innerHTML = chips.map(function (c) { return '<div class="chip">' + c + '</div>'; }).join("");
 

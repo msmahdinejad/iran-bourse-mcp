@@ -27,20 +27,20 @@ All indices: total, equal-weight, free-float and every industry index with chang
 
 ### `market_watch`
 
-Whole-market screen (دیده‌بان بازار) of ordinary shares on Bourse and Fara Bourse: filter, sort and page through ~600 symbols in one call.
+Whole-market table (دیده‌بان بازار) of the exchange's own feed: about 3,700 instruments (shares, base market, funds, bonds, options, futures, rights, commodities) on Bourse and Fara Bourse, filtered, sorted and paged in one call. To find instruments by conditions use screen_stocks.
 
 | parameter | type | description |
 |---|---|---|
 | `market` | string | 'bourse' or 'fara' (Fara Bourse). Omit for both where applicable. |
-| `security_type` | string | Substring filter on the exchange's security type. The gateway's watch lists ordinary shares (سهام عادی) of Bourse and Fara Bourse; funds and bonds are in market_snapshot. |
+| `security_type` | string | Type of instrument: 'stock' (default, سهام), 'fund' (صندوق), 'bond', 'option', 'future', 'rights', 'commodity', 'base' (بازار پایه) or 'all'; a Persian substring such as 'صندوق' works too. (default `سهام`) |
 | `industry` | string | Industry name substring, e.g. 'فلزات', 'بانک' |
-| `board` | string | Board substring, e.g. 'اول', 'دوم', 'نوآفرین' |
+| `board` | string | Board substring, e.g. 'اول', 'دوم', 'پایه' |
 | `min_value` | number | Minimum traded value in rial (default `0`) |
 | `only_traded` | boolean |  (default `True`) |
 | `sort_by` | string | last_pct, close_pct, value, volume, trades, market_cap, pe, effect_on_index (default `value`) |
 | `descending` | boolean |  (default `True`) |
 | `limit` | integer |  (default `50`) |
-| `detail` | string | 'compact' (default) or 'full' (every field incl. best bid/ask, limits, EPS) (default `compact`) |
+| `detail` | string | 'compact' (default) or 'full' (every field incl. best bid/ask, limits, EPS, base volume, NAV) (default `compact`) |
 
 ### `top_movers`
 
@@ -50,7 +50,7 @@ Ranked lists: top gainers/losers, most traded, buy/sell queues (صف خرید/ف
 |---|---|---|
 | `kind` | string | gainers, losers, value, volume, trades, buy_queue, sell_queue, real_inflow, real_outflow, real_buyer_power (default `gainers`) |
 | `market` | string | 'bourse' or 'fara' (Fara Bourse). Omit for both where applicable. |
-| `security_type` | string | Substring filter, default 'سهام' (stocks) (default `سهام`) |
+| `security_type` | string | 'stock' (default, سهام), 'fund', 'option', 'bond', 'all' ... (default `سهام`) |
 | `limit` | integer |  (default `20`) |
 
 ### `industry_summary`
@@ -99,6 +99,138 @@ Exchange supervisor notices (پیام ناظر): trading restrictions, clarifica
 | `limit` | integer |  (default `10`) |
 | `full_text` | boolean |  (default `False`) |
 | `market` | string | 'bourse' or 'fara' (when no symbol) (default `bourse`) |
+
+## Screener
+
+### `screen_stocks`
+
+Stock screener (فیلتر نویسی): the filter box of tsetmc.com driven by an expression. Returns only the stocks that pass your condition right now, using today's live values plus up to 60 past trading days (close[1], avg(volume, 20), count(close_pct > 0, 3)) and real/legal money flow, in one call with a validated, safe expression (nothing is executed).
+
+| parameter | type | description |
+|---|---|---|
+| `filter` | string | Condition checked for every stock, e.g. "volume > 2 * avg(volume, 20) and close_pct > 1". Today: last close open high low yesterday last_pct close_pct volume value(rial) trades pe eps market_cap bid_volume ask_volume at_upper_limit buy_queue real_net_value real_buyer_power industry symbol. Past days: close[1] (yesterday), avg(volume, 20), highest(high, 10), count(close_pct > 0, 5), all(close_pct < 0, 3). Operators: and or not, has(industry, 'بانک'), 5B = 5 billion rial. All fields and functions: screener_reference. |
+| `preset` | string | Ready-made filter, e.g. volume_surge, smart_money, breakout_20d, buy_queue (screener_reference lists them). ANDed with filter. |
+| `market` | string | 'bourse' or 'fara' (Fara Bourse). Omit for both where applicable. |
+| `security_type` | string | Instrument type: 'stock' (default, سهام), 'fund' (صندوق, has nav and nav_premium_pct), 'option', 'future', 'bond', 'rights', 'commodity', 'base' or 'all' (default `سهام`) |
+| `industry` | string | Industry name substring, e.g. 'بانک' |
+| `columns` | array | Expressions to show, optionally 'expr as label'. Default: symbol, last, close_pct, volume, value plus the fields and window values the filter uses. |
+| `sort` | string | Expression to sort by, e.g. 'volume / avg(volume, 20)'. Default: the preset's, else value. |
+| `descending` | boolean |  |
+| `limit` | integer |  (default `30`) |
+| `include_untraded` | boolean | Also consider symbols with no trades today (default `False`) |
+| `adjusted` | boolean | Adjust past prices for capital increases and dividends so close[5] is comparable with close (default `True`) |
+
+### `screener_reference`
+
+Fields, functions, ready-made presets and examples for screen_stocks filters. Call it when a filter is rejected or you need a field name.
+
+| parameter | type | description |
+|---|---|---|
+| `topic` | string | overview (default), fields, functions, presets, syntax, examples or all (default `overview`) |
+
+## Indices and funds
+
+### `index_history`
+
+History of any index (تاریخچه شاخص) in index points, not rial: the total index (شاخص کل) back to 2008, equal-weight, free-float, any industry index such as فلزات or بانک, and the Fara Bourse indices. Rows ascending with close, low, high and daily change %, plus a summary of the whole requested range: change %, highest and lowest close with dates, maximum drawdown, up/down days and a volatility estimate. Days the market was closed are flagged flat and kept out of the statistics. With intraday=true: today's 5-minute path with day high/low and the previous close.
+
+| parameter | type | description |
+|---|---|---|
+| `index`* | string | Index name or fragment: 'شاخص کل', 'شاخص کل (هم وزن)', 'شاخص آزاد شناور', 'فلزات', 'بانک', 'شاخص کل فرابورس' (English: total, equal_weight, fara), an industry code such as 27, or an insCode from the indices tool. A fragment that matches several indices is an error that lists them. |
+| `from_date` | string | Range bound: Gregorian 2026-11-03 / 20261103 or Jalali 1405/08/12. Omit for no bound. |
+| `to_date` | string | Range bound: Gregorian 2026-11-03 / 20261103 or Jalali 1405/08/12. Omit for no bound. |
+| `limit` | integer | Most rows to return (default 120). Longer ranges are thinned by granularity, or cut to the newest rows (default `120`) |
+| `intraday` | boolean | True: today's 5-minute path of the index (روند شاخص در روز) instead of daily history; dates and granularity are ignored (default `False`) |
+| `granularity` | string | 'auto' (default: daily rows if the range fits limit, else weekly, monthly, quarterly or yearly closes), 'daily', 'weekly' (Saturday-start), 'monthly', 'quarterly' or 'yearly' (Jalali) (default `auto`) |
+
+### `index_constituents`
+
+Member stocks of an index (سهام شاخص) with close, change %, volume, value and each stock's effect in index points on the total index (تاثیر در شاخص, from the exchange), plus totals: members, advancers/decliners, traded value, sum of effects. The exchange publishes no index weights, so market-cap share is only a derived proxy (sort_by market_cap). Effects are for the latest session and are left out, with a note, when the exchange's table does not add up to the index move; for a sector index they are the effect on the total index, not on the sector index.
+
+| parameter | type | description |
+|---|---|---|
+| `index`* | string | Index name, fragment, industry code or insCode, as for index_history ('شاخص کل', 'فلزات', 'بانک', 'شاخص آزاد شناور', 'شاخص کل فرابورس') |
+| `sort_by` | string | effect (points added to the total index, the default), abs_effect, value (traded value), volume, trades, change (closing price change %) or market_cap (default `effect`) |
+| `descending` | boolean |  (default `True`) |
+| `limit` | integer | Most members to return (default 25) (default `25`) |
+
+### `fund_ranking`
+
+Ranking and screening of the investment-fund registry (صندوق‌های سرمایه‌گذاری): about 580 funds of 15 types, not only the exchange-traded ones, with net assets, units, redemption/issue/statistical NAV (ابطال، صدور، آماری), returns over 1 day to 1 year and since inception, portfolio mix (stock/bond/deposit), manager and NAV date. Sort by any return or size, filter by type and minimum net assets. Returns are percent as published, null where the fund is too young. The registry has no ticker: find the traded unit with search_symbol on the fund's name, then etf_nav for its NAV premium. Market-maker and very young funds show extreme returns, so filter them for a fair ranking.
+
+| parameter | type | description |
+|---|---|---|
+| `fund_type` | string | Fund type: fixed_income (درآمد ثابت), equity (سهام: every stock fund), equity_general (در سهام), mixed (مختلط), gold (طلا و کالا), market_maker (بازارگردانی), sector, leveraged, index, venture, private, project, fund_of_funds, real_estate, principal_protected, pension; a Persian name or fragment, a numeric type id, or a comma-separated list. Omit for every type. |
+| `sort_by` | string | return_1y (default; also return_1d, return_1w, return_1m, return_3m, return_6m, return_since_inception, or short forms such as 1m, 3m), net_assets, units, nav or age (default `return_1y`) |
+| `descending` | boolean |  (default `True`) |
+| `min_net_assets` | number | Smallest net assets (خالص ارزش دارایی) in RIAL, e.g. 1e13 = 10 trillion rial = 1 trillion toman. Funds without a figure are dropped |
+| `limit` | integer | Most funds to return (default 25) (default `25`) |
+| `detail` | string | 'compact' (default) or 'full' (adds custodian, guarantor, website, top-5 holdings, start date and the mostly empty investor-mix, yield and market-maker fields) (default `compact`) |
+
+## Derivatives
+
+### `option_chain`
+
+Option chain (اختیار معامله) of the Tehran derivatives market: for an underlying ('اهرم', 'شستا', 'وبملت' ...) and expiry, every strike with its call (خرید) and put (فروش) leg - last/close price, bid/ask, volume, value, open interest, change % - plus derived (computed, not published) moneyness ITM/OTM, intrinsic and time value, break-even, bid-ask spread, put/call ratios, top open-interest strikes and an estimated max pain. Omit underlying to list the underlyings that have options. Prices are rial per underlying unit, one contract = contract_size units; legs with no trade today show no price; open interest is the clearing house's daily figure.
+
+| parameter | type | description |
+|---|---|---|
+| `underlying` | string | Underlying symbol or fragment, e.g. 'اهرم', 'شستا', 'وبملت', 'شپنا' (or one of its option symbols such as 'ضهرم8029'). Omit to list the underlyings that have options, with expiries, open interest and volume. |
+| `expiry` | string | 'nearest' (default), 'all', or one expiry date: Gregorian 2026-11-18 or Jalali 1405/08/27. |
+| `market` | string | 'bourse' or 'fara' (Fara Bourse). Omit for both where applicable. |
+| `option_type` | string | 'call' (خرید), 'put' (فروش) or omit for both |
+| `moneyness` | string | 'itm' (in the money), 'otm' or 'atm' (the strike nearest the underlying's price). Applies to each leg: an ITM call at 50,000 pairs with an OTM put. |
+| `min_volume` | integer | Only legs with at least this many contracts traded today (default `0`) |
+| `min_open_interest` | integer | Only legs with at least this many open contracts (default `0`) |
+| `strike_window_pct` | number | Only strikes within this percent of the underlying's price, e.g. 10 |
+| `sort_by` | string | Chain: strike (default), distance (from the underlying's price), volume, open_interest, value. Underlyings list: open_interest (default), volume, value, name, expiry. |
+| `limit` | integer | Chain: maximum strike rows over all expiries (default 15; the strikes nearest the underlying's price, or the top by sort_by, are kept). Underlyings list: maximum underlyings (default 30). |
+
+### `futures_market`
+
+Futures (آتی) of the Tehran derivatives market (about 16 contracts): last and close price, bid/ask, volume, value, open interest, expiry and days left, plus the basis against the underlying - absolute, percent and an annualised estimate (formula in the notes). Contracts that did not trade today show no price and no basis.
+
+| parameter | type | description |
+|---|---|---|
+| `underlying` | string | Underlying symbol or fragment, e.g. 'اهرم', 'شستا'. Omit for every futures contract. |
+| `sort_by` | string | expiry (default), underlying, open_interest, volume, value or basis_pct |
+| `descending` | boolean | Reverse the default direction (nearest expiry first; largest first for the numeric keys) |
+| `limit` | integer |  |
+
+## Lists, calendar and status
+
+### `top_lists`
+
+The exchange's own best-of tables («برترین‌ها» of tsetmc.com): most trades, biggest traded value or volume, price gainers and losers, last price above or below the close, block trades (معاملات عمده), closing-price-only TAL trades, rights (حق تقدم), ETFs, options and futures by volume or open interest, debt papers, energy and commodity markets, the largest buy and sell queues (برترین تقاضا و عرضه), market-value gainers and losers and industries by traded value, for the Bourse, the Fara Bourse and their sub-markets. Rows keep the exchange's own ranking with stable keys (symbol, close, close_pct, last, trades, volume, value ...; rial). Call it first with list_name='catalogue' to see all lists and the flows each one supports.
+
+| parameter | type | description |
+|---|---|---|
+| `list_name` | string | A list such as price_gainers, price_losers, top_value, top_volume, most_active, block_trades, closing_price_only, rights, etf_trades, option_calls, option_open_interest, largest_bids, largest_asks, market_cap_gainers or sectors_by_value (the exchange's own type names such as PClosingTop work too). 'catalogue' (default) lists every list with its valid flows, ranking column and fields. (default `catalogue`) |
+| `flow` | integer/string | Market segment: 1 or 'bourse' (default), 2 or 'fara', 3 derivatives, 7 commodity, 11 / 12 first / second market of the Bourse, 27 / 28 / 29 Fara base market yellow / orange / red. Each list accepts only some flows; the catalogue says which. |
+| `limit` | integer |  (default `20`) |
+
+### `capital_calendar`
+
+Market-wide corporate-action calendar (افزایش سرمایه و تعدیل قیمت), sorted by date: capital increases with the old and new share count, added shares and increase %, and price adjustments (reference-price cuts around dividends and rights) with the adjustment factor, for the days after today, the days up to today, or both. Forward visibility is short: the exchange lists a share-count change only a few days before it takes effect, and price adjustments only after the fact. Not in this feed: dividend per share, ex-dividend and AGM dates, rights exercise price; they are in Codal letters (use codal_filings).
+
+| parameter | type | description |
+|---|---|---|
+| `flow` | integer/string | 1 or 'bourse' (default), 2 or 'fara', 4 or 'base' (Fara base market), or 'all' for the three (default `1`) |
+| `direction` | string | 'upcoming' (after today, default), 'recent' (up to and including today) or 'all' (both sides) (default `upcoming`) |
+| `days` | integer | How far from today the window reaches (default `30`) |
+| `limit` | integer |  (default `50`) |
+| `kind` | string | 'capital_increase', 'price_adjustment', 'capital_decrease', 'rights_symbol' (a rights instrument listed or removed), 'share_count_roundtrip' (bookkeeping pairs) or 'all' (default: the first four) (default `all`) |
+
+### `trading_status`
+
+Which symbols are halted or flagged. 'suspended' lists symbols whose trading is suspended (تعلیق شده) with the exchange's reasons; 'supervision' lists symbols that still trade but are in the suspension process (مشمول فرآیند تعلیق) or under caution (معامله تحت احتیاط); 'state_changes' is the market-wide log of order-entry states (مجاز, ممنوع, محفوظ, متوقف), decoded into what each means; 'symbol_history' gives one symbol's state history with its current supervision status and since when. Reasons are plain Persian lines.
+
+| parameter | type | description |
+|---|---|---|
+| `kind` | string | 'suspended' (default), 'supervision', 'state_changes' or 'symbol_history' (default `suspended`) |
+| `market` | string | 'bourse' or 'fara' (Fara Bourse). Omit for both where applicable. |
+| `symbol` | string | Symbol: required for 'symbol_history'; with 'suspended' or 'supervision' it checks that one symbol |
+| `limit` | integer |  (default `50`) |
 
 ## Symbol
 
@@ -175,15 +307,16 @@ Aggregate a day's ticks: intraday bars, VWAP, biggest trades, volume by price le
 
 ### `price_history`
 
-Daily OHLCV history since listing, optionally adjusted (تاریخچه قیمت).
+OHLCV price history since listing (تاریخچه قیمت), daily or aggregated to weekly/monthly/yearly bars, optionally back-adjusted for capital increases and dividends. For long ranges prefer granularity='monthly' or 'yearly' over thousands of daily rows.
 
 | parameter | type | description |
 |---|---|---|
 | `symbol`* | string | Persian symbol such as 'فولاد', or an insCode |
 | `from_date` | string | Range bound: Gregorian 2026-11-03 / 20261103 or Jalali 1405/08/12. Omit for no bound. |
 | `to_date` | string | Range bound: Gregorian 2026-11-03 / 20261103 or Jalali 1405/08/12. Omit for no bound. |
-| `limit` | integer |  (default `250`) |
+| `limit` | integer | Newest rows to return (max 5000). 250 daily rows is about 70 KB; for long ranges use granularity instead of a big limit (default `250`) |
 | `adjusted` | boolean | Back-adjust for capital increases/dividends (تعدیل شده) (default `False`) |
+| `granularity` | string | 'daily' (default), 'weekly' (Saturday-start), 'monthly' or 'yearly' (Jalali) bars: open/high/low/close, summed volume and value, change % per period (default `daily`) |
 
 ### `real_legal_flow`
 
@@ -204,12 +337,14 @@ Major shareholders (سهامداران عمده) with shares, percent and the ho
 
 ### `shareholder_history`
 
-Dated major-holder snapshots for a symbol with computed changes between snapshots.
+Dated major-holder snapshots for a symbol with computed changes between snapshots; or, with holder=..., one major holder's position over time and the days it bought or sold (تاریخچه سهامدار عمده).
 
 | parameter | type | description |
 |---|---|---|
 | `symbol`* | string | Persian symbol such as 'فولاد', or an insCode |
 | `date` | string | Gregorian 2026-11-03 / 20261103 or Jalali 1405/08/12. Omit for the latest trading day. |
+| `holder` | string | Name fragment (or holder_id) of one major holder, e.g. 'کشوری'. Returns that holder's position over time and the days it changed, instead of snapshots. |
+| `days` | integer | With holder: how many daily records to read (default 250, about one year) (default `250`) |
 
 ### `shareholder_portfolio`
 
@@ -242,34 +377,6 @@ Fund/ETF issue and redemption NAV vs market price: premium/discount (صدور و
 | parameter | type | description |
 |---|---|---|
 | `symbol`* | string | Persian symbol such as 'فولاد', or an insCode |
-
-## Screener
-
-### `screen_stocks`
-
-Stock screener (فیلتر نویسی): the filter box of tsetmc.com driven by an expression. Returns only the stocks that pass your condition right now, using today's live values plus up to 60 past trading days (close[1], avg(volume, 20), count(close_pct > 0, 3)) and real/legal money flow, in one call with a validated, safe expression (nothing is executed).
-
-| parameter | type | description |
-|---|---|---|
-| `filter` | string | Condition checked for every stock, e.g. "volume > 2 * avg(volume, 20) and close_pct > 1". Today: last close open high low yesterday last_pct close_pct volume value(rial) trades pe eps market_cap bid_volume ask_volume at_upper_limit buy_queue real_net_value real_buyer_power industry symbol. Past days: close[1] (yesterday), avg(volume, 20), highest(high, 10), count(close_pct > 0, 5), all(close_pct < 0, 3). Operators: and or not, has(industry, 'بانک'), 5B = 5 billion rial. All fields and functions: screener_reference. |
-| `preset` | string | Ready-made filter, e.g. volume_surge, smart_money, breakout_20d, buy_queue (screener_reference lists them). ANDed with filter. |
-| `market` | string | 'bourse' or 'fara' (Fara Bourse). Omit for both where applicable. |
-| `security_type` | string | Substring of the security type, default 'سهام' (stocks) (default `سهام`) |
-| `industry` | string | Industry name substring, e.g. 'بانک' |
-| `columns` | array | Expressions to show, optionally 'expr as label'. Default: symbol, last, close_pct, volume, value plus the fields and window values the filter uses. |
-| `sort` | string | Expression to sort by, e.g. 'volume / avg(volume, 20)'. Default: the preset's, else value. |
-| `descending` | boolean |  |
-| `limit` | integer |  (default `30`) |
-| `include_untraded` | boolean | Also consider symbols with no trades today (default `False`) |
-| `adjusted` | boolean | Adjust past prices for capital increases and dividends so close[5] is comparable with close (default `True`) |
-
-### `screener_reference`
-
-Fields, functions, ready-made presets and examples for screen_stocks filters. Call it when a filter is rejected or you need a field name.
-
-| parameter | type | description |
-|---|---|---|
-| `topic` | string | overview (default), fields, functions, presets, syntax, examples or all (default `overview`) |
 
 ## Codal
 

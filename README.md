@@ -8,14 +8,14 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-2EC4B6.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%E2%80%933.13-5B7CFA.svg)](pyproject.toml)
 [![MCP SDK 1.x and 2.x](https://img.shields.io/badge/MCP%20SDK-1.x%20%7C%202.x-F5B53D.svg)](https://modelcontextprotocol.io)
-[![Tools](https://img.shields.io/badge/tools-28%20read--only-2EC4B6.svg)](docs/TOOLS.md)
+[![Tools](https://img.shields.io/badge/tools-38%20read--only-2EC4B6.svg)](docs/TOOLS.md)
 [![Stars](https://img.shields.io/github/stars/msmahdinejad/iran-bourse-mcp?style=flat&color=F5B53D)](https://github.com/msmahdinejad/iran-bourse-mcp/stargazers)
 
-**[Website](https://msmahdinejad.github.io/iran-bourse-mcp/)** · **[Install](#install)** · **[Benchmarks](#benchmarks)** · **[Tools](docs/TOOLS.md)** · **[Real examples](docs/EXAMPLES.md)** · **[Data notes](docs/DATA_SOURCES.md)** · **[راهنمای فارسی](docs/GUIDE.fa.md)** · **[فارسی](README.fa.md)**
+**[Website](https://msmahdinejad.github.io/iran-bourse-mcp/)** · **[Install](#install)** · **[Benchmarks](#benchmarks)** · **[Tools](docs/TOOLS.md)** · **[Screener](docs/SCREENER.md)** · **[Real examples](docs/EXAMPLES.md)** · **[Data notes](docs/DATA_SOURCES.md)** · **[راهنمای فارسی](docs/GUIDE.fa.md)** · **[فارسی](README.fa.md)**
 
 </div>
 
-**An open-source [MCP](https://modelcontextprotocol.io) server that gives any AI agent complete, clean Tehran Stock Exchange (TSETMC / بورس تهران و فرابورس) and Codal data**: quotes, order book and queues, tick-by-tick trades, real-vs-legal money flow, major shareholders, filings and more. Units are explicit, derived numbers are labelled, and nothing can place an order.
+**An open-source [MCP](https://modelcontextprotocol.io) server that gives any AI agent complete, clean Tehran Stock Exchange (TSETMC / بورس تهران و فرابورس) and Codal data**: a **stock screener with its own filter language**, quotes, order book and queues, tick-by-tick trades, real-vs-legal money flow, options and futures, index history, funds, major shareholders, filings and more. Units are explicit, derived numbers are labelled, and nothing can place an order.
 
 > Unofficial. Not affiliated with TSETMC, the Tehran Stock Exchange, Fara Bourse or Codal. Information only, **not investment advice**.
 
@@ -379,25 +379,45 @@ uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp c
 > «ریز معاملات فولاد دیروز رو خلاصه کن و بزرگ‌ترین معامله‌ها رو نشون بده»
 > «صف خرید خودرو از چه ساعتی شکل گرفت و چقدر بزرگ شد؟»
 > «سهامدار عمده شستا چه سهم‌های دیگه‌ای داره؟»
+> «سهم‌هایی رو پیدا کن که امروز حجمشون بیش از دو برابر میانگین ۲۰ روز بوده، دیروز بیش از ۱٪ رشد کرده و امروز هم مثبته» ← [اسکرینر](docs/SCREENER.md)
+> «زنجیره اختیار معامله اهرم رو با نزدیک‌ترین سررسید بده» · «تاریخچه شاخص کل از اول مهر» · «افزایش سرمایه‌های هفته آینده کدوم نمادهاست؟»
+
+## The stock screener
+
+`screen_stocks` is the filter box of tsetmc.com, written by your agent. Describe what you want; the agent writes a short condition and gets back only the stocks that pass it, with the evidence for each hit. It reads today's live values, up to 60 past trading days (adjusted for capital increases), real-vs-legal flow and a five-level order book for every instrument of the exchange's own market watch (about 3,700, including funds, bonds, options and futures).
+
+```text
+You:    stocks trading over twice their 20-day average volume, up more than 1% yesterday, positive today, over 5 billion rial
+Agent:  screen_stocks(filter="volume > 2 * avg(volume, 20) and close_pct[1] > 1 and close_pct > 0 and value > 5B")
+        28 of 625 stocks match, 2.4 s: انتخاب (8.4x volume, +2.97% yesterday, +2.85% today), پکرمان, کرماشا, خراسان ...
+```
+
+The language is a safe expression grammar (parsed with `ast`, never `eval`), accepts the field names and JavaScript spellings of the exchange's own filter (`pl`, `pc`, `tvol`, `tmax`, `pd1`, `ct.Buy_I_Volume`, `===`), ships 15 ready-made presets (`volume_surge`, `smart_money`, `breakout_20d`, `buy_queue` ...) and reports mistakes with suggestions. Checked against an independent re-implementation straight from raw exchange data: identical results on three different screens. Guide and every field: [docs/SCREENER.md](docs/SCREENER.md).
 
 ## Coverage
 
 | Data | Tools |
 |---|---|
 | Market state, indices, industry indices | `market_status` `market_overview` `indices` `industry_summary` `index_contributors` |
-| Whole-market screens (~600 ordinary shares) | `market_watch` `top_movers` (gainers, losers, buy/sell queues, real-money inflow/outflow, buyer power) `market_snapshot` |
+| Whole-market tables (~3,700 instruments: shares, funds, bonds, options, futures) | `market_watch` `top_movers` (gainers, losers, buy/sell queues, real-money inflow/outflow, buyer power) `market_snapshot` |
+| **Stock screener** (filter language, history, presets) | `screen_stocks` `screener_reference` |
+| Index history, members and their effect | `index_history` (daily since 2008, or today's 5-minute path) `index_constituents` |
+| Options and futures | `option_chain` (calls and puts by strike and expiry, moneyness, intrinsic value, open interest) `futures_market` (basis) |
+| The exchange's own best-of lists (برترین‌ها) | `top_lists` (69 lists: blocks, rights, ETFs, queues, options ...) |
+| Corporate-action calendar | `capital_calendar` (upcoming capital increases, price adjustments) |
+| Halts and supervision | `trading_status` (suspended, under caution, state changes, one symbol's history) |
 | One-call symbol dossier | `symbol_overview` |
 | Price, limits, VWAP, P/E, market cap | `quote` `price_history` (optionally **back-adjusted**) `symbol_statistics` `corporate_actions` |
 | Order book and queues (صف خرید/فروش) | `order_book` `order_book_history` (rebuilt from every event, with queue episodes) |
 | Tick-by-tick trades (ریز معاملات) | `trades` (filterable) `trade_summary` (bars, VWAP, biggest trades, price levels, pressure estimate, **coverage check**) |
 | Real vs legal investors (حقیقی/حقوقی) | `real_legal_flow` (per-capita, buyer power, net flow, daily history) |
-| Shareholders (سهامداران عمده) | `shareholders` `shareholder_history` `shareholder_portfolio` `market_holder_moves` |
-| Funds | `etf_nav` (premium/discount to issue and redemption NAV) |
+| Shareholders (سهامداران عمده) | `shareholders` `shareholder_history` (also one holder's position over time) `shareholder_portfolio` `market_holder_moves` |
+| Funds | `fund_ranking` (579 funds: NAV, returns, size, portfolio mix) `etf_nav` (premium/discount to issue and redemption NAV) |
 | Codal | `codal_filings` (links to page, PDF, Excel) `codal_company` |
 | Supervisor notices | `supervisor_messages` |
 | Vocabulary | `glossary` (Persian ↔ English market terms) |
 
-Also three prompts (`analyze_symbol`, `daily_market_report`, `smart_money_scan`) and a glossary resource. Full parameters: [docs/TOOLS.md](docs/TOOLS.md).
+Also four prompts (`analyze_symbol`, `daily_market_report`, `smart_money_scan`, `find_stocks`) and a glossary resource. Full parameters: [docs/TOOLS.md](docs/TOOLS.md).
 
 ## Benchmarks
 

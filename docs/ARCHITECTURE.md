@@ -4,7 +4,7 @@
 MCP client (Claude, Cursor, ...)
         │  stdio / streamable-http
 ┌───────▼────────┐
-│ server.py      │  FastMCP/MCPServer: 28 read-only tools, 3 prompts, 1 resource.
+│ server.py      │  FastMCP/MCPServer: 38 read-only tools, 4 prompts, 1 resource.
 │                │  Expected errors become readable ToolErrors.
 ├────────────────┤
 │ service.py     │  `Bourse`: one coroutine per tool. Orchestrates calls, joins sources,

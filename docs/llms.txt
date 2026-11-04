@@ -1,6 +1,6 @@
 # iran-bourse-mcp
 
-> Open-source, read-only MCP server giving AI agents clean Tehran Stock Exchange (TSETMC) and Codal data: quotes, order book and queues, tick-by-tick trades, real vs legal money flow, major shareholders, filings, funds NAV. 28 tools. Works with any MCP client (Claude, Codex, Gemini CLI, Cursor, VS Code, Windsurf, Cline, Zed, Goose, OpenCode, Kiro, Qwen Code, JetBrains, Amp) and, via a shell command, with agents that have no MCP support. Needs a machine in Iran for TSETMC/Codal access.
+> Open-source, read-only MCP server giving AI agents clean Tehran Stock Exchange (TSETMC) and Codal data: quotes, order book and queues, tick-by-tick trades, real vs legal money flow, major shareholders, filings, funds NAV. 38 tools. Works with any MCP client (Claude, Codex, Gemini CLI, Cursor, VS Code, Windsurf, Cline, Zed, Goose, OpenCode, Kiro, Qwen Code, JetBrains, Amp) and, via a shell command, with agents that have no MCP support. Needs a machine in Iran for TSETMC/Codal access.
 
 ## Docs
 - [Install guide for AI agents](https://github.com/msmahdinejad/iran-bourse-mcp/blob/main/docs/llms-install.md): step-by-step setup you can follow
