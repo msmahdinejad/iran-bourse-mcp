@@ -1,0 +1,91 @@
+{
+ "priceAdjust": [
+  {
+   "insCode": 0,
+   "dEven": 20261102,
+   "pClosing": 2804.0,
+   "pClosingNotAdjusted": 2808.0,
+   "corporateTypeCode": null,
+   "instrument": {
+    "cValMne": null,
+    "lVal18": null,
+    "cSocCSAC": null,
+    "lSoc30": null,
+    "yMarNSC": null,
+    "yVal": null,
+    "insCode": "1301069819790264",
+    "lVal30": "تجلي توسعه معادن و فلزات",
+    "lVal18AFC": "تجلي",
+    "flow": 0,
+    "cIsin": null,
+    "zTitad": 0.0,
+    "baseVol": 0,
+    "instrumentID": null,
+    "cgrValCot": null,
+    "cComVal": null,
+    "lastDate": 0,
+    "sourceID": 0,
+    "flowTitle": null,
+    "cgrValCotTitle": null
+   }
+  },
+  {
+   "insCode": 0,
+   "dEven": 20261020,
+   "pClosing": 12069.0,
+   "pClosingNotAdjusted": 14492.0,
+   "corporateTypeCode": null,
+   "instrument": {
+    "cValMne": null,
+    "lVal18": null,
+    "cSocCSAC": null,
+    "lSoc30": null,
+    "yMarNSC": null,
+    "yVal": null,
+    "insCode": "34322849244939912",
+    "lVal30": "ص.س املاك وم.كاشانه خليج فارس",
+    "lVal18AFC": "كاشانه",
+    "flow": 0,
+    "cIsin": null,
+    "zTitad": 0.0,
+    "baseVol": 0,
+    "instrumentID": null,
+    "cgrValCot": null,
+    "cComVal": null,
+    "lastDate": 0,
+    "sourceID": 0,
+    "flowTitle": null,
+    "cgrValCotTitle": null
+   }
+  },
+  {
+   "insCode": 0,
+   "dEven": 20261019,
+   "pClosing": 3020.0,
+   "pClosingNotAdjusted": 3120.0,
+   "corporateTypeCode": null,
+   "instrument": {
+    "cValMne": null,
+    "lVal18": null,
+    "cSocCSAC": null,
+    "lSoc30": null,
+    "yMarNSC": null,
+    "yVal": null,
+    "insCode": "15917865009187760",
+    "lVal30": "صنايع ماديران",
+    "lVal18AFC": "ماديرا",
+    "flow": 0,
+    "cIsin": null,
+    "zTitad": 0.0,
+    "baseVol": 0,
+    "instrumentID": null,
+    "cgrValCot": null,
+    "cComVal": null,
+    "lastDate": 0,
+    "sourceID": 0,
+    "flowTitle": null,
+    "cgrValCotTitle": null
+   }
+  }
+ ]
+}

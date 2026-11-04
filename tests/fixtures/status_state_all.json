@@ -1,0 +1,172 @@
+{
+ "instrumentState": [
+  {
+   "idn": 0,
+   "dEven": 20261003,
+   "hEven": 111001,
+   "insCode": "48511238766369097",
+   "lVal18AFC": null,
+   "lVal30": null,
+   "cEtaval": "IS",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "ممنوع-متوقف"
+  },
+  {
+   "idn": 0,
+   "dEven": 20261003,
+   "hEven": 111001,
+   "insCode": "48511238766369097",
+   "lVal18AFC": null,
+   "lVal30": null,
+   "cEtaval": "IR",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "ممنوع-محفوظ"
+  },
+  {
+   "idn": 0,
+   "dEven": 20261003,
+   "hEven": 104157,
+   "insCode": "48511238766369097",
+   "lVal18AFC": null,
+   "lVal30": null,
+   "cEtaval": "AR",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "مجاز-محفوظ"
+  },
+  {
+   "idn": 0,
+   "dEven": 20261003,
+   "hEven": 104156,
+   "insCode": "48511238766369097",
+   "lVal18AFC": null,
+   "lVal30": null,
+   "cEtaval": "IR",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "ممنوع-محفوظ"
+  },
+  {
+   "idn": 0,
+   "dEven": 20261003,
+   "hEven": 94136,
+   "insCode": "48511238766369097",
+   "lVal18AFC": null,
+   "lVal30": null,
+   "cEtaval": "IS",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "ممنوع-متوقف"
+  },
+  {
+   "idn": 0,
+   "dEven": 20261003,
+   "hEven": 94136,
+   "insCode": "48511238766369097",
+   "lVal18AFC": null,
+   "lVal30": null,
+   "cEtaval": "I ",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "ممنوع"
+  },
+  {
+   "idn": 0,
+   "dEven": 20260912,
+   "hEven": 102359,
+   "insCode": "48511238766369097",
+   "lVal18AFC": null,
+   "lVal30": null,
+   "cEtaval": "A ",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "مجاز"
+  },
+  {
+   "idn": 0,
+   "dEven": 20260912,
+   "hEven": 95359,
+   "insCode": "48511238766369097",
+   "lVal18AFC": null,
+   "lVal30": null,
+   "cEtaval": "AR",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "مجاز-محفوظ"
+  },
+  {
+   "idn": 0,
+   "dEven": 20260912,
+   "hEven": 95358,
+   "insCode": "48511238766369097",
+   "lVal18AFC": null,
+   "lVal30": null,
+   "cEtaval": "IR",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "ممنوع-محفوظ"
+  },
+  {
+   "idn": 0,
+   "dEven": 20260912,
+   "hEven": 85311,
+   "insCode": "48511238766369097",
+   "lVal18AFC": null,
+   "lVal30": null,
+   "cEtaval": "IS",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "ممنوع-متوقف"
+  },
+  {
+   "idn": 0,
+   "dEven": 20260912,
+   "hEven": 85311,
+   "insCode": "48511238766369097",
+   "lVal18AFC": null,
+   "lVal30": null,
+   "cEtaval": "I ",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "ممنوع"
+  },
+  {
+   "idn": 0,
+   "dEven": 20260817,
+   "hEven": 111528,
+   "insCode": "48511238766369097",
+   "lVal18AFC": null,
+   "lVal30": null,
+   "cEtaval": "A ",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "مجاز"
+  },
+  {
+   "idn": 0,
+   "dEven": 20260817,
+   "hEven": 104528,
+   "insCode": "48511238766369097",
+   "lVal18AFC": null,
+   "lVal30": null,
+   "cEtaval": "AR",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "مجاز-محفوظ"
+  },
+  {
+   "idn": 0,
+   "dEven": 20260817,
+   "hEven": 104527,
+   "insCode": "48511238766369097",
+   "lVal18AFC": null,
+   "lVal30": null,
+   "cEtaval": "IR",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "ممنوع-محفوظ"
+  }
+ ]
+}

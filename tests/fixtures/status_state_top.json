@@ -1,0 +1,172 @@
+{
+ "instrumentState": [
+  {
+   "idn": 2111416,
+   "dEven": 20261104,
+   "hEven": 184544,
+   "insCode": "32845891587040106",
+   "lVal18AFC": "ثنوسا",
+   "lVal30": "نوسازي‌وساختمان‌تهران‌",
+   "cEtaval": "IS",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "ممنوع-متوقف"
+  },
+  {
+   "idn": 2111415,
+   "dEven": 20261104,
+   "hEven": 184544,
+   "insCode": "32845891587040106",
+   "lVal18AFC": "ثنوسا",
+   "lVal30": "نوسازي‌وساختمان‌تهران‌",
+   "cEtaval": "I ",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "ممنوع"
+  },
+  {
+   "idn": 2111414,
+   "dEven": 20261104,
+   "hEven": 181710,
+   "insCode": "31255776686311176",
+   "lVal18AFC": "زعف0610پ19",
+   "lVal30": "زعفران0610نگين تروند قاينات(پ)",
+   "cEtaval": "AR",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "مجاز-محفوظ"
+  },
+  {
+   "idn": 2111413,
+   "dEven": 20261104,
+   "hEven": 181704,
+   "insCode": "31255776686311176",
+   "lVal18AFC": "زعف0610پ19",
+   "lVal30": "زعفران0610نگين تروند قاينات(پ)",
+   "cEtaval": "A ",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "مجاز"
+  },
+  {
+   "idn": 2111412,
+   "dEven": 20261104,
+   "hEven": 181657,
+   "insCode": "25839275061658206",
+   "lVal18AFC": "زعف0610پ20",
+   "lVal30": "زعفران0610نگين وحدت جام(پ)",
+   "cEtaval": "AR",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "مجاز-محفوظ"
+  },
+  {
+   "idn": 2111411,
+   "dEven": 20261104,
+   "hEven": 181651,
+   "insCode": "25839275061658206",
+   "lVal18AFC": "زعف0610پ20",
+   "lVal30": "زعفران0610نگين وحدت جام(پ)",
+   "cEtaval": "A ",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "مجاز"
+  },
+  {
+   "idn": 2111410,
+   "dEven": 20261104,
+   "hEven": 181604,
+   "insCode": "31255776686311176",
+   "lVal18AFC": "زعف0610پ19",
+   "lVal30": "زعفران0610نگين تروند قاينات(پ)",
+   "cEtaval": "I ",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "ممنوع"
+  },
+  {
+   "idn": 2111409,
+   "dEven": 20261104,
+   "hEven": 181604,
+   "insCode": "25839275061658206",
+   "lVal18AFC": "زعف0610پ20",
+   "lVal30": "زعفران0610نگين وحدت جام(پ)",
+   "cEtaval": "I ",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "ممنوع"
+  },
+  {
+   "idn": 2111388,
+   "dEven": 20261104,
+   "hEven": 152942,
+   "insCode": "42662558291119602",
+   "lVal18AFC": "اوصتا4",
+   "lVal30": "صندوق انديشه ورزان صباتامين -د",
+   "cEtaval": "A ",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "مجاز"
+  },
+  {
+   "idn": 2111383,
+   "dEven": 20261104,
+   "hEven": 151542,
+   "insCode": "42662558291119602",
+   "lVal18AFC": "اوصتا4",
+   "lVal30": "صندوق انديشه ورزان صباتامين -د",
+   "cEtaval": "AR",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "مجاز-محفوظ"
+  },
+  {
+   "idn": 2111382,
+   "dEven": 20261104,
+   "hEven": 151541,
+   "insCode": "42662558291119602",
+   "lVal18AFC": "اوصتا4",
+   "lVal30": "صندوق انديشه ورزان صباتامين -د",
+   "cEtaval": "A ",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "مجاز"
+  },
+  {
+   "idn": 2111289,
+   "dEven": 20261104,
+   "hEven": 143215,
+   "insCode": "888450120873438",
+   "lVal18AFC": "اراد2964",
+   "lVal30": "مرابحه عام دولت296-ش.خ070930",
+   "cEtaval": "A ",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "مجاز"
+  },
+  {
+   "idn": 2111288,
+   "dEven": 20261104,
+   "hEven": 143213,
+   "insCode": "888450120873438",
+   "lVal18AFC": "اراد2964",
+   "lVal30": "مرابحه عام دولت296-ش.خ070930",
+   "cEtaval": "AR",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "مجاز-محفوظ"
+  },
+  {
+   "idn": 2111287,
+   "dEven": 20261104,
+   "hEven": 143213,
+   "insCode": "888450120873438",
+   "lVal18AFC": "اراد2964",
+   "lVal30": "مرابحه عام دولت296-ش.خ070930",
+   "cEtaval": "AS",
+   "realHeven": 0,
+   "underSupervision": 0,
+   "cEtavalTitle": "مجاز-متوقف"
+  }
+ ]
+}

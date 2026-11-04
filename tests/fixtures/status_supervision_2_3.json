@@ -1,0 +1,72 @@
+{
+ "supervision": [
+  {
+   "id": 0,
+   "userName": null,
+   "insCode": "14880127004206268",
+   "instrumentID": null,
+   "underSupervision": 0,
+   "additionalInfo": null,
+   "insertionDateTime": "0001-01-01T00:00:00",
+   "reasons": "<br>نیاز به بررسی وضعیت شفافیت اطلاعاتی ناشر",
+   "originUpdateDateTime": null,
+   "instrument": {
+    "cValMne": null,
+    "lVal18": null,
+    "cSocCSAC": null,
+    "lSoc30": null,
+    "yMarNSC": null,
+    "yVal": null,
+    "insCode": "14880127004206268",
+    "lVal30": "صنعت و تجارت آداك",
+    "lVal18AFC": "وآداك",
+    "flow": 0,
+    "cIsin": null,
+    "zTitad": 0.0,
+    "baseVol": 0,
+    "instrumentID": null,
+    "cgrValCot": null,
+    "cComVal": null,
+    "lastDate": 0,
+    "sourceID": 0,
+    "flowTitle": null,
+    "cgrValCotTitle": null
+   },
+   "underSupervisionTitle": null
+  },
+  {
+   "id": 0,
+   "userName": null,
+   "insCode": "25631699615003698",
+   "instrumentID": null,
+   "underSupervision": 0,
+   "additionalInfo": null,
+   "insertionDateTime": "0001-01-01T00:00:00",
+   "reasons": "<br>ظنّ وقوع جرائم موضوع ماده 46 قانون بازار اوراق بهادار ج.ا.ا در خصوص  معاملات اوراق بهادار در بازار عادي ",
+   "originUpdateDateTime": null,
+   "instrument": {
+    "cValMne": null,
+    "lVal18": null,
+    "cSocCSAC": null,
+    "lSoc30": null,
+    "yMarNSC": null,
+    "yVal": null,
+    "insCode": "25631699615003698",
+    "lVal30": "توليدي گرانيت بهسرام",
+    "lVal18AFC": "كهرام",
+    "flow": 0,
+    "cIsin": null,
+    "zTitad": 0.0,
+    "baseVol": 0,
+    "instrumentID": null,
+    "cgrValCot": null,
+    "cComVal": null,
+    "lastDate": 0,
+    "sourceID": 0,
+    "flowTitle": null,
+    "cgrValCotTitle": null
+   },
+   "underSupervisionTitle": null
+  }
+ ]
+}

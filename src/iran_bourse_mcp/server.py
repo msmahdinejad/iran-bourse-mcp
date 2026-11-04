@@ -37,6 +37,9 @@ How to work:
 - Start with symbol_overview for a stock; use market_watch / top_movers for the whole market.
 - To find stocks that satisfy conditions (volume spikes, price patterns over past days, real-money flow, valuation,
   queues), write a filter for screen_stocks instead of paging through market_watch. screener_reference lists fields.
+- For the exchange's own rankings (برترین‌ها: block trades, rights, ETFs, options, queues, industries) use top_lists; for who is
+  halted use trading_status; for capital increases and price adjustments by date use capital_calendar; option_chain and
+  futures_market cover the derivatives market.
 - Prices and values are in RIAL. Dates accept Gregorian (2026-11-03) or Jalali (1405/08/12).
 - The market trades Saturday-Wednesday 09:00-12:30 Tehran time. Outside that, data is the last session.
 - Anything marked *estimate*/*estimated* is derived by this server, not published by the exchange.
@@ -353,6 +356,45 @@ async def etf_nav(symbol: Symbol) -> dict:
 
 
 # ----------------------------------------------------------------------------- Codal
+
+
+@tool()
+async def top_lists(
+    list_name: Annotated[
+        str,
+        Field(description="A list such as price_gainers, price_losers, top_value, top_volume, most_active, block_trades, closing_price_only, rights, etf_trades, option_calls, option_open_interest, largest_bids, largest_asks, market_cap_gainers or sectors_by_value (the exchange's own type names such as PClosingTop work too). 'catalogue' (default) lists every list with its valid flows, ranking column and fields."),
+    ] = "catalogue",
+    flow: Annotated[
+        int | str | None,
+        Field(description="Market segment: 1 or 'bourse' (default), 2 or 'fara', 3 derivatives, 7 commodity, 11 / 12 first / second market of the Bourse, 27 / 28 / 29 Fara base market yellow / orange / red. Each list accepts only some flows; the catalogue says which."),
+    ] = None,
+    limit: Annotated[int, Field(ge=1, le=300)] = 20,
+) -> dict:
+    """The exchange's own best-of tables («برترین‌ها» of tsetmc.com): most trades, biggest traded value or volume, price gainers and losers, last price above or below the close, block trades (معاملات عمده), closing-price-only TAL trades, rights (حق تقدم), ETFs, options and futures by volume or open interest, debt papers, energy and commodity markets, the largest buy and sell queues (برترین تقاضا و عرضه), market-value gainers and losers and industries by traded value, for the Bourse, the Fara Bourse and their sub-markets. Rows keep the exchange's own ranking with stable keys (symbol, close, close_pct, last, trades, volume, value ...; rial). Call it first with list_name='catalogue' to see all lists and the flows each one supports."""
+    return await svc().top_lists(list_name, flow, limit)
+
+
+@tool()
+async def capital_calendar(
+    flow: Annotated[int | str, Field(description="1 or 'bourse' (default), 2 or 'fara', 4 or 'base' (Fara base market), or 'all' for the three")] = 1,
+    direction: Annotated[str, Field(description="'upcoming' (after today, default), 'recent' (up to and including today) or 'all' (both sides)")] = "upcoming",
+    days: Annotated[int, Field(ge=1, le=366, description="How far from today the window reaches")] = 30,
+    limit: Annotated[int, Field(ge=1, le=500)] = 50,
+    kind: Annotated[str, Field(description="'capital_increase', 'price_adjustment', 'capital_decrease', 'rights_symbol' (a rights instrument listed or removed), 'share_count_roundtrip' (bookkeeping pairs) or 'all' (default: the first four)")] = "all",
+) -> dict:
+    """Market-wide corporate-action calendar (افزایش سرمایه و تعدیل قیمت), sorted by date: capital increases with the old and new share count, added shares and increase %, and price adjustments (reference-price cuts around dividends and rights) with the adjustment factor, for the days after today, the days up to today, or both. Forward visibility is short: the exchange lists a share-count change only a few days before it takes effect, and price adjustments only after the fact. Not in this feed: dividend per share, ex-dividend and AGM dates, rights exercise price; they are in Codal letters (use codal_filings)."""
+    return await svc().capital_calendar(flow, direction, days, limit, kind)
+
+
+@tool()
+async def trading_status(
+    kind: Annotated[str, Field(description="'suspended' (default), 'supervision', 'state_changes' or 'symbol_history'")] = "suspended",
+    market: Market = None,
+    symbol: Annotated[str | None, Field(description="Symbol: required for 'symbol_history'; with 'suspended' or 'supervision' it checks that one symbol")] = None,
+    limit: Annotated[int, Field(ge=1, le=300)] = 50,
+) -> dict:
+    """Which symbols are halted or flagged. 'suspended' lists symbols whose trading is suspended (تعلیق شده) with the exchange's reasons; 'supervision' lists symbols that still trade but are in the suspension process (مشمول فرآیند تعلیق) or under caution (معامله تحت احتیاط); 'state_changes' is the market-wide log of order-entry states (مجاز, ممنوع, محفوظ, متوقف), decoded into what each means; 'symbol_history' gives one symbol's state history with its current supervision status and since when. Reasons are plain Persian lines."""
+    return await svc().trading_status(kind, market, symbol, limit)
 
 
 @tool()

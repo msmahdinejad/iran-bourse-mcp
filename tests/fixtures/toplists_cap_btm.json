@@ -1,0 +1,88 @@
+{
+ "marketCap": [
+  {
+   "insCode": "25244329144808274",
+   "instrument": {
+    "cValMne": null,
+    "lVal18": null,
+    "cSocCSAC": null,
+    "lSoc30": null,
+    "yMarNSC": null,
+    "yVal": null,
+    "insCode": "25244329144808274",
+    "lVal30": "صنايع پتروشيمي خليج فارس",
+    "lVal18AFC": "فارس",
+    "flow": 0,
+    "cIsin": null,
+    "zTitad": 0.0,
+    "baseVol": 0,
+    "instrumentID": null,
+    "cgrValCot": null,
+    "cComVal": null,
+    "lastDate": 0,
+    "sourceID": 0,
+    "flowTitle": null,
+    "cgrValCotTitle": null
+   },
+   "marketCapToday": 1.77375e+16,
+   "marketCapYesterday": 1.8225e+16,
+   "change": 487500000000000.0
+  },
+  {
+   "insCode": "7745894403636165",
+   "instrument": {
+    "cValMne": null,
+    "lVal18": null,
+    "cSocCSAC": null,
+    "lSoc30": null,
+    "yMarNSC": null,
+    "yVal": null,
+    "insCode": "7745894403636165",
+    "lVal30": "پالايش نفت اصفهان",
+    "lVal18AFC": "شپنا",
+    "flow": 0,
+    "cIsin": null,
+    "zTitad": 0.0,
+    "baseVol": 0,
+    "instrumentID": null,
+    "cgrValCot": null,
+    "cComVal": null,
+    "lastDate": 0,
+    "sourceID": 0,
+    "flowTitle": null,
+    "cgrValCotTitle": null
+   },
+   "marketCapToday": 7326095607840000.0,
+   "marketCapYesterday": 7476631818960000.0,
+   "change": 150536211120000.0
+  },
+  {
+   "insCode": "35366681030756042",
+   "instrument": {
+    "cValMne": null,
+    "lVal18": null,
+    "cSocCSAC": null,
+    "lSoc30": null,
+    "yMarNSC": null,
+    "yVal": null,
+    "insCode": "35366681030756042",
+    "lVal30": "پالايش نفت بندرعباس",
+    "lVal18AFC": "شبندر",
+    "flow": 0,
+    "cIsin": null,
+    "zTitad": 0.0,
+    "baseVol": 0,
+    "instrumentID": null,
+    "cgrValCot": null,
+    "cComVal": null,
+    "lastDate": 0,
+    "sourceID": 0,
+    "flowTitle": null,
+    "cgrValCotTitle": null
+   },
+   "marketCapToday": 5076714061419000.0,
+   "marketCapYesterday": 5220124063154000.0,
+   "change": 143410001735000.0
+  }
+ ]
+}

@@ -1,0 +1,88 @@
+{
+ "marketCap": [
+  {
+   "insCode": "35425587644337450",
+   "instrument": {
+    "cValMne": null,
+    "lVal18": null,
+    "cSocCSAC": null,
+    "lSoc30": null,
+    "yMarNSC": null,
+    "yVal": null,
+    "insCode": "35425587644337450",
+    "lVal30": "ملي‌ صنايع‌ مس‌ ايران‌",
+    "lVal18AFC": "فملي",
+    "flow": 0,
+    "cIsin": null,
+    "zTitad": 0.0,
+    "baseVol": 0,
+    "instrumentID": null,
+    "cgrValCot": null,
+    "cComVal": null,
+    "lastDate": 0,
+    "sourceID": 0,
+    "flowTitle": null,
+    "cgrValCotTitle": null
+   },
+   "marketCapToday": 4.18896e+16,
+   "marketCapYesterday": 4.07952e+16,
+   "change": 1094400000000000.0
+  },
+  {
+   "insCode": "30714151942396396",
+   "instrument": {
+    "cValMne": null,
+    "lVal18": null,
+    "cSocCSAC": null,
+    "lSoc30": null,
+    "yMarNSC": null,
+    "yVal": null,
+    "insCode": "30714151942396396",
+    "lVal30": "گروه پتروشيمي تابان فردا",
+    "lVal18AFC": "تابان",
+    "flow": 0,
+    "cIsin": null,
+    "zTitad": 0.0,
+    "baseVol": 0,
+    "instrumentID": null,
+    "cgrValCot": null,
+    "cComVal": null,
+    "lastDate": 0,
+    "sourceID": 0,
+    "flowTitle": null,
+    "cgrValCotTitle": null
+   },
+   "marketCapToday": 6984000000000000.0,
+   "marketCapYesterday": 6783000000000000.0,
+   "change": 201000000000000.0
+  },
+  {
+   "insCode": "46348559193224090",
+   "instrument": {
+    "cValMne": null,
+    "lVal18": null,
+    "cSocCSAC": null,
+    "lSoc30": null,
+    "yMarNSC": null,
+    "yVal": null,
+    "insCode": "46348559193224090",
+    "lVal30": "فولاد مباركه اصفهان",
+    "lVal18AFC": "فولاد",
+    "flow": 0,
+    "cIsin": null,
+    "zTitad": 0.0,
+    "baseVol": 0,
+    "instrumentID": null,
+    "cgrValCot": null,
+    "cComVal": null,
+    "lastDate": 0,
+    "sourceID": 0,
+    "flowTitle": null,
+    "cgrValCotTitle": null
+   },
+   "marketCapToday": 8301150000000000.0,
+   "marketCapYesterday": 8146350000000000.0,
+   "change": 154800000000000.0
+  }
+ ]
+}

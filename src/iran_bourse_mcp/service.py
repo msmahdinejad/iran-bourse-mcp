@@ -7,7 +7,7 @@ import datetime as dt
 import time
 from typing import Any
 
-from . import derivatives, screener, shape
+from . import calendar_events, derivatives, screener, shape, status, toplists
 from . import market as marketfeed
 from .api import CODAL_SITE, TseApi
 from .client import Http, NotAvailable, UpstreamError
@@ -999,6 +999,59 @@ class Bourse:
         }
 
     # ------------------------------------------------------------------ Codal
+    # ------------------------------------------------------------------ official lists, calendar, trading status
+    async def top_lists(self, list_name: str | None = "catalogue", flow: int | str | None = None, limit: int = 20) -> dict:
+        try:
+            if toplists.is_catalogue(list_name):
+                return toplists.catalogue(flow)
+            request = toplists.resolve_top_list(str(list_name), flow, limit)
+        except ValueError as exc:
+            raise InputError(str(exc)) from exc
+        family = request.definition.family
+        try:
+            if family == toplists.FAMILY_SECTORS:
+                rows = await self.api.sector_top(request.top)
+            else:
+                fetch = {toplists.FAMILY_TRADE: self.api.trade_top, toplists.FAMILY_LIMITS: self.api.best_limits_top, toplists.FAMILY_CAP: self.api.market_cap_top}[family]
+                rows = await fetch(request.site_type, request.flow, request.top)
+        except NotAvailable as exc:  # the exchange answers HTTP 500 for a list it does not serve
+            raise InputError(f"The exchange does not serve '{request.definition.name}' for flow {request.flow} right now (HTTP 500). Call top_lists with list_name='catalogue' for the others.") from exc
+        return toplists.shape_top_list(request, rows)
+
+    async def capital_calendar(
+        self, flow: int | str | None = 1, direction: str = "upcoming", days: int = 30, limit: int = 50, kind: str = "all", today: str | None = None
+    ) -> dict:
+        try:
+            flows = calendar_events.parse_flows(flow)
+            calendar_events.check_arguments(direction, kind, days, limit)
+        except ValueError as exc:
+            raise InputError(str(exc)) from exc
+        top = calendar_events.adjustment_fetch_size(days)
+        wants_adjustments = calendar_events.sources_needed(kind, direction)[1]
+        shares = await asyncio.gather(*(self.api.share_changes_by_flow(f) for f in flows))
+        adjustments = await asyncio.gather(*(self.api.price_adjust_by_flow(f, top) for f in flows)) if wants_adjustments else None
+        try:
+            return calendar_events.capital_calendar(
+                dict(zip(flows, shares, strict=True)), dict(zip(flows, adjustments, strict=True)) if adjustments else None,
+                flow=flow, direction=direction, days=days, limit=limit, kind=kind, today=today, adjustments_top=top if adjustments else None,
+            )
+        except ValueError as exc:  # an unreadable `today`
+            raise InputError(str(exc)) from exc
+
+    async def trading_status(self, kind: str = "suspended", market: str | None = None, symbol: str | None = None, limit: int = 50) -> dict:
+        try:
+            plan = status.plan_trading_status(kind, market, symbol, limit)
+        except ValueError as exc:
+            raise InputError(str(exc)) from exc
+        if plan.kind in ("suspended", "supervision"):
+            fetched = await asyncio.gather(*(self.api.supervision_list(s, t) for s, t in plan.supervision_lists))
+            return status.shape_supervision(dict(zip(plan.supervision_lists, fetched, strict=True)), kind=plan.kind, symbol=plan.symbol, limit=plan.limit)
+        if plan.kind == "state_changes":
+            return status.shape_state_changes(await self.api.state_log(plan.state_top or 200), limit=plan.limit)
+        inst = await self._inst(plan.symbol or "")
+        history, record = await asyncio.gather(self.api.state_history(inst.ins_code), self.api.supervision_for(inst.ins_code))
+        return status.shape_symbol_history(history, instrument=inst.brief(), supervision=record, limit=plan.limit)
+
     # ------------------------------------------------------------------ derivatives (options, futures)
     async def option_chain(
         self,

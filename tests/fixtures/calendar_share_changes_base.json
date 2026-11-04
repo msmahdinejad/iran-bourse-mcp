@@ -1,0 +1,40 @@
+{
+ "instrumentShareChange": [
+  {
+   "idn": 0,
+   "insCode": "2318736941376687",
+   "dEven": 20261027,
+   "numberOfShareNew": 54067819000.0,
+   "numberOfShareOld": 26221057000.0,
+   "lVal30": "صنعتي‌ دريايي‌ ايران‌",
+   "lVal18AFC": "خصدرا"
+  },
+  {
+   "idn": 0,
+   "insCode": "51294484197536070",
+   "dEven": 20261004,
+   "numberOfShareNew": 1500000000.0,
+   "numberOfShareOld": 1000000000.0,
+   "lVal30": "شوكو پارس",
+   "lVal18AFC": "غشوكو"
+  },
+  {
+   "idn": 0,
+   "insCode": "56130915871324783",
+   "dEven": 20260718,
+   "numberOfShareNew": 1800000000.0,
+   "numberOfShareOld": 0.0,
+   "lVal30": "ح .گروه سرمايه گذاري توسكا",
+   "lVal18AFC": "وآتوسح"
+  },
+  {
+   "idn": 0,
+   "insCode": "59961449322636291",
+   "dEven": 20260630,
+   "numberOfShareNew": 15000000000.0,
+   "numberOfShareOld": 0.0,
+   "lVal30": "ح. پتروشيمي اصفهان",
+   "lVal18AFC": "شصفهاح"
+  }
+ ]
+}

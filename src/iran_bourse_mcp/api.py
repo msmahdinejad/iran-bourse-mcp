@@ -157,6 +157,38 @@ class TseApi:
         data = await self.http.get_json(f"{CDN}/ClosingPrice/GetMarketWatch?{query}", ttl=LIVE * 2)
         return (data or {}).get("marketwatch", []) if isinstance(data, dict) else []
 
+    # -- official lists, corporate-action calendar, trading status ----------------------
+    async def trade_top(self, kind: str, flow: int, top: int) -> list[dict]:
+        return await self._cdn(f"/ClosingPrice/GetTradeTop/{kind}/{flow}/{top}", "tradeTop", LIVE) or []
+
+    async def best_limits_top(self, kind: str, flow: int, top: int) -> list[dict]:
+        return await self._cdn(f"/BestLimits/GetBestLimitsTop/{kind}/{flow}/{top}", "bestLimitsTop", LIVE) or []
+
+    async def market_cap_top(self, kind: str, flow: int, top: int) -> list[dict]:
+        return await self._cdn(f"/ClosingPrice/GetMarketCap/{kind}/{flow}/{top}", "marketCap", SHORT) or []
+
+    async def sector_top(self, top: int = 0) -> list[dict]:
+        return await self._cdn(f"/MarketData/GetSectorTop/{top}", "sectorTop", SHORT) or []
+
+    async def share_changes_by_flow(self, flow: int) -> list[dict]:
+        """Every share-count change of a market incl. future-dated ones (the exchange ignores `top`: 0.1 to 0.5 MB)."""
+        return await self._cdn(f"/Instrument/GetInstrumentShareChangeByFlow/{flow}/10", "instrumentShareChange", HOUR) or []
+
+    async def price_adjust_by_flow(self, flow: int, top: int) -> list[dict]:
+        return await self._cdn(f"/ClosingPrice/GetPriceAdjustByFlow/{flow}/{top}", "priceAdjust", HOUR) or []
+
+    async def supervision_list(self, source: int, list_type: int) -> list[dict]:
+        return await self._cdn(f"/Supervision/GetSupervisionListBySourceID/{source}/{list_type}", "supervision", SHORT) or []
+
+    async def supervision_for(self, ins: str) -> dict:
+        return await self._cdn(f"/Supervision/GetSupervisionByInsCode/{ins}", "supervision", SHORT) or {}
+
+    async def state_log(self, n: int) -> list[dict]:
+        return await self._cdn(f"/MarketData/GetInstrumentStateTop/{n}", "instrumentState", SHORT) or []
+
+    async def state_history(self, ins: str) -> list[dict]:
+        return await self._cdn(f"/MarketData/GetInstrumentStateAll/{ins}", "instrumentState", SHORT) or []
+
     # -- derivatives (options and futures) -----------------------------------------------
     async def option_market_watch(self, flow: int = 0) -> list[dict]:
         """Option chain rows, one per strike/expiry pair with the call and the put side by side. flow 0 = all, 1 = Bourse, 2 = Fara Bourse."""

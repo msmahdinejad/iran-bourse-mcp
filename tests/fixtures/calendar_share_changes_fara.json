@@ -1,0 +1,40 @@
+{
+ "instrumentShareChange": [
+  {
+   "idn": 0,
+   "insCode": "1301069819790264",
+   "dEven": 20261104,
+   "numberOfShareNew": 167900000000.0,
+   "numberOfShareOld": 117900000000.0,
+   "lVal30": "تجلي توسعه معادن و فلزات",
+   "lVal18AFC": "تجلي"
+  },
+  {
+   "idn": 0,
+   "insCode": "52551569846042389",
+   "dEven": 20261104,
+   "numberOfShareNew": 1400000000.0,
+   "numberOfShareOld": 800000000.0,
+   "lVal30": "صندوق س.بازده مانا-د",
+   "lVal18AFC": "بمان"
+  },
+  {
+   "idn": 0,
+   "insCode": "37842793167868642",
+   "dEven": 20261103,
+   "numberOfShareNew": 14000000000.0,
+   "numberOfShareOld": 7000000000.0,
+   "lVal30": "ويتانا",
+   "lVal18AFC": "غويتا"
+  },
+  {
+   "idn": 0,
+   "insCode": "71758511001096824",
+   "dEven": 20261103,
+   "numberOfShareNew": 76000000000.0,
+   "numberOfShareOld": 58717719000.0,
+   "lVal30": "صنعتي مينو",
+   "lVal18AFC": "غصينو"
+  }
+ ]
+}

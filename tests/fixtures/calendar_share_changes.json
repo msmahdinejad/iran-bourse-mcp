@@ -1,0 +1,130 @@
+{
+ "instrumentShareChange": [
+  {
+   "idn": 0,
+   "insCode": "30650426998863332",
+   "dEven": 20261107,
+   "numberOfShareNew": 26000000000.0,
+   "numberOfShareOld": 14267348000.0,
+   "lVal30": "گروه‌صنعتي‌بوتان‌",
+   "lVal18AFC": "لبوتان"
+  },
+  {
+   "idn": 0,
+   "insCode": "18303237082155264",
+   "dEven": 20261104,
+   "numberOfShareNew": 14000000000.0,
+   "numberOfShareOld": 7000000000.0,
+   "lVal30": "فرآورده‌هاي‌ تزريقي‌ ايران‌",
+   "lVal18AFC": "دفرا"
+  },
+  {
+   "idn": 0,
+   "insCode": "34673681828119297",
+   "dEven": 20261104,
+   "numberOfShareNew": 17300000000.0,
+   "numberOfShareOld": 12500000000.0,
+   "lVal30": "صنعتي‌ آما",
+   "lVal18AFC": "فاما"
+  },
+  {
+   "idn": 0,
+   "insCode": "18320128145045368",
+   "dEven": 20261104,
+   "numberOfShareNew": 10000000000.0,
+   "numberOfShareOld": 5600000000.0,
+   "lVal30": "ص.چاپ وبسته بندي آسان قزوين",
+   "lVal18AFC": "چاپ"
+  },
+  {
+   "idn": 0,
+   "insCode": "48241092863917835",
+   "dEven": 20261026,
+   "numberOfShareNew": 4700000000.0,
+   "numberOfShareOld": 4000000000.0,
+   "lVal30": "ليزينگ پارسيان",
+   "lVal18AFC": "ولپارس"
+  },
+  {
+   "idn": 0,
+   "insCode": "23293437377896568",
+   "dEven": 20260916,
+   "numberOfShareNew": 95500000000.0,
+   "numberOfShareOld": 67500000000.0,
+   "lVal30": "سرمايه گذاري صدرتامين",
+   "lVal18AFC": "تاصيكو"
+  },
+  {
+   "idn": 0,
+   "insCode": "23293437377896568",
+   "dEven": 20260914,
+   "numberOfShareNew": 67500000000.0,
+   "numberOfShareOld": 95500000000.0,
+   "lVal30": "سرمايه گذاري صدرتامين",
+   "lVal18AFC": "تاصيكو"
+  },
+  {
+   "idn": 0,
+   "insCode": "57086055330734195",
+   "dEven": 20260727,
+   "numberOfShareNew": 49100000000.0,
+   "numberOfShareOld": 42750000000.0,
+   "lVal30": "كارخانجات‌توليدي‌شيشه‌رازي‌",
+   "lVal18AFC": "كرازي"
+  },
+  {
+   "idn": 0,
+   "insCode": "57086055330734195",
+   "dEven": 20260725,
+   "numberOfShareNew": 42750000000.0,
+   "numberOfShareOld": 49100000000.0,
+   "lVal30": "كارخانجات‌توليدي‌شيشه‌رازي‌",
+   "lVal18AFC": "كرازي"
+  },
+  {
+   "idn": 0,
+   "insCode": "57086055330734195",
+   "dEven": 20260422,
+   "numberOfShareNew": 49100000000.0,
+   "numberOfShareOld": 42750000000.0,
+   "lVal30": "كارخانجات‌توليدي‌شيشه‌رازي‌",
+   "lVal18AFC": "كرازي"
+  },
+  {
+   "idn": 0,
+   "insCode": "23293437377896568",
+   "dEven": 20260330,
+   "numberOfShareNew": 95500000000.0,
+   "numberOfShareOld": 67500000000.0,
+   "lVal30": "سرمايه گذاري صدرتامين",
+   "lVal18AFC": "تاصيكو"
+  },
+  {
+   "idn": 0,
+   "insCode": "57086055330734195",
+   "dEven": 20250310,
+   "numberOfShareNew": 42750000000.0,
+   "numberOfShareOld": 38500000000.0,
+   "lVal30": "كارخانجات‌توليدي‌شيشه‌رازي‌",
+   "lVal18AFC": "كرازي"
+  },
+  {
+   "idn": 0,
+   "insCode": "32338211917133256",
+   "dEven": 20150613,
+   "numberOfShareNew": 0.0,
+   "numberOfShareOld": 220000000.0,
+   "lVal30": "ح . ايران‌ياساتايرورابر",
+   "lVal18AFC": "پاساح"
+  },
+  {
+   "idn": 0,
+   "insCode": "67126881188552864",
+   "dEven": 20120522,
+   "numberOfShareNew": 9975103763.0,
+   "numberOfShareOld": 10000000000.0,
+   "lVal30": "گروه مپنا (سهامي عام)",
+   "lVal18AFC": "رمپنا"
+  }
+ ]
+}
