@@ -141,3 +141,50 @@ def test_snapshot_types_come_from_instrument_id_prefixes():
 def test_server_reports_its_version():
     version = getattr(server.mcp, "version", None) or getattr(getattr(server.mcp, "_mcp_server", None), "version", None)
     assert version == server.__version__
+
+
+class OneCallHistory(MarketApi):
+    async def client_type_history_all(self, ins):
+        row = {"buy_I_Volume": 10.0, "buy_I_Value": 1000.0, "buy_I_Count": 5, "sell_I_Volume": 5.0, "sell_I_Value": 400.0, "sell_I_Count": 2,
+               "buy_N_Volume": 1.0, "buy_N_Value": 100.0, "buy_N_Count": 1, "sell_N_Volume": 6.0, "sell_N_Value": 700.0, "sell_N_Count": 1}
+        quiet = {k: 0.0 for k in row}  # a day without trades is skipped
+        return [dict(row, recDate=20261101), dict(quiet, recDate=20261102), dict(row, recDate=20261103), dict(row, recDate=20261104)]
+
+    async def client_type_history(self, ins, deven, ttl=0):
+        raise AssertionError("the per-day endpoint must not be used when the one-call history exists")
+
+
+async def test_real_legal_flow_reads_the_whole_history_in_one_call():
+    out = await bourse_with(OneCallHistory()).real_legal_flow("فولاد", days=2)
+    assert [r["date"] for r in out["history"]] == ["2026-11-03", "2026-11-04"]
+    assert out["history"][0]["real_net_value"] == 600.0 and out["history_summary"]["days"] == 2  # exact rial values, not estimates
+
+
+class HolderApi(MarketApi):
+    async def shareholders_last(self, ins):
+        return [{"shareHolderName": "صندوق بازنشستگی کشوری", "shareHolderShareID": 7, "perOfShares": 5.0, "numberOfShares": 500},
+                {"shareHolderName": "صندوق دوم", "shareHolderShareID": 8, "perOfShares": 2.0, "numberOfShares": 200},
+                {"shareHolderName": "صندوق سوم", "shareHolderShareID": 9, "perOfShares": 1.5, "numberOfShares": 150}]
+
+    async def holder_history(self, ins, share_id, top):
+        assert share_id == 7
+        days = [(20261104, 500, 5.0), (20261103, 500, 5.0), (20261102, 450, 4.5), (20261101, 450, 4.5), (20261031, 400, 4.0)]
+        return [{"dEven": d, "numberOfShares": s, "perOfShares": p} for d, s, p in days]  # newest first, one row per day
+
+
+async def test_one_holders_position_over_time_lists_only_the_days_it_changed():
+    out = await bourse_with(HolderApi()).shareholder_history("فولاد", holder="کشوری")
+    assert out["holder"] == "صندوق بازنشستگی کشوری" and out["period"] == {"from": "2026-10-31", "to": "2026-11-04", "days_read": 5}
+    assert [(c["date"], c["shares"], c["shares_change"]) for c in out["changes"]] == [("2026-10-31", 400, None), ("2026-11-01", 450, 50), ("2026-11-03", 500, 50)]
+    assert out["net_change_shares"] == 100 and out["net_change_percent_points"] == 1.0
+
+
+async def test_holder_lookup_errors_name_the_candidates():
+    from iran_bourse_mcp.service import InputError
+
+    b = bourse_with(HolderApi())
+    with pytest.raises(InputError, match="No major holder.*Current holders"):
+        await b.shareholder_history("فولاد", holder="نامعتبر")
+    with pytest.raises(InputError, match="matches 3 holders"):
+        await b.shareholder_history("فولاد", holder="صندوق")
+    assert (await b.shareholder_history("فولاد", holder="7"))["holder_id"] == 7  # by holder_id too

@@ -97,6 +97,11 @@ class TseApi:
     async def client_type_history(self, ins: str, deven: int, ttl: float = HOUR) -> dict:
         return await self._cdn(f"/ClientType/GetClientTypeHistory/{ins}/{deven}", "clientType", ttl) or {}
 
+    async def client_type_history_all(self, ins: str) -> list[dict]:
+        """Every day's real/legal figures of a symbol in one response (about 1.3 MB for a symbol listed since 2008)."""
+        data = await self._cdn(f"/ClientType/GetClientTypeHistory/{ins}", "clientType", HOUR)
+        return data if isinstance(data, list) else []
+
     async def client_type_all(self) -> list[dict]:
         return await self._cdn("/ClientType/GetClientTypeAll", "clientTypeAllDto", SHORT) or []
 
@@ -106,6 +111,10 @@ class TseApi:
 
     async def shareholder_snapshots(self, ins: str, deven: int) -> list[dict]:
         return await self._cdn(f"/Shareholder/{ins}/{deven}", "shareShareholder", HOUR) or []
+
+    async def holder_history(self, ins: str, share_id: int | str, top: int) -> list[dict]:
+        """One major holder's daily position in one symbol, newest first."""
+        return await self._cdn(f"/Shareholder/GetShareHolderHistory/{ins}/{share_id}/{top}", "shareHolder", HOUR) or []
 
     async def holder_portfolio(self, share_id: int | str) -> list[dict]:
         return await self._cdn(f"/Shareholder/GetShareHolderCompanyList/{share_id}", "shareHolderShare", HOUR) or []

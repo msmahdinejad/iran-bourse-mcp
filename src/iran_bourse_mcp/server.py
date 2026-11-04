@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import functools
+import inspect
 from typing import Annotated, Any
 
 from pydantic import Field
@@ -44,9 +45,9 @@ How to work:
 - This is information, not investment advice.
 """
 
-try:  # SDK 2.x takes the version in its constructor; clients show it as serverInfo.version
+if "version" in inspect.signature(FastMCP.__init__).parameters:  # SDK 2.x: shown to clients as serverInfo.version
     mcp = FastMCP("iran-bourse", instructions=INSTRUCTIONS, version=__version__)
-except TypeError:  # SDK 1.x leaves it empty unless the low-level server is told
+else:  # SDK 1.x leaves it empty unless the low-level server is told
     mcp = FastMCP("iran-bourse", instructions=INSTRUCTIONS)
     try:
         mcp._mcp_server.version = __version__
@@ -316,9 +317,14 @@ async def shareholders(symbol: Symbol) -> dict:
 
 
 @tool()
-async def shareholder_history(symbol: Symbol, date: Date = None) -> dict:
-    """Dated major-holder snapshots for a symbol with computed changes between snapshots."""
-    return await svc().shareholder_history(symbol, date)
+async def shareholder_history(
+    symbol: Symbol,
+    date: Date = None,
+    holder: Annotated[str | None, Field(description="Name fragment (or holder_id) of one major holder, e.g. 'کشوری'. Returns that holder's position over time and the days it changed, instead of snapshots.")] = None,
+    days: Annotated[int, Field(ge=5, le=500, description="With holder: how many daily records to read (default 250, about one year)")] = 250,
+) -> dict:
+    """Dated major-holder snapshots for a symbol with computed changes between snapshots; or, with holder=..., one major holder's position over time and the days it bought or sold (تاریخچه سهامدار عمده)."""
+    return await svc().shareholder_history(symbol, date, holder, days)
 
 
 @tool()

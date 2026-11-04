@@ -811,11 +811,7 @@ class Bourse:
             "latest_session": {"date": fmt_date(closing.get("dEven")), **shape.shape_client_type(current, vwap=vwap)},
         }
         if days:
-            daily = await self.api.daily_prices(inst.ins_code)
-            dates = [int(r["dEven"]) for r in sorted(daily, key=lambda r: r["dEven"], reverse=True) if (r.get("zTotTran") or 0) > 0][: days + 2]
-            results = await asyncio.gather(*(self.api.client_type_history(inst.ins_code, d) for d in dates), return_exceptions=True)
-            # today's history is not always published yet: ask for two extra dates and keep the newest `days` that exist
-            rows = [dict(r, recDate=r.get("recDate") or d) for d, r in zip(dates, results, strict=True) if isinstance(r, dict) and r][:days]
+            rows = await self._client_type_rows(inst.ins_code, days)
             series = shape.shape_client_type_history(rows)
             net = [s["real_net_value"] for s in series if s["real_net_value"] is not None]
             out["history"] = series
@@ -827,6 +823,21 @@ class Bourse:
             }
         out["units"] = "value in rial, volume in shares"
         return out
+
+    async def _client_type_rows(self, ins: str, days: int) -> list[dict]:
+        """The newest ``days`` trading days of real/legal figures: one call for the whole history, per-day calls as a fallback."""
+        try:
+            everything = await self.api.client_type_history_all(ins)
+        except (NotAvailable, UpstreamError):
+            everything = []
+        traded = [r for r in everything if any((r.get(k) or 0) > 0 for k in ("buy_I_Volume", "buy_N_Volume", "sell_I_Volume", "sell_N_Volume"))]
+        if traded:
+            return sorted(traded, key=lambda r: r.get("recDate") or 0, reverse=True)[:days]
+        daily = await self.api.daily_prices(ins)
+        dates = [int(r["dEven"]) for r in sorted(daily, key=lambda r: r["dEven"], reverse=True) if (r.get("zTotTran") or 0) > 0][: days + 2]
+        results = await asyncio.gather(*(self.api.client_type_history(ins, d) for d in dates), return_exceptions=True)
+        # today's history is not always published yet: ask for two extra dates and keep the newest `days` that exist
+        return [dict(r, recDate=r.get("recDate") or d) for d, r in zip(dates, results, strict=True) if isinstance(r, dict) and r][:days]
 
     async def shareholders(self, symbol: str) -> dict:
         inst = await self._inst(symbol)
@@ -845,8 +856,51 @@ class Bourse:
             "note": "TSETMC lists holders above ~1% (major shareholders / سهامداران عمده). holder_id (valid for this snapshot) can be passed to shareholder_portfolio.",
         }
 
-    async def shareholder_history(self, symbol: str, date: str | None = None) -> dict:
+    async def _holder_series(self, inst: Instrument, holder: str, days: int) -> dict:
+        """One major holder's position over time, reduced to the days on which it changed."""
+        current = await self.api.shareholders_last(inst.ins_code)
+        key = match_key(holder)
+        found = [r for r in current if key == match_key(r.get("shareHolderShareID")) or key in match_key(r.get("shareHolderName"))]
+        names = "; ".join(clean(r.get("shareHolderName")) or "?" for r in sorted(current, key=lambda r: -(r.get("perOfShares") or 0))[:8])
+        if not found:
+            raise InputError(f"No major holder of {inst.symbol} matches '{holder}'. Current holders: {names}")
+        if len(found) > 1:
+            raise InputError(f"'{holder}' matches {len(found)} holders of {inst.symbol}; be more specific: " + "; ".join(clean(r.get("shareHolderName")) or "?" for r in found[:6]))
+        pick = found[0]
+        rows = await self.api.holder_history(inst.ins_code, pick["shareHolderShareID"], _clamp(days, 5, 500))
+        series = sorted((r for r in rows if r.get("dEven")), key=lambda r: r["dEven"])
+        changes: list[dict] = []
+        previous: float | None = None
+        for r in series:
+            shares = shape._f(r.get("numberOfShares"))
+            if shares is not None and shares != previous:
+                changes.append(
+                    {
+                        "date": fmt_date(r["dEven"]),
+                        "jdate": jdate(r["dEven"]),
+                        "shares": int(shares),
+                        "percent": shape._f(r.get("perOfShares")),
+                        "shares_change": None if previous is None else int(shares - previous),
+                    }
+                )
+            previous = shares if shares is not None else previous
+        first, last = (series[0], series[-1]) if series else ({}, {})
+        net = shape._f(last.get("numberOfShares")) is not None and shape._f(first.get("numberOfShares")) is not None
+        return {
+            "instrument": inst.brief(),
+            "holder": clean(pick.get("shareHolderName")),
+            "holder_id": pick.get("shareHolderShareID"),
+            "period": {"from": fmt_date(first["dEven"]) if first else None, "to": fmt_date(last["dEven"]) if last else None, "days_read": len(series)},
+            "net_change_shares": int(shape._f(last["numberOfShares"]) - shape._f(first["numberOfShares"])) if net else None,
+            "net_change_percent_points": shape._r((shape._f(last.get("perOfShares")) or 0) - (shape._f(first.get("perOfShares")) or 0), 3) if net else None,
+            "changes": changes,
+            "note": "Daily position of this holder; only days on which the number of shares changed are listed (the first row is the starting position).",
+        }
+
+    async def shareholder_history(self, symbol: str, date: str | None = None, holder: str | None = None, days: int = 250) -> dict:
         inst = await self._inst(symbol)
+        if holder:
+            return await self._holder_series(inst, holder, days)
         deven = _date_arg(date) or await self._latest_deven(inst.ins_code)
         rows = await self.api.shareholder_snapshots(inst.ins_code, deven)
         return {"instrument": inst.brief(), "snapshots": shape.shape_holder_snapshots(rows)}

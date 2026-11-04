@@ -104,6 +104,9 @@ class MarketApi:
         return [{"dEven": 20261100 + d, "pClosing": 100.0 + d, "pDrCotVal": 100.0 + d, "priceYesterday": 99.0 + d, "priceFirst": 99.0,
                  "priceMax": 110.0, "priceMin": 90.0, "qTotTran5J": 10.0, "qTotCap": 1000.0, "zTotTran": 5.0} for d in range(1, 5)]
 
+    async def client_type_history_all(self, ins):
+        raise NotAvailable("one-call history unavailable in this test")
+
     async def client_type_history(self, ins, deven, ttl=0):
         return {"recDate": deven, "buy_I_Volume": 10.0, "buy_I_Value": 1000.0, "buy_I_Count": 5, "sell_I_Volume": 5.0,
                 "sell_I_Value": 400.0, "sell_I_Count": 2, "buy_N_Volume": 0.0, "buy_N_Value": 0.0, "buy_N_Count": 0,
