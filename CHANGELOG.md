@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Install commands, snippets and one-click links now use PyPI (`uvx iran-bourse-mcp`) instead of the GitHub URL. `IRAN_BOURSE_SOURCE=git+https://github.com/msmahdinejad/iran-bourse-mcp` still selects the repository.
+
 ## 0.4.0 (2026-11-05)
 
 Two exchange tools (40 in total), public holidays in `market_status`, contract tests for every tool, Persian technical notes and a package ready for PyPI.

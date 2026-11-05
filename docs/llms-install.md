@@ -10,7 +10,7 @@ You are an AI agent asked to connect the user to Tehran Stock Exchange data with
 ## 2. Verify access
 
 ```bash
-uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp doctor
+uvx iran-bourse-mcp doctor
 ```
 
 Expect four `OK` lines. If you see `FAIL` or HTTP 403, tell the user it is the IP restriction and offer `IRAN_BOURSE_PROXY=http://host:port` (an in-Iran proxy) before continuing.
@@ -20,19 +20,19 @@ Expect four `OK` lines. If you see `FAIL` or HTTP 403, tell the user it is the I
 List the supported clients, then use the printed instructions:
 
 ```bash
-uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp config            # list client ids
-uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp config <client>   # exact steps for one client
+uvx iran-bourse-mcp config            # list client ids
+uvx iran-bourse-mcp config <client>   # exact steps for one client
 ```
 
 Clients with an automatic installer (it backs up the config file and refuses to touch files it cannot parse):
 
 ```bash
-uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp install <client>   # claude-desktop, cursor, gemini-cli, windsurf, kiro, qwen-code
+uvx iran-bourse-mcp install <client>   # claude-desktop, cursor, gemini-cli, windsurf, kiro, qwen-code
 ```
 
-For Claude Code run `claude mcp add iran-bourse -- uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp`. For Codex run `codex mcp add iran-bourse -- uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp`.
+For Claude Code run `claude mcp add iran-bourse -- uvx iran-bourse-mcp`. For Codex run `codex mcp add iran-bourse -- uvx iran-bourse-mcp`.
 
-The server entry is always: command `uvx`, args `["--from", "git+https://github.com/msmahdinejad/iran-bourse-mcp", "iran-bourse-mcp"]`, transport stdio.
+The server entry is always: command `uvx`, args `["iran-bourse-mcp"]`, transport stdio.
 
 ## 4. Tell the user to restart the client, then test
 
@@ -43,9 +43,9 @@ Ask the client something like: "Call market_status, then quote for the symbol ف
 Use the shell interface instead. Every tool is available:
 
 ```bash
-uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp tools
-uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp call quote symbol=فولاد --compact
-uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp call top_movers kind=buy_queue limit=5 --compact
+uvx iran-bourse-mcp tools
+uvx iran-bourse-mcp call quote symbol=فولاد --compact
+uvx iran-bourse-mcp call top_movers kind=buy_queue limit=5 --compact
 ```
 
 ## Usage notes for the agent

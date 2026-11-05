@@ -22,9 +22,9 @@ def test_unknown_client_lists_choices():
         clients.get_client("nope")
 
 
-def test_launch_defaults_to_github_and_supports_pypi():
-    assert clients.launch()[1][:2] == ["--from", clients.GIT_SOURCE]
-    assert clients.launch("pypi") == ("uvx", ["iran-bourse-mcp"])
+def test_launch_defaults_to_pypi_and_supports_github():
+    assert clients.launch() == ("uvx", ["iran-bourse-mcp"])
+    assert clients.launch(clients.GIT_SOURCE)[1][:2] == ["--from", clients.GIT_SOURCE]
 
 
 def test_client_specific_shapes():
@@ -43,7 +43,7 @@ def test_deeplinks_decode_back_to_the_launch_command():
     cursor = clients.cursor_deeplink()
     assert cursor.startswith("cursor://anysphere.cursor-deeplink/mcp/install?name=iran-bourse&config=")
     payload = json.loads(base64.b64decode(cursor.split("config=")[1]))
-    assert payload == {"command": "uvx", "args": ["--from", clients.GIT_SOURCE, "iran-bourse-mcp"]}
+    assert payload == {"command": "uvx", "args": ["iran-bourse-mcp"]}
 
     vscode = clients.vscode_deeplink()
     assert vscode.startswith("vscode:mcp/install?")
@@ -51,7 +51,7 @@ def test_deeplinks_decode_back_to_the_launch_command():
     assert decoded["name"] == "iran-bourse" and decoded["type"] == "stdio"
 
     goose = clients.goose_deeplink()
-    assert goose.startswith("goose://extension?cmd=uvx") and goose.count("&arg=") == 3
+    assert goose.startswith("goose://extension?cmd=uvx&arg=iran-bourse-mcp&")
 
 
 def test_install_creates_file_and_is_idempotent(tmp_path):

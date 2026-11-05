@@ -3,7 +3,6 @@
   "use strict";
   var D = window.SITE_DATA || { tools: [], clients: [], snapshot: {} };
   var SNAP = D.snapshot || {};
-  var GIT = "git+https://github.com/msmahdinejad/iran-bourse-mcp";
   var reduceMotion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
@@ -369,7 +368,7 @@
     if (c.docs) buttons += '<a class="btn btn-ghost" href="' + esc(c.docs) + '" target="_blank" rel="noopener">' + (lang === "fa" ? "مستندات " : "Docs for ") + esc(c.label) + "</a>";
     if (buttons) pane += '<div class="row">' + buttons + "</div>";
     pane += '<div class="code"><pre>' + esc(c.snippet) + '</pre><button class="copy" type="button" data-copy-pre>' + t("copy") + "</button></div>";
-    if (c.auto) pane += '<p style="margin:16px 0 6px;color:var(--ink-2);font-size:14.5px">' + (lang === "fa" ? "یا بگذارید خودش در فایل تنظیمات اضافه شود (با پشتیبان‌گیری):" : "Or let it edit the config for you (makes a backup first):") + '</p><div class="code"><pre>uvx --from ' + GIT + " iran-bourse-mcp install " + c.id + '</pre><button class="copy" type="button" data-copy-pre>' + t("copy") + "</button></div>";
+    if (c.auto) pane += '<p style="margin:16px 0 6px;color:var(--ink-2);font-size:14.5px">' + (lang === "fa" ? "یا بگذارید خودش در فایل تنظیمات اضافه شود (با پشتیبان‌گیری):" : "Or let it edit the config for you (makes a backup first):") + '</p><div class="code"><pre>uvx iran-bourse-mcp install ' + c.id + '</pre><button class="copy" type="button" data-copy-pre>' + t("copy") + "</button></div>";
     $("#pane").innerHTML = pane;
   }
 

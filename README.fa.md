@@ -47,31 +47,31 @@
 
 ```bash
 # ۱. بررسی دسترسی به TSETMC و کدال از همین سیستم
-uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp doctor
+uvx iran-bourse-mcp doctor
 
 # ۲. مراحل دقیق برای ایجنتتان را چاپ کنید، یا بگذارید خودِ ابزار فایل تنظیمات را ویرایش کند
-uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp config cursor
-uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp install cursor
+uvx iran-bourse-mcp config cursor
+uvx iran-bourse-mcp install cursor
 ```
 
-ورودی سرور همیشه یکی است: دستور `uvx`، آرگومان‌های `["--from", "git+https://github.com/msmahdinejad/iran-bourse-mcp", "iran-bourse-mcp"]` و ترنسپورت stdio. دکمه‌های نصب یک‌کلیکی برای Cursor، VS Code و Goose در [وب‌سایت](https://msmahdinejad.github.io/iran-bourse-mcp/#install) هست. یک ایجنت می‌تواند طبق [docs/llms-install.md](docs/llms-install.md) خودش آن را نصب کند.
+ورودی سرور همیشه یکی است: دستور `uvx`، آرگومان‌های `["iran-bourse-mcp"]` و ترنسپورت stdio. دکمه‌های نصب یک‌کلیکی برای Cursor، VS Code و Goose در [وب‌سایت](https://msmahdinejad.github.io/iran-bourse-mcp/#install) هست. یک ایجنت می‌تواند طبق [docs/llms-install.md](docs/llms-install.md) خودش آن را نصب کند.
 
 برای **Claude Code**:
 
 ```bash
-claude mcp add iran-bourse -- uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp
+claude mcp add iran-bourse -- uvx iran-bourse-mcp
 ```
 
 برای **Codex CLI**:
 
 ```bash
-codex mcp add iran-bourse -- uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp
+codex mcp add iran-bourse -- uvx iran-bourse-mcp
 ```
 
 دستور‌های ۱۷ ایجنت و IDE (Claude Desktop، Gemini CLI، Cursor، VS Code، Windsurf، Cline، Roo Code، Zed، Goose، OpenCode، Kiro، Qwen Code، JetBrains، Amp و فریم‌ورک‌های پایتون) در [README انگلیسی](README.md#install) و در وب‌سایت است. برای ایجنت‌های بدون MCP:
 
 ```bash
-uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp call quote symbol=فولاد --compact
+uvx iran-bourse-mcp call quote symbol=فولاد --compact
 ```
 
 ## چه چیزهایی می‌پرسید

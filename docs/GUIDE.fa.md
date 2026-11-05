@@ -7,9 +7,9 @@
 ## ۱. شروع در سه خط
 
 ```bash
-uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp doctor     # دسترسی را بررسی کن
-uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp config      # فهرست ایجنت‌ها
-uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp install cursor   # نمونه: نصب خودکار
+uvx iran-bourse-mcp doctor     # دسترسی را بررسی کن
+uvx iran-bourse-mcp config      # فهرست ایجنت‌ها
+uvx iran-bourse-mcp install cursor   # نمونه: نصب خودکار
 ```
 
 بعد از اتصال، به ایجنتتان بگویید: «وضعیت بازار را بگو و بعد فولاد را کامل بررسی کن». ایجنت خودش ابزارها را انتخاب می‌کند.

@@ -61,7 +61,7 @@
         <h1 data-i18n-html="hero.h1">Your AI agent, on the <em>Tehran Stock Exchange.</em></h1>
         <p class="lead" data-i18n="hero.lead">40 read-only tools that hand any agent the quotes, order book, tick-by-tick trades, real vs legal money flow, shareholders, a stock screener, options, indices, funds and Codal filings of TSETMC. Clean, labelled, and ready to reason about.</p>
         <div class="cmd" role="group" aria-label="Quick start">
-          <code><span class="prompt">$</span><span id="hero-cmd">uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp doctor</span></code>
+          <code><span class="prompt">$</span><span id="hero-cmd">uvx iran-bourse-mcp doctor</span></code>
           <button class="copy" type="button" data-copy-target="hero-cmd" data-i18n="copy">Copy</button>
         </div>
         <div class="cta-row">
@@ -275,9 +275,9 @@
         <div class="cmd"><code id="uv-win">powershell -c "irm https://astral.sh/uv/install.ps1 | iex"</code><button class="copy" type="button" data-copy-target="uv-win" data-i18n="copy">Copy</button></div>
         <div class="cmd"><code id="uv-nix">curl -LsSf https://astral.sh/uv/install.sh | sh</code><button class="copy" type="button" data-copy-target="uv-nix" data-i18n="copy">Copy</button></div></div>
       <div class="step"><h3 data-i18n="inst.s2">2 · Check access</h3><p data-i18n="inst.s2p">From a machine in Iran, confirm TSETMC and Codal answer.</p>
-        <div class="cmd"><code id="doc-cmd">uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp doctor</code><button class="copy" type="button" data-copy-target="doc-cmd" data-i18n="copy">Copy</button></div></div>
+        <div class="cmd"><code id="doc-cmd">uvx iran-bourse-mcp doctor</code><button class="copy" type="button" data-copy-target="doc-cmd" data-i18n="copy">Copy</button></div></div>
       <div class="step"><h3 data-i18n="inst.s3">3 · Connect</h3><p data-i18n="inst.s3p">Choose your agent. Some have a one-click link or an auto-installer.</p>
-        <div class="cmd"><code id="auto-cmd">uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp config</code><button class="copy" type="button" data-copy-target="auto-cmd" data-i18n="copy">Copy</button></div></div>
+        <div class="cmd"><code id="auto-cmd">uvx iran-bourse-mcp config</code><button class="copy" type="button" data-copy-target="auto-cmd" data-i18n="copy">Copy</button></div></div>
     </div>
     <div class="install">
       <div class="clients" id="clients" role="tablist" aria-label="Agents and IDEs"></div>
@@ -344,7 +344,7 @@
     <h2 data-i18n="final.h2">Give your agent the market.</h2>
     <p class="lead" style="margin-inline:auto" data-i18n="final.lead">Free, open source, read-only. Star it if it saves you an afternoon.</p>
     <video class="tour" src="assets/promo.mp4" poster="assets/site-preview.png" controls muted loop playsinline preload="none" aria-label="15-second tour of iran-bourse-mcp"></video>
-    <div class="cmd"><code id="final-cmd"><span class="prompt">$</span>claude mcp add iran-bourse -- uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp</code><button class="copy" type="button" data-copy-target="final-cmd" data-i18n="copy">Copy</button></div>
+    <div class="cmd"><code id="final-cmd"><span class="prompt">$</span>claude mcp add iran-bourse -- uvx iran-bourse-mcp</code><button class="copy" type="button" data-copy-target="final-cmd" data-i18n="copy">Copy</button></div>
     <div class="cta-row"><a class="btn btn-primary" href="https://github.com/msmahdinejad/iran-bourse-mcp" target="_blank" rel="noopener">★ Star on GitHub</a><a class="btn btn-ghost" href="https://github.com/msmahdinejad/iran-bourse-mcp/issues" target="_blank" rel="noopener" data-i18n="final.issue">Report an issue</a></div>
   </div>
 </section>

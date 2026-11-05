@@ -23,8 +23,8 @@ ENTRY_POINT = "iran-bourse-mcp"
 
 
 def source() -> str:
-    """Where ``uvx`` should fetch the package from (``IRAN_BOURSE_SOURCE`` overrides; use ``pypi`` once published)."""
-    return os.environ.get("IRAN_BOURSE_SOURCE", GIT_SOURCE)
+    """Where ``uvx`` should fetch the package from: PyPI, unless ``IRAN_BOURSE_SOURCE`` names another source (for example ``GIT_SOURCE``)."""
+    return os.environ.get("IRAN_BOURSE_SOURCE", "pypi")
 
 
 def launch(src: str | None = None) -> tuple[str, list[str]]:

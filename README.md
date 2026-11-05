@@ -48,14 +48,14 @@ Works with **every MCP client**, and with agents that have none. You need [uv](h
 
 ```bash
 # 1. check that TSETMC and Codal are reachable from here
-uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp doctor
+uvx iran-bourse-mcp doctor
 
 # 2. print the exact steps for your agent, or let the tool edit the config for you
-uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp config cursor
-uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp install cursor
+uvx iran-bourse-mcp config cursor
+uvx iran-bourse-mcp install cursor
 ```
 
-The server entry is always the same: command `uvx`, args `["--from", "git+https://github.com/msmahdinejad/iran-bourse-mcp", "iran-bourse-mcp"]`, stdio transport. One-click install buttons for Cursor, VS Code and Goose are on the [website](https://msmahdinejad.github.io/iran-bourse-mcp/#install). An AI agent can set it up from [docs/llms-install.md](docs/llms-install.md).
+The server entry is always the same: command `uvx`, args `["iran-bourse-mcp"]`, stdio transport. One-click install buttons for Cursor, VS Code and Goose are on the [website](https://msmahdinejad.github.io/iran-bourse-mcp/#install). An AI agent can set it up from [docs/llms-install.md](docs/llms-install.md).
 
 <!-- INSTALL:START -->
 <details>
@@ -63,7 +63,7 @@ The server entry is always the same: command `uvx`, args `["--from", "git+https:
 
 #### Claude Code
 ```bash
-claude mcp add iran-bourse -- uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp
+claude mcp add iran-bourse -- uvx iran-bourse-mcp
 ```
 > Add `--scope user` to make it available in every project.
 
@@ -76,8 +76,6 @@ Add to the config file (Windows: `%APPDATA%/Claude/claude_desktop_config.json`; 
     "iran-bourse": {
       "command": "uvx",
       "args": [
-        "--from",
-        "git+https://github.com/msmahdinejad/iran-bourse-mcp",
         "iran-bourse-mcp"
       ]
     }
@@ -89,14 +87,14 @@ Or automatically (makes a backup first): `iran-bourse-mcp install claude-desktop
 
 #### OpenAI Codex CLI
 ```bash
-codex mcp add iran-bourse -- uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp
+codex mcp add iran-bourse -- uvx iran-bourse-mcp
 ```
 or in `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.iran-bourse]
 command = "uvx"
-args = ["--from", "git+https://github.com/msmahdinejad/iran-bourse-mcp", "iran-bourse-mcp"]
+args = ["iran-bourse-mcp"]
 ```
 > `uvx --version` must work in the shell that starts Codex. For scripted `codex exec` runs use the config.toml form (required = true), or `uv tool install` the package so the server starts in about a second.
 
@@ -109,8 +107,6 @@ Add to `~/.gemini/settings.json`:
     "iran-bourse": {
       "command": "uvx",
       "args": [
-        "--from",
-        "git+https://github.com/msmahdinejad/iran-bourse-mcp",
         "iran-bourse-mcp"
       ]
     }
@@ -128,8 +124,6 @@ Add to `~/.cursor/mcp.json`:
     "iran-bourse": {
       "command": "uvx",
       "args": [
-        "--from",
-        "git+https://github.com/msmahdinejad/iran-bourse-mcp",
         "iran-bourse-mcp"
       ]
     }
@@ -149,8 +143,6 @@ Add to `.vscode/mcp.json`:
       "type": "stdio",
       "command": "uvx",
       "args": [
-        "--from",
-        "git+https://github.com/msmahdinejad/iran-bourse-mcp",
         "iran-bourse-mcp"
       ]
     }
@@ -168,8 +160,6 @@ Add to `~/.codeium/windsurf/mcp_config.json`:
     "iran-bourse": {
       "command": "uvx",
       "args": [
-        "--from",
-        "git+https://github.com/msmahdinejad/iran-bourse-mcp",
         "iran-bourse-mcp"
       ]
     }
@@ -188,8 +178,6 @@ Add this entry in the client's MCP settings:
     "iran-bourse": {
       "command": "uvx",
       "args": [
-        "--from",
-        "git+https://github.com/msmahdinejad/iran-bourse-mcp",
         "iran-bourse-mcp"
       ]
     }
@@ -207,8 +195,6 @@ Add to `.roo/mcp.json`:
     "iran-bourse": {
       "command": "uvx",
       "args": [
-        "--from",
-        "git+https://github.com/msmahdinejad/iran-bourse-mcp",
         "iran-bourse-mcp"
       ]
     }
@@ -226,8 +212,6 @@ Add to `~/.kiro/settings/mcp.json`:
     "iran-bourse": {
       "command": "uvx",
       "args": [
-        "--from",
-        "git+https://github.com/msmahdinejad/iran-bourse-mcp",
         "iran-bourse-mcp"
       ]
     }
@@ -245,8 +229,6 @@ Add to `~/.qwen/settings.json`:
     "iran-bourse": {
       "command": "uvx",
       "args": [
-        "--from",
-        "git+https://github.com/msmahdinejad/iran-bourse-mcp",
         "iran-bourse-mcp"
       ]
     }
@@ -264,8 +246,6 @@ Add this entry in the client's MCP settings:
     "iran-bourse": {
       "command": "uvx",
       "args": [
-        "--from",
-        "git+https://github.com/msmahdinejad/iran-bourse-mcp",
         "iran-bourse-mcp"
       ]
     }
@@ -283,8 +263,6 @@ Add to `~/.config/zed/settings.json`:
     "iran-bourse": {
       "command": "uvx",
       "args": [
-        "--from",
-        "git+https://github.com/msmahdinejad/iran-bourse-mcp",
         "iran-bourse-mcp"
       ]
     }
@@ -303,8 +281,6 @@ Add to `~/.config/opencode/opencode.json`:
       "type": "local",
       "command": [
         "uvx",
-        "--from",
-        "git+https://github.com/msmahdinejad/iran-bourse-mcp",
         "iran-bourse-mcp"
       ],
       "enabled": true
@@ -316,7 +292,7 @@ Add to `~/.config/opencode/opencode.json`:
 
 #### Goose
 ```bash
-uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp
+uvx iran-bourse-mcp
 ```
 
 Paste that into `goose configure` > Add Extension > Command-line Extension, or open the one-click link on the website.
@@ -331,8 +307,6 @@ Add to `~/.config/amp/settings.json`:
     "iran-bourse": {
       "command": "uvx",
       "args": [
-        "--from",
-        "git+https://github.com/msmahdinejad/iran-bourse-mcp",
         "iran-bourse-mcp"
       ]
     }
@@ -347,7 +321,7 @@ Add to `~/.config/amp/settings.json`:
 from agents import Agent
 from agents.mcp import MCPServerStdio
 
-async with MCPServerStdio(params={"command": "uvx", "args": ["--from", "git+https://github.com/msmahdinejad/iran-bourse-mcp", "iran-bourse-mcp"]}) as bourse:
+async with MCPServerStdio(params={"command": "uvx", "args": ["iran-bourse-mcp"]}) as bourse:
     agent = Agent(name="Analyst", instructions="Answer with exchange data.", mcp_servers=[bourse])
 ```
 **LangChain**
@@ -356,7 +330,7 @@ async with MCPServerStdio(params={"command": "uvx", "args": ["--from", "git+http
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
 client = MultiServerMCPClient({
-    "iran-bourse": {"transport": "stdio", "command": "uvx", "args": ["--from", "git+https://github.com/msmahdinejad/iran-bourse-mcp", "iran-bourse-mcp"]}
+    "iran-bourse": {"transport": "stdio", "command": "uvx", "args": ["iran-bourse-mcp"]}
 })
 tools = await client.get_tools()
 ```
@@ -365,15 +339,15 @@ tools = await client.get_tools()
 ```python
 from claude_agent_sdk import ClaudeAgentOptions
 
-options = ClaudeAgentOptions(mcp_servers={"iran-bourse": {"command": "uvx", "args": ["--from", "git+https://github.com/msmahdinejad/iran-bourse-mcp", "iran-bourse-mcp"]}})
+options = ClaudeAgentOptions(mcp_servers={"iran-bourse": {"command": "uvx", "args": ["iran-bourse-mcp"]}})
 ```
 **No MCP support? Use the shell**
 
 ```bash
 # Any agent that can run commands can use every tool:
-uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp tools
-uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp call quote symbol=فولاد --compact
-uvx --from git+https://github.com/msmahdinejad/iran-bourse-mcp iran-bourse-mcp call top_movers kind=buy_queue limit=5 --compact
+uvx iran-bourse-mcp tools
+uvx iran-bourse-mcp call quote symbol=فولاد --compact
+uvx iran-bourse-mcp call top_movers kind=buy_queue limit=5 --compact
 ```
 
 </details>
@@ -528,7 +502,7 @@ iran-bourse-mcp serve --transport streamable-http --host 127.0.0.1 --port 8000
 | Symptom | Fix |
 |---|---|
 | `spawn uvx ENOENT` or "command not found" in the client | GUI clients (Claude Desktop, Cursor) may not see your shell `PATH`. Put the absolute path in `command` (`where uvx` on Windows, `which uvx` elsewhere). |
-| First start takes ~10 seconds | `uvx` downloads and caches the dependencies once. Later starts are instant. Pin it with `uv tool install git+https://github.com/msmahdinejad/iran-bourse-mcp` and use the `iran-bourse-mcp` command directly. |
+| First start takes ~10 seconds | `uvx` downloads and caches the dependencies once. Later starts are instant. Pin it with `uv tool install iran-bourse-mcp` and use the `iran-bourse-mcp` command directly. |
 | `HTTP 403` or "Could not reach" | The Iranian IP requirement above. Run `iran-bourse-mcp doctor` to see which host fails. |
 | "The exchange server answered HTTP 502/503" | TSETMC is overloaded. The server already retried; try again in a few seconds. |
 | Empty or old live data | The market is closed (Saturday-Wednesday 09:00-12:30 Tehran time); you get the last session. |

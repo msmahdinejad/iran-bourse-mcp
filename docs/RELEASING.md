@@ -20,7 +20,7 @@ The package name `iran-bourse-mcp` is free on PyPI, the build is checked (`uv bu
 3. In the GitHub repository, *Settings → Environments*, create an environment named `pypi` (optionally require yourself as reviewer).
 4. In *Settings → Secrets and variables → Actions → Variables*, add `PUBLISH_PYPI` with the value `true`.
 5. Publish the current version: *Actions → Publish to PyPI → Run workflow* on `main` (or push the next tag). Then check `uvx iran-bourse-mcp doctor` from a clean machine.
-6. Make PyPI the default in the install snippets: set the default of `IRAN_BOURSE_SOURCE` to `pypi` in `src/iran_bourse_mcp/clients.py`, run `scripts/gen_readme.py` and `scripts/gen_site_data.py`, and replace the `git+https://...` commands in the README.
+6. Done for 0.4.0: PyPI is the default install source (`src/iran_bourse_mcp/clients.py`), and the README, site and guides show `uvx iran-bourse-mcp`.
 7. Submit to the MCP registry and directories (Smithery, Glama, PulseMCP).
 
 The README on PyPI is rewritten at build time (`hatch-fancy-pypi-readme`) so its images and relative links point to the website and the repository.
