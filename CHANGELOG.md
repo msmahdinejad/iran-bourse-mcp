@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 (2026-11-05)
+
+Two exchange tools (40 in total), public holidays in `market_status`, contract tests for every tool, Persian technical notes and a package ready for PyPI.
 
 ### Added
 - **Launch film** (2 minutes, Persian narration): on the website (`#film`) with a player, a 16:9 / 9:16 switch, English and Persian subtitles, downloads (web and social files on the site, Full HD and 4K as release assets of `launch-film`), share links, a ready-made post and an embeddable player (`embed.html`). Every number in it is real tool output.
