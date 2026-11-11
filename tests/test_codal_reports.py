@@ -189,3 +189,51 @@ def test_monthly_report_without_a_known_layout_returns_its_tables():
                     c["value"] = c["value"].replace("یک ماهه", "")
     m = cr.monthly(ds)
     assert "tables" in m and "month_sales" not in m
+
+
+def test_side_by_side_balance_sheet_of_an_insurer():
+    # بیمه البرز, 1405/06/31 (template «بیمه- بورسی - V3»): assets on the left, liabilities and equity on the right of one table
+    cols = ["پایان عملکرد واقعی منتهی به 1405/06/31", "(تجدیدارائه‌شده) 1404/12/29", "درصد تغییرات", "",
+            "پایان عملکرد واقعی منتهی به 1405/06/31", "(تجدیدارائه‌شده) 1404/12/29", "درصد تغییرات"]
+    rows = [
+        ("دارایی‌ها", [None, None, None, "بدهی‌ها", None, None, None]),
+        ("موجودی نقد", [65667040, 42269588, 55, "بدهی به بیمه‌گذاران و نمایندگان", 32990208, 20420652, 62]),
+        ("مطالبات از بیمه‌گذاران و نمایندگان", [455074490, 272010875, 67, "ذخیره خسارت معوق", 136095212, 92354589, 47]),
+        ("دارایی‌های ثابت مشهود", [45503370, 38558577, 18, "ذخیره حق بیمه عاید نشده", 382014413, 216621788, 76]),
+        (None, [None, None, None, "سایر ذخایر فنی", 52984300, 35825756, 48]),
+        (None, [None, None, None, "جمع بدهی ها", 797891449, 518432546, 54]),
+        (None, [None, None, None, "سرمایه", 81807822, 70000000, 17]),
+        (None, [None, None, None, "جمع حقوق مالکانه", 230269171, 178041126, 29]),
+        ("جمع دارایی‌ها", [1028160620, 696473672, 48, "جمع بدهی‌ها و حقوق مالکانه", 1028160620, 696473672, None]),
+    ]
+    g = {"columns": cols, "rows": [{"label": lab, "values": vals} for lab, vals in rows]}
+    left, right = cr.halves(g)
+    assert left["columns"] == cols[:3] and right["columns"] == cols[4:]
+    st = cr.statement(g, "balance", "1405/12/29")
+    it = st["items"]
+    assert st["layout"] == "insurer" and st["missing"] == ["retained_earnings"]  # not in this cut-down table
+    assert it["total_assets"] == {"current": 1028160620, "last_year": 696473672}  # the year-end column
+    assert it["total_liabilities"]["current"] == 797891449 and it["equity"]["current"] == 230269171
+    assert it["technical_reserves"]["current"] == 136095212 + 382014413 + 52984300
+
+
+def test_insurer_income_items_and_loss_ratio():
+    g = bank_grid([
+        ("درآمد حق بیمه ناخالص", [320924697, 162962285, 382494004, 97]),
+        ("حق بیمه خالص (سهم نگهداری)", [286569426, 147499819, 344757117, 94]),
+        ("درآمدهای بیمه ای", [337213222, 164121195, 395948111, 105]),
+        ("خسارت و مزایای پرداختی خالص", [-221277884, -105078384, -279315538, 111]),
+        ("سود (زیان) ناخالص فعالیتهای بیمه ای", [69628905, 36310652, 67922384, 92]),
+        ("سود (زیان) خالص", [62044983, 28237698, 61990476, 120]),
+    ])
+    st = cr.statement(g, "income", "1405/12/29")
+    assert st["layout"] == "insurer" and "cost_of_revenue" not in st["missing"]
+    assert st["items"]["revenue"]["current"] == 337213222 and st["items"]["gross_profit"]["current"] == 69628905
+    r = cr.ratios(st, {"items": {}}, {"items": {}}, 6)
+    assert r["loss_ratio_pct"] == round(221277884 / 286569426 * 100, 1)
+
+
+def test_a_unit_cell_in_the_first_value_column_is_not_a_second_half():
+    g = {"columns": ["a 1405/06/31", "b 1404/12/29"], "rows": [{"label": "دارایی ها", "values": ["میلیون ریال", None]},
+                                                            {"label": "جمع دارایی‌ها", "values": [10, 9]}]}
+    assert cr.halves(g) == [g]

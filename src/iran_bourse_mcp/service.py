@@ -1882,7 +1882,7 @@ class Bourse:
                                        "audited": lt["report"].get("audited"), "tracing_no": lt["letter"]["tracing_no"],
                                        **{k: (inc.get(k) or {}).get("current") for k in ("revenue", "net_profit", "eps")},
                                        "equity": (bal.get("equity") or {}).get("current"), "unit": "million rial (eps in rial)"}
-            out["profitability"] = {k: r[k] for k in ("gross_margin_pct", "operating_margin_pct", "net_margin_pct", "roe_ttm_pct", "roa_ttm_pct", "revenue_growth_pct", "net_profit_growth_pct") if k in r}
+            out["profitability"] = {k: r[k] for k in ("gross_margin_pct", "operating_margin_pct", "net_margin_pct", "roe_ttm_pct", "roa_ttm_pct", "revenue_growth_pct", "net_profit_growth_pct", "loss_ratio_pct") if k in r}
             out["balance_sheet"] = {k: r[k] for k in ("current_ratio", "debt_ratio_pct", "liabilities_to_equity", "financial_debt_to_equity", "free_cash_flow", "loans_to_deposits_pct", "equity_to_assets_pct") if k in r}
             val: dict[str, Any] = {}
             ni_ttm, rev_ttm = r.get("net_profit_ttm"), r.get("revenue_ttm")

@@ -236,9 +236,9 @@ def unit_multiplier(note: str | None) -> int:
 
 # concept -> label patterns (keys, see key()); "=" means the label must equal it, otherwise it must start with it
 INCOME = {
-    "revenue": ["=درآمدهایعملیاتی", "=درآمدعملیاتی", "=فروشخالص", "=فروشخالصودرآمدارائهخدمات", "=جمعدرآمدهایعملیاتی", "=جمعدرآمدها"],
+    "revenue": ["=درآمدهایعملیاتی", "=درآمدعملیاتی", "=درآمدهایبیمهای", "=فروشخالص", "=فروشخالصودرآمدارائهخدمات", "=جمعدرآمدهایعملیاتی", "=جمعدرآمدها"],
     "cost_of_revenue": ["بهایتمامشدهدرآمدهایعملیاتی", "بهایتمامشدهدرآمد", "=بهایتمامشدهکالایفروشرفته", "بهایتمامشده", "=هزینهسودسپردهها"],
-    "gross_profit": ["=سود(زیان)ناخالص"],
+    "gross_profit": ["=سود(زیان)ناخالص", "=سود(زیان)ناخالصفعالیتهایبیمهای"],
     "selling_admin_expenses": ["هزینههایفروش،اداریوعمومی", "هزینههایفروشاداریوعمومی", "=هزینههایاداریوعمومی"],
     "operating_profit": ["=سود(زیان)عملیاتی"],
     "finance_costs": ["=هزینههایمالی"],
@@ -253,6 +253,10 @@ INCOME = {
     "loan_interest_income": ["=درآمدتسهیلاتاعطایی"],
     "fee_income": ["=درآمدکارمزد"],
     "loan_loss_provisions": ["=هزینهمطالباتمشکوکالوصول"],
+    # insurers
+    "gross_premiums": ["=درآمدحقبیمهناخالص"],
+    "net_premiums": ["=حقبیمهخالص(سهمنگهداری)", "=حقبیمهخالص"],
+    "claims_net": ["=خسارتومزایایپرداختیخالص"],
 }
 BALANCE = {
     "total_assets": ["=جمعداراییها"],
@@ -275,6 +279,9 @@ BALANCE = {
     "loans": ["تسهیلاتاعطاییومطالباتازاشخاص"],  # government and private rows, summed
     "due_to_banks": ["=بدهیبهبانکهاوموسساتاعتباریغیربانکی"],
     "statutory_deposit": ["=سپردهقانونی"],
+    # insurers
+    "receivables_from_policyholders": ["=مطالباتازبیمهگذارانونمایندگان"],
+    "technical_reserves": ["ذخیرهخسارتمعوق", "ذخیرهریسکهایمنقضینشده", "ذخیرهحقبیمهعایدنشده", "ذخیرهریاضی", "=سایرذخایرفنی"],  # summed
 }
 CASH_FLOW = {
     "operating_cash_flow": ["جریانخالصورود(خروج)نقدحاصلازفعالیتهایعملیاتی"],
@@ -287,8 +294,11 @@ CASH_FLOW = {
 }
 KINDS = {"income": INCOME, "balance": BALANCE, "cashflow": CASH_FLOW}
 OPTIONAL = {"income_tax", "loan_interest_income", "fee_income", "loan_loss_provisions", "customer_deposits", "loans", "due_to_banks",
-            "statutory_deposit"}  # not every template has them: never reported as missing
-SUMMED = {"loans"}  # every matching row is added up
+            "statutory_deposit", "gross_premiums", "net_premiums", "claims_net", "receivables_from_policyholders",
+            "technical_reserves"}  # not every template has them: never reported as missing
+SUMMED = {"loans", "technical_reserves"}  # every matching row is added up
+BANK_MARKS = {"customer_deposits", "loan_interest_income"}
+INSURER_MARKS = {"gross_premiums", "net_premiums", "receivables_from_policyholders", "technical_reserves"}
 NOT_IN_BANK_BALANCE = {"current_assets", "non_current_assets", "short_term_investments", "trade_receivables", "inventory",
                        "current_liabilities", "borrowings_current", "borrowings_long_term"}  # a bank's balance sheet has no current/non-current split
 SHEET_NAMES = {  # sheet drop-down names, matched with key()
@@ -340,12 +350,39 @@ def _columns_roles(columns: list[str], fiscal_year_end: str | None = None) -> di
     return roles
 
 
+def halves(g: dict) -> list[dict]:
+    """A table laid out side by side (assets left, liabilities and equity right, as insurers file it) as two tables.
+
+    Such a table has, in some row, a label among the values: a text cell followed by numbers. Everything from that
+    position on is the right-hand table, with that cell as its label."""
+    split = None
+    for row in g["rows"]:
+        vals = row["values"]
+        for j, v in enumerate(vals):
+            if j > 0 and isinstance(v, str) and v.strip() and any(isinstance(x, (int, float)) for x in vals[j + 1:]):
+                split = j
+                break
+        if split is not None:
+            break
+    if split is None:
+        return [g]
+    left = {**g, "columns": g["columns"][:split], "rows": [{"label": r["label"], "values": r["values"][:split]} for r in g["rows"]]}
+    right_rows = []
+    for r in g["rows"]:
+        vals = r["values"]
+        lab = vals[split] if len(vals) > split and isinstance(vals[split], str) else None
+        right_rows.append({"label": tidy(lab) if lab else None, "values": vals[split + 1:]})
+    right = {**g, "columns": g["columns"][split + 1:], "rows": right_rows}
+    return [left, right]
+
+
 def statement(g: dict, kind: str, fiscal_year_end: str | None = None) -> dict:
     """Key items of one statement table: {concept: {current, previous, last_year}} plus the column labels used."""
     concepts = KINDS[kind]
-    roles = _columns_roles(g["columns"], fiscal_year_end)
+    parts = halves(g)
+    roles = _columns_roles(parts[0]["columns"], fiscal_year_end)
     items: dict[str, dict] = {}
-    for row in g["rows"]:
+    for row in (r for part in parts for r in part["rows"]):
         lab = row["label"]
         if not lab:
             continue
@@ -364,12 +401,14 @@ def statement(g: dict, kind: str, fiscal_year_end: str | None = None) -> dict:
         items["eps"] = dict(items["net_profit_per_share"])  # banks leave «پایه هر سهم» empty or 0 and report the net figure
         notes.append("eps is the report's «سود خالص هر سهم» row: its basic-EPS row is empty or 0.")
     missing = [c for c in concepts if c not in items and c not in OPTIONAL]
-    layout = "bank" if "customer_deposits" in items or "loan_interest_income" in items else None
-    if layout == "bank" and kind == "balance":
+    layout = "bank" if BANK_MARKS & set(items) else "insurer" if INSURER_MARKS & set(items) else None
+    if layout and kind == "balance":
         missing = [c for c in missing if c not in NOT_IN_BANK_BALANCE]
+    if layout == "insurer" and kind == "income":
+        missing = [c for c in missing if c != "cost_of_revenue"]  # premiums less claims and insurance costs: no single cost line
     out = {
         "items": items,
-        "columns": {r: g["columns"][i] for r, i in roles.items()},
+        "columns": {r: parts[0]["columns"][i] for r, i in roles.items()},
         "unit": g.get("unit_note"),
         "missing": missing,
     }
@@ -424,7 +463,8 @@ def ratios(income: dict, balance: dict, cash: dict, period_months: int | None) -
         "financial_debt_to_equity": round(_div(debt, eq), 2) if debt and eq else None,
         "free_cash_flow": (ocf + capex) if ocf is not None and capex is not None else None,
         "loans_to_deposits_pct": _pct(cur(bal, "loans"), cur(bal, "customer_deposits")),
-        "equity_to_assets_pct": _pct(eq, ta) if cur(bal, "customer_deposits") else None,
+        "loss_ratio_pct": _pct(-(cur(inc, "claims_net") or 0), cur(inc, "net_premiums")) if cur(inc, "claims_net") and cur(inc, "net_premiums") else None,
+        "equity_to_assets_pct": _pct(eq, ta) if cur(bal, "customer_deposits") or cur(bal, "technical_reserves") else None,
         "revenue_ttm": rev_ttm,
         "net_profit_ttm": ni_ttm,
     }
