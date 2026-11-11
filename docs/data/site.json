@@ -1,11 +1,11 @@
 {
- "tests": 854,
+ "tests": 856,
  "version": "0.5.0",
  "tools": [
   {
    "name": "market_status",
    "group": "Market",
-   "description": "Is the Tehran market open right now, and when does it open next? Tehran time, today's status (open, before_open, after_close, weekend or holiday),\n    the public holiday if any, next_session (skipping weekends and holidays), the next upcoming_holidays, the bourse state and totals (وضعیت بازار).\n    Holidays come from the official calendar of 1405; days the exchange closes without notice are flagged in calendar_check when its own data disagrees.",
+   "description": "Is the Tehran market open right now, and when does it open next? Tehran time, today's status (open, before_open, after_close, weekend or holiday),\nthe public holiday if any, next_session (skipping weekends and holidays), the next upcoming_holidays, the bourse state and totals (وضعیت بازار).\nHolidays come from the official calendar of 1405; days the exchange closes without notice are flagged in calendar_check when its own data disagrees.",
    "fa": "وضعیت بازار",
    "params": []
   },
@@ -114,7 +114,7 @@
   {
    "name": "top_movers",
    "group": "Market",
-   "description": "Ranked lists of the live session: top gainers/losers, most traded, buy/sell queues (صف خرید/فروش, confirmed against each symbol's real order\n    book; about 10 s on a strong day), real-person money inflow/outflow (ورود/خروج پول حقیقی), buyer power.\n    With date (queues only): the queues at the close of a past session, found from that day's end-of-day table and confirmed against each candidate's\n    order-book history, with queue size at the close and since when it held (can take 20-40 s on a strong day; repeated calls are fast).\n    Before 09:00 Tehran time the live lists are empty because the exchange resets the day's data: read `note`, and pass date=<last trading day> for queues.",
+   "description": "Ranked lists of the live session: top gainers/losers, most traded, buy/sell queues (صف خرید/فروش, confirmed against each symbol's real order\nbook; about 10 s on a strong day), real-person money inflow/outflow (ورود/خروج پول حقیقی), buyer power.\nWith date (queues only): the queues at the close of a past session, found from that day's end-of-day table and confirmed against each candidate's\norder-book history, with queue size at the close and since when it held (can take 20-40 s on a strong day; repeated calls are fast).\nBefore 09:00 Tehran time the live lists are empty because the exchange resets the day's data: read `note`, and pass date=<last trading day> for queues.",
    "fa": "بیشترین رشد/ریزش، صف خرید و فروش، ورود پول حقیقی",
    "params": [
     {
@@ -1018,7 +1018,7 @@
   {
    "name": "technical_indicators",
    "group": "Symbol",
-   "description": "Technical analysis indicators of one symbol (اندیکاتورهای تکنیکال) from its daily prices: SMA 20/50/200, EMA 12/26, RSI 14 (Wilder),\n    MACD 12/26/9 with signal and histogram, Bollinger 20/2 with %B and bandwidth, ATR 14, stochastic 14/3, OBV trend, volume vs its 20-session\n    average, distance from the 52-week high and low, support and resistance from recent swing lows and highs, recent crosses (MACD/signal,\n    SMA50/SMA200) and a plain-language summary (\"RSI 72: overbought\", \"price above SMA50 and SMA200\"). Computed by this server from the\n    exchange's adjusted daily closing prices, not published by the exchange.",
+   "description": "Technical analysis indicators of one symbol (اندیکاتورهای تکنیکال) from its daily prices: SMA 20/50/200, EMA 12/26, RSI 14 (Wilder),\nMACD 12/26/9 with signal and histogram, Bollinger 20/2 with %B and bandwidth, ATR 14, stochastic 14/3, OBV trend, volume vs its 20-session\naverage, distance from the 52-week high and low, support and resistance from recent swing lows and highs, recent crosses (MACD/signal,\nSMA50/SMA200) and a plain-language summary (\"RSI 72: overbought\", \"price above SMA50 and SMA200\"). Computed by this server from the\nexchange's adjusted daily closing prices, not published by the exchange.",
    "fa": "اندیکاتورهای تکنیکال: میانگین متحرک، RSI، MACD، بولینگر، حمایت و مقاومت",
    "params": [
     {
@@ -1607,16 +1607,16 @@
   }
  ],
  "snapshot": {
-  "captured_at_utc": "2026-11-11 09:32 UTC",
-  "tehran_time": "2026-11-11 13:01:47",
+  "captured_at_utc": "2026-11-11 10:03 UTC",
+  "tehran_time": "2026-11-11 13:33:38",
   "market_state": "بسته",
   "index": {
    "value": 8427304.89,
    "change": 69464.53,
    "change_pct": 0.83
   },
-  "trades_today": 1088558,
-  "value_today": 503286355458478,
+  "trades_today": 1094484,
+  "value_today": 523552289436344,
   "tape": [
    {
     "symbol": "فملی",
@@ -1705,7 +1705,7 @@
    "universe": 636,
    "jdate": "1405/08/20",
    "history_days": 20,
-   "seconds": 2.16,
+   "seconds": 5.22,
    "rows": [
     {
      "symbol": "کگل",
@@ -1849,9 +1849,9 @@
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "محصولات شیمیایی",
-    "queue_volume": 138340107,
+    "queue_volume": 129083271,
     "queue_orders": 9999,
-    "queue_value": 12075707940030
+    "queue_value": 11267678725590
    },
    {
     "symbol": "وتجارت",
@@ -1868,9 +1868,9 @@
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "بانکها و موسسات اعتباری",
-    "queue_volume": 5398720935,
-    "queue_orders": 2691,
-    "queue_value": 5215164423210
+    "queue_volume": 5036080671,
+    "queue_orders": 2507,
+    "queue_value": 4864853928186
    },
    {
     "symbol": "فولاد",
@@ -1887,9 +1887,9 @@
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "فلزات اساسی",
-    "queue_volume": 954805440,
-    "queue_orders": 4895,
-    "queue_value": 4726286928000
+    "queue_volume": 916424585,
+    "queue_orders": 4611,
+    "queue_value": 4536301695750
    },
    {
     "symbol": "مبین",
@@ -1906,9 +1906,9 @@
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "عرضه برق، گاز، بخاروآب گرم",
-    "queue_volume": 314753477,
-    "queue_orders": 1316,
-    "queue_value": 3515796338090
+    "queue_volume": 299153010,
+    "queue_orders": 1241,
+    "queue_value": 3341539121700
    },
    {
     "symbol": "شیراز",
@@ -1925,9 +1925,9 @@
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "محصولات شیمیایی",
-    "queue_volume": 44637487,
-    "queue_orders": 1658,
-    "queue_value": 3506720978720
+    "queue_volume": 42331619,
+    "queue_orders": 1569,
+    "queue_value": 3325571988640
    }
   ],
   "real_inflow": [
@@ -2113,32 +2113,32 @@
      {
       "level": 1,
       "price": 4950.0,
-      "volume": 954805440,
-      "orders": 4895
+      "volume": 916424585,
+      "orders": 4611
      },
      {
       "level": 2,
       "price": 4940.0,
-      "volume": 2107071,
-      "orders": 11
+      "volume": 2105660,
+      "orders": 10
      },
      {
       "level": 3,
       "price": 4930.0,
-      "volume": 2234561,
-      "orders": 13
+      "volume": 1634561,
+      "orders": 11
      },
      {
       "level": 4,
       "price": 4920.0,
-      "volume": 2597546,
-      "orders": 13
+      "volume": 8400,
+      "orders": 3
      },
      {
       "level": 5,
       "price": 4900.0,
-      "volume": 2641344,
-      "orders": 28
+      "volume": 241344,
+      "orders": 20
      }
     ],
     "asks": [],
@@ -2146,16 +2146,16 @@
     "best_ask": null,
     "spread": null,
     "spread_pct": null,
-    "total_bid_volume": 964385962,
+    "total_bid_volume": 920414550,
     "total_ask_volume": 0,
-    "total_bid_orders": 4960,
+    "total_bid_orders": 4655,
     "total_ask_orders": 0,
     "imbalance": 1.0,
     "queue": {
      "state": "buy_queue",
-     "queue_volume": 954805440,
-     "queue_orders": 4895,
-     "queue_value": 4726286928000
+     "queue_volume": 916424585,
+     "queue_orders": 4611,
+     "queue_value": 4536301695750
     },
     "price_limits": {
      "upper": 4950.0,
@@ -2249,7 +2249,128 @@
      }
     ]
    },
-   "filings": null,
+   "filings": [
+    {
+     "tracing_no": 1629421,
+     "symbol": "فولاد",
+     "company": "فولاد مبارکه اصفهان",
+     "title": "اطلاعات و صورت‌های مالی میاندوره‌ای دوره ۶ ماهه منتهی به ۱۴۰۵/۰۶/۳۱ (حسابرسی شده) (شرکت صنایع نیرو و انرژی پاک فولاد)",
+     "letter_code": "ن-۱۰",
+     "published": "1405/08/19 08:57:08",
+     "sent": "1405/08/19 08:57:08",
+     "under_supervision": false,
+     "is_estimate": false,
+     "has": {
+      "html": true,
+      "pdf": true,
+      "excel": true,
+      "xbrl": false,
+      "attachment": true
+     },
+     "links": {
+      "page": "https://codal.ir/Reports/Decision.aspx?LetterSerial=Ymf2WWNQQQaQQQdOOObOOOJ6F2Nwl4dxSA%3d%3d&rt=5&let=6&ct=0&ft=-1",
+      "pdf": "https://codal.ir/DownloadFile.aspx?hs=Ymf2WWNQQQaQQQdOOObOOOJ6F2Nwl4dxSA%3d%3d&ft=1005&let=6",
+      "excel": "https://excel.codal.ir/service/Excel/GetAll/Ymf2WWNQQQaQQQdOOObOOOJ6F2Nwl4dxSA%3d%3d/0",
+      "attachments": "https://codal.ir/Reports/Attachment.aspx?LetterSerial=Ymf2WWNQQQaQQQdOOObOOOJ6F2Nwl4dxSA%3d%3d"
+     }
+    },
+    {
+     "tracing_no": 1629336,
+     "symbol": "فولاد",
+     "company": "فولاد مبارکه اصفهان",
+     "title": "اطلاعات و صورت‌های مالی میاندوره‌ای دوره ۶ ماهه منتهی به ۱۴۰۵/۰۶/۳۱ (حسابرسی شده) (شرکت امین طب سپانو)",
+     "letter_code": "ن-۱۰",
+     "published": "1405/08/19 08:48:29",
+     "sent": "1405/08/19 08:48:29",
+     "under_supervision": false,
+     "is_estimate": false,
+     "has": {
+      "html": true,
+      "pdf": true,
+      "excel": true,
+      "xbrl": false,
+      "attachment": true
+     },
+     "links": {
+      "page": "https://codal.ir/Reports/Decision.aspx?LetterSerial=25OOObOOOYB5sux7AdXlvlOOObOOO2bbuw%3d%3d&rt=5&let=6&ct=0&ft=-1",
+      "pdf": "https://codal.ir/DownloadFile.aspx?hs=25OOObOOOYB5sux7AdXlvlOOObOOO2bbuw%3d%3d&ft=1005&let=6",
+      "excel": "https://excel.codal.ir/service/Excel/GetAll/25OOObOOOYB5sux7AdXlvlOOObOOO2bbuw%3d%3d/0",
+      "attachments": "https://codal.ir/Reports/Attachment.aspx?LetterSerial=25OOObOOOYB5sux7AdXlvlOOObOOO2bbuw%3d%3d"
+     }
+    },
+    {
+     "tracing_no": 1629692,
+     "symbol": "فولاد",
+     "company": "فولاد مبارکه اصفهان",
+     "title": "اطلاعات و صورت‌های مالی میاندوره‌ای دوره ۶ ماهه منتهی به ۱۴۰۵/۰۶/۳۱ (حسابرسی شده) (شرکت باشگاه فرهنگی ورزشی سپاهان نوین)",
+     "letter_code": "ن-۱۰",
+     "published": "1405/08/18 13:07:33",
+     "sent": "1405/08/18 13:07:33",
+     "under_supervision": false,
+     "is_estimate": false,
+     "has": {
+      "html": true,
+      "pdf": true,
+      "excel": true,
+      "xbrl": false,
+      "attachment": true
+     },
+     "links": {
+      "page": "https://codal.ir/Reports/Decision.aspx?LetterSerial=yDanjzuBbpuaLah1Z7d7iw%3d%3d&rt=5&let=6&ct=0&ft=-1",
+      "pdf": "https://codal.ir/DownloadFile.aspx?hs=yDanjzuBbpuaLah1Z7d7iw%3d%3d&ft=1005&let=6",
+      "excel": "https://excel.codal.ir/service/Excel/GetAll/yDanjzuBbpuaLah1Z7d7iw%3d%3d/0",
+      "attachments": "https://codal.ir/Reports/Attachment.aspx?LetterSerial=yDanjzuBbpuaLah1Z7d7iw%3d%3d"
+     }
+    },
+    {
+     "tracing_no": 1621524,
+     "symbol": "فولاد",
+     "company": "فولاد مبارکه اصفهان",
+     "title": "گزارش فعالیت ماهانه دوره ۱ ماهه منتهی به ۱۴۰۵/۰۷/۳۰",
+     "letter_code": "ن-۳۰",
+     "published": "1405/08/06 16:01:48",
+     "sent": "1405/08/06 16:01:48",
+     "under_supervision": false,
+     "is_estimate": false,
+     "has": {
+      "html": true,
+      "pdf": true,
+      "excel": true,
+      "xbrl": false,
+      "attachment": true
+     },
+     "links": {
+      "page": "https://codal.ir/Reports/Decision.aspx?LetterSerial=LyQnlYP7OOObOOOIDLto8TGJDkDQ%3d%3d&rt=0&let=58&ct=0&ft=-1",
+      "pdf": "https://codal.ir/DownloadFile.aspx?hs=LyQnlYP7OOObOOOIDLto8TGJDkDQ%3d%3d&ft=1005&let=58",
+      "excel": "https://excel.codal.ir/service/Excel/GetAll/LyQnlYP7OOObOOOIDLto8TGJDkDQ%3d%3d/0",
+      "attachments": "https://codal.ir/Reports/Attachment.aspx?LetterSerial=LyQnlYP7OOObOOOIDLto8TGJDkDQ%3d%3d"
+     }
+    },
+    {
+     "tracing_no": 1618277,
+     "symbol": "فولاد",
+     "company": "فولاد مبارکه اصفهان",
+     "title": "توضیحات در خصوص اطلاعات و صورت های مالی منتشر شده",
+     "letter_code": "ن-۲۶",
+     "published": "1405/07/30 14:40:53",
+     "sent": "1405/07/30 14:40:53",
+     "under_supervision": false,
+     "is_estimate": false,
+     "has": {
+      "html": true,
+      "pdf": true,
+      "excel": false,
+      "xbrl": false,
+      "attachment": true
+     },
+     "links": {
+      "page": "https://codal.ir/Reports/Decision.aspx?LetterSerial=q1TwzvITsscrZmqLPHatbw%3d%3d&rt=0&let=174&ct=0&ft=-1",
+      "pdf": "https://codal.ir/DownloadFile.aspx?hs=q1TwzvITsscrZmqLPHatbw%3d%3d&ft=1005&let=174",
+      "excel": null,
+      "attachments": "https://codal.ir/Reports/Attachment.aspx?LetterSerial=q1TwzvITsscrZmqLPHatbw%3d%3d"
+     }
+    }
+   ],
    "trade_summary": {
     "summary": {
      "ticks": 7941,

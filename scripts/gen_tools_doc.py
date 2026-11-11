@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 from pathlib import Path
 
 from tool_groups import GROUPS
@@ -26,7 +27,7 @@ async def main() -> None:
             tool = tools[name]
             props = schema_of(tool).get("properties", {})
             required = set(schema_of(tool).get("required", []))
-            lines += [f"### `{name}`", "", (tool.description or "").strip(), ""]
+            lines += [f"### `{name}`", "", inspect.cleandoc(tool.description or ""), ""]  # cleandoc: 3.13 strips docstring indentation itself
             if props:
                 lines += ["| parameter | type | description |", "|---|---|---|"]
                 for pname, spec in props.items():
