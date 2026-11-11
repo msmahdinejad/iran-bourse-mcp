@@ -552,6 +552,45 @@ def _bank_monthly(gs: list[dict], out: dict) -> dict | None:
     return {k: v for k, v in out.items() if v not in (None, {}, [])}
 
 
+def _generic_monthly(gs: list[dict]) -> dict | None:
+    """Month and year-to-date totals of the first table that has a «جمع» row and a one-month column (insurers'
+    premiums and claims, investment companies' operating income ...). Columns are grouped by their middle header
+    (e.g. «حق بیمه صادره», «خسارت پرداختی»); share-% columns are skipped. None when no table fits."""
+    for g in gs:
+        cols = g["columns"]
+        total = next((r for r in g["rows"] if key(r["label"] or "") == "جمع"), None)
+        if total is None:
+            continue
+        month_cols = [i for i, c in enumerate(cols) if ("یکماهه" in key(c) or "1ماهه" in key(c)) and "درصد" not in key(c)]
+        if not month_cols:
+            continue
+        end = re.search(r"\d{4}/\d{2}/\d{2}", cols[month_cols[0]])
+        if not end:
+            continue
+        ytd_cols = [i for i, c in enumerate(cols) if "ازابتدایسال" in key(c.split("|")[0]) and end[0] in c and "اصلاح" not in key(c) and "درصد" not in key(c)]
+        group = lambda c: tidy(c.split("|")[1]) if c.count("|") >= 1 and len(c.split("|")) > 2 else tidy(c.split("|")[-1]) if "|" in c else ""  # noqa: E731
+        val = lambda i: total["values"][i] if i < len(total["values"]) and isinstance(total["values"][i], (int, float)) else None  # noqa: E731
+        totals: dict[str, dict] = {}
+        for i in month_cols:
+            name = group(cols[i]) or "total"
+            ytd = next((j for j in ytd_cols if (group(cols[j]) or "total") == name), None)
+            totals[name] = {"month_amount": val(i), "ytd_amount": val(ytd) if ytd is not None else None}
+        first = next(iter(totals.values()))
+        lines = []
+        for r in g["rows"]:
+            if not r["label"] or key(r["label"]).startswith("جمع"):
+                continue
+            v = r["values"][month_cols[0]] if month_cols[0] < len(r["values"]) else None
+            if isinstance(v, (int, float)):
+                lines.append({"item": r["label"], "month_amount": v})
+        return {
+            "month_end": end[0], "unit": g.get("unit_note") or "million rial", "table": g.get("title"),
+            "month_sales": first["month_amount"], "ytd_sales": first["ytd_amount"],
+            "totals": totals if len(totals) > 1 else None, "products": lines,
+        }
+    return None
+
+
 def monthly(ds: dict) -> dict:
     """A monthly activity report (ن-۳۰): month and year-to-date sales by product, with totals.
 
@@ -568,7 +607,13 @@ def monthly(ds: dict) -> dict:
         g = None  # a table about income or sales, but not the production-and-sales layout this parser reads
     if not g:
         out["tables"] = gs
-        out["note"] = "No production-and-sales table in this report template; the tables are returned as they are."
+        summary = _generic_monthly(gs)
+        if summary:
+            out.update({k: v for k, v in summary.items() if v is not None})
+            out["note"] = (f"No production-and-sales table in this report template: month_sales / ytd_sales are the «جمع» row of the table "
+                           f"«{summary.get('table')}» (the first column group when it has several, all in totals), and every table is in tables.")
+        else:
+            out["note"] = "No production-and-sales table in this report template; the tables are returned as they are."
         return out
     cols = g["columns"]
     m_amt = _col(cols, "یکماهه", "مبلغ")
