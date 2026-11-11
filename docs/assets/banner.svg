@@ -21,7 +21,7 @@
 <text x="64" y="238" font-family="'Segoe UI','Inter','Helvetica Neue',Tahoma,Arial,sans-serif" font-size="22" fill="#8FA1C7" unicode-bidi="plaintext">بورس تهران، برای ایجنت‌های هوش مصنوعی</text>
 
 <g font-family="'Segoe UI','Inter','Helvetica Neue',Tahoma,Arial,sans-serif" font-size="14" font-weight="600">
-<rect x="64" y="268" width="104" height="30" rx="15" fill="none" stroke="#2EC4B6"/><text x="116" y="288" text-anchor="middle" fill="#2EC4B6">40 tools</text>
+<rect x="64" y="268" width="104" height="30" rx="15" fill="none" stroke="#2EC4B6"/><text x="116" y="288" text-anchor="middle" fill="#2EC4B6">41 tools</text>
 <rect x="178" y="268" width="104" height="30" rx="15" fill="none" stroke="#5B7CFA"/><text x="230" y="288" text-anchor="middle" fill="#E8EEF9">read-only</text>
 <rect x="292" y="268" width="148" height="30" rx="15" fill="none" stroke="#F5B53D"/><text x="366" y="288" text-anchor="middle" fill="#E8EEF9">100% tick coverage</text>
 <rect x="450" y="268" width="66" height="30" rx="15" fill="none" stroke="#8FA1C7"/><text x="483" y="288" text-anchor="middle" fill="#E8EEF9">MIT</text>

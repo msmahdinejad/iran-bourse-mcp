@@ -8,7 +8,17 @@ import re
 import time
 from typing import Any
 
-from . import calendar_events, commodity, derivatives, energy, screener, shape, status, toplists
+from . import (
+    calendar_events,
+    commodity,
+    derivatives,
+    energy,
+    screener,
+    shape,
+    status,
+    technical,
+    toplists,
+)
 from . import codal_reports as cr
 from . import funds as fundmod
 from . import indices as indexmod
@@ -31,6 +41,7 @@ from .dates import (
     next_session,
     parse_date,
     parse_time,
+    previous_trading_day,
     tehran_now,
     to_date,
     upcoming_holidays,
@@ -41,12 +52,16 @@ from .text import ascii_digits, clean, match_key
 MARKET_FLOW = {"bourse": 1, "fara": 2, "fara-bourse": 2, "ifb": 2}
 MAX_ROWS = 5000
 QUEUE_CANDIDATES = 400  # every limit-locked symbol (about 200 on a strong day); one BestLimits call each
+PAST_QUEUE_BOOKS = 250  # past day: order-book histories read (each about 170 KB gzipped), largest traded value first
+PAST_MEMO_ENTRIES = 5000  # per-symbol results of past days kept in memory (they never change)
+TECHNICAL_MAX_DAYS = 250
 CODAL_SCAN_PAGES = 8  # pages of 20 filings read while a title filter is looking for matches
 CODAL_STATEMENTS = 6  # Codal letter type: financial statements (ن-۱۰)
 CODAL_MONTHLY = 58  # Codal letter type: monthly activity report (ن-۳۰)
 MAX_TABLE_ROWS = 160  # rows returned per Codal table
 SECTION_TIMEOUT = 8.0  # seconds an optional symbol_overview section may take before it is reported as unavailable
 SESSION_WINDOW = (83000, 123500)  # HHMMSS: pre-open through just after close
+SESSION_CLOSE = 123000
 
 
 class InputError(ValueError):
@@ -117,6 +132,7 @@ class Bourse:
         self.api = TseApi(self.http)
         self.resolver = Resolver(self.api)
         self.market_source = "tsetmc"
+        self._past_memo: dict[tuple, Any] = {}
 
     async def aclose(self) -> None:
         await self.http.aclose()
@@ -138,10 +154,9 @@ class Bourse:
             rows = await self.api.thresholds(ins, deven)
         except NotAvailable:
             rows = []
-        same_day = [r for r in rows if int(r.get("dEven") or 0) == deven]
-        if same_day:
-            row = sorted(same_day, key=lambda r: r.get("hEven") or 0)[-1]
-            return shape._f(row.get("psGelStaMax")), shape._f(row.get("psGelStaMin"))
+        upper, lower = shape.thresholds_on(rows, deven)
+        if upper is not None or lower is not None:
+            return upper, lower
         if info is None:
             info = await self.api.instrument_info(ins)
         thr = info.get("staticThreshold") or {}
@@ -250,7 +265,7 @@ class Bourse:
 
         if market_name:
             want_fara = _flow(market_name) == 2
-            rows = [r for r in rows if bool(r["fara"] if "fara" in r else "فرابورس" in (r["market"] or "")) == want_fara]
+            rows = [r for r in rows if _is_fara(r) == want_fara]
         rows = [
             r
             for r in rows
@@ -286,7 +301,24 @@ class Bourse:
             rows = [_compact_watch(r) for r in rows]
         else:
             rows = [{k: v for k, v in r.items() if k != "book"} for r in rows]
-        return {"total_instruments": total, "source": self.market_source, "matched": matched, "returned": len(rows), "sorted_by": sort_by, "rows": rows, "units": "rial"}
+        note = None
+        if not rows and only_traded:
+            note = await self._idle_note("market_snapshot(date=<that day>) gives its end-of-day table.")
+        return {
+            "total_instruments": total, "source": self.market_source, "matched": matched, "returned": len(rows),
+            "sorted_by": sort_by, "rows": rows, "units": "rial", "note": note,
+        }
+
+    async def _idle_note(self, hint: str) -> str | None:
+        """The explanation for an empty live list when nothing has traded yet today (see ``status.idle_market_note``)."""
+        now = tehran_now()
+        try:
+            rows, _ = await self._market_rows()
+        except (NotAvailable, UpstreamError):
+            rows = []
+        traded = sum(1 for r in rows if (r["volume"] or 0) > 0)
+        last = from_date(previous_trading_day(now.date()))
+        return status.idle_market_note(day_status(now), traded, fmt_date(last), jdate(last), hint)
 
     async def _instrument_index(self) -> dict[str, str]:
         """instrumentId (as used by the TSE gateway) -> insCode (as used by the cdn API).
@@ -341,13 +373,34 @@ class Bourse:
         out.sort(key=lambda r: r["queue_value"], reverse=True)
         return out
 
-    async def top_movers(self, kind: str = "gainers", market: str | None = None, security_type: str | None = "سهام", limit: int = 20) -> dict:
+    async def top_movers(
+        self,
+        kind: str = "gainers",
+        market: str | None = None,
+        security_type: str | None = "سهام",
+        limit: int = 20,
+        date: str | int | None = None,
+    ) -> dict:
         kinds = {
             "gainers", "losers", "value", "volume", "trades",
             "buy_queue", "sell_queue", "real_inflow", "real_outflow", "real_buyer_power",
         }
         if kind not in kinds:
             raise InputError(f"kind must be one of {sorted(kinds)}")
+        deven = _date_arg(date)
+        past_note = None
+        if deven is not None:
+            if kind not in ("buy_queue", "sell_queue"):
+                raise InputError(
+                    "date works only with kind='buy_queue' or 'sell_queue'. For other rankings of a past day use "
+                    "market_snapshot(date=..., sort_by='change_pct' | 'value' | 'volume' | 'trades')."
+                )
+            today = _today_deven()
+            if deven > today:
+                raise InputError(f"date {fmt_date(deven)} is in the future (today is {fmt_date(today)} in Tehran).")
+            if deven < today:
+                return await self._past_queues(kind, deven, market, security_type, _clamp(limit, 1, 100))
+            past_note = "date is today: these are the live queues (the same as without date)."
         watch = await self.market_watch(
             market=market, security_type=security_type, only_traded=True, sort_by="value", limit=700, detail="full"
         )
@@ -395,7 +448,145 @@ class Bourse:
             _compact_watch(r, extra=("real_net_volume", "real_net_value_estimated", "real_buyer_power", "real_buyers", "real_sellers", "queue_volume", "queue_orders", "queue_value"))
             for r in rows[:limit]
         ]
-        return {"kind": kind, "count": len(out), "rows": out, "note": "real_* values are estimates: net real volume x symbol VWAP." if kind.startswith("real") else None}
+        notes = []
+        if kind.startswith("real"):
+            notes.append("real_* values are estimates: net real volume x symbol VWAP.")
+        if past_note:
+            notes.append(past_note)
+        if not out:
+            hint = (
+                f"pass that date with kind='{kind}' for the queues at that session's close."
+                if kind in ("buy_queue", "sell_queue")
+                else "market_snapshot(date=<that day>) ranks that session's end-of-day table."
+            )
+            idle = await self._idle_note(hint)
+            if idle:
+                notes.insert(0, idle)
+        return {"kind": kind, "count": len(out), "rows": out, "note": " ".join(notes) or None}
+
+    async def _past_queues(self, kind: str, deven: int, market: str | None, security_type: str | None, limit: int) -> dict:
+        """Queues at the close of a past session: whole-market end-of-day table -> official limits -> rebuilt order book."""
+        _check_type(security_type)
+        want_fara = None if market is None else _flow(market) == 2
+        side = "buy" if kind == "buy_queue" else "sell"
+        head = {"kind": kind, "date": fmt_date(deven), "jdate": jdate(deven)}
+        table = await self.api.prices_on_day(deven)
+        if sum(1 for r in table if r.get("zTotTran")) < 20:
+            return {
+                **head, "count": 0, "confirmed": 0, "rows": [], "candidates": None, "method": None, "units": None,
+                "note": f"The exchange has no end-of-day table for {fmt_date(deven)}: it was not a trading day (weekend, public holiday or closure).",
+            }
+        try:
+            live = {r["instrument_id"]: r for r in (await self._market_rows())[0]}
+        except (NotAvailable, UpstreamError):
+            live = {}
+
+        def wanted(raw: dict) -> bool:
+            row = live.get(raw.get("instrumentID"))
+            kind_of = row["security_type"] if row else marketfeed.type_from_instrument_id(raw.get("instrumentID"))
+            if not marketfeed.security_type_matches(kind_of, security_type):
+                return False
+            return want_fara is None or (row is not None and _is_fara(row) == want_fara)
+
+        universe = [r for r in table if r.get("zTotTran") and wanted(r)]
+        extremes = shape.limit_close_candidates(universe, side)
+        checked = extremes[:QUEUE_CANDIDATES]
+
+        async def limits_of(raw: dict) -> tuple[float | None, float | None]:
+            key = ("limits", str(raw["insCode"]), deven)
+            if key not in self._past_memo:
+                rows = await self.api.thresholds(str(raw["insCode"]), deven, ttl=0)  # small, but hundreds: kept in the memo, not the cache
+                self._past_memo[key] = shape.thresholds_on(rows, deven)
+            return self._past_memo[key]
+
+        limits = await asyncio.gather(*(limits_of(r) for r in checked), return_exceptions=True)
+        errors = sum(1 for item in limits if isinstance(item, Exception))
+        at_limit = []
+        for raw, item in zip(checked, limits, strict=True):
+            if isinstance(item, Exception):
+                continue
+            upper, lower = item
+            last = shape._f(raw.get("pDrCotVal"))
+            if last is not None and ((side == "buy" and upper and last >= upper) or (side == "sell" and lower and last <= lower)):
+                at_limit.append((raw, upper, lower))
+        books = at_limit[:PAST_QUEUE_BOOKS]
+
+        async def close_of(raw: dict, upper: float | None, lower: float | None) -> dict:
+            key = ("close", str(raw["insCode"]), deven)
+            if key not in self._past_memo:
+                history = await self.api.best_limits_history(str(raw["insCode"]), deven, ttl=0)  # about 2.5 MB: reduced, not cached
+                snapshots = shape.reconstruct_book(history)
+                self._past_memo[key] = shape.queue_at_close(snapshots, upper, lower, close=SESSION_CLOSE, start=SESSION_WINDOW[0])
+            return self._past_memo[key]
+
+        closes = await asyncio.gather(*(close_of(*item) for item in books), return_exceptions=True)
+        if len(self._past_memo) > PAST_MEMO_ENTRIES:
+            self._past_memo.clear()
+        confirmed = []
+        for (raw, upper, lower), result in zip(books, closes, strict=True):
+            if isinstance(result, Exception):
+                errors += 1
+                continue
+            if result["state"] != kind:
+                continue
+            row = live.get(raw.get("instrumentID")) or {}
+            close, last, yesterday = shape._f(raw.get("pClosing")), shape._f(raw.get("pDrCotVal")), shape._f(raw.get("priceYesterday"))
+            confirmed.append(
+                {
+                    "symbol": clean(raw.get("lVal18AFC")),
+                    "name": clean(raw.get("lVal30")),
+                    "industry": row.get("industry"),
+                    "last": last,
+                    "last_pct": shape.pct_change(last, yesterday),
+                    "close": close,
+                    "close_pct": shape.pct_change(close, yesterday),
+                    "yesterday": yesterday,
+                    "volume": shape._i(raw.get("qTotTran5J")),
+                    "value": shape._i(raw.get("qTotCap")),
+                    "trades": shape._i(raw.get("zTotTran")),
+                    "price_limits": {"upper": upper, "lower": lower},
+                    "queue_volume": result["queue_volume"],
+                    "queue_orders": result["queue_orders"],
+                    "queue_value": result["queue_value"],
+                    "book_time": result["book_time"],
+                    "queue_since": result["queue_since"],
+                    "held_last_30_minutes": result["held_last_30_minutes"],
+                }
+            )
+        confirmed.sort(key=lambda r: r["queue_value"] or 0, reverse=True)
+        notes = []
+        if len(extremes) > len(checked) or len(at_limit) > len(books):
+            notes.append(
+                f"Capped: only the {len(books)} candidates with the largest traded value were checked against the order book; "
+                "smaller queues may be missing. Narrow with market or security_type."
+            )
+        if errors:
+            notes.append(f"{errors} candidate(s) could not be checked (upstream error) and are left out.")
+        extreme = "high, above" if side == "buy" else "low, below"
+        return {
+            **head,
+            "count": min(len(confirmed), limit),
+            "confirmed": len(confirmed),
+            "rows": confirmed[:limit],
+            "candidates": {
+                "traded_instruments": len(universe),
+                "last_trade_at_day_extreme": len(extremes),
+                "limits_checked": len(checked),
+                "closed_at_official_limit": len(at_limit),
+                "order_books_checked": len(books),
+            },
+            "method": (
+                f"Past session: candidates are the instruments whose last trade that day was the day's {extreme} the previous "
+                "close, from the exchange's end-of-day table of the whole market (one request). Their official price limits of that "
+                "day are read (GetStaticThreshold); those whose last trade was at the limit are confirmed against the day's "
+                "order-book history (BestLimits/{insCode}/{date}) rebuilt up to 12:30:00. queue_* is the queue at the close "
+                "(book_time: the last order-book event before it); queue_since is when the final unbroken queue began (looked for "
+                "from 08:30, pre-open included); held_last_30_minutes: it held from 12:00 to the close. An instrument that did not "
+                "trade at all that day is not in the exchange's table and is not found."
+            ),
+            "units": "prices and values in rial, volumes in shares",
+            "note": " ".join(notes) or None,
+        }
 
     # ------------------------------------------------------------------ screener
     async def _trading_day_tables(self, today: int, depth: int) -> list[tuple[int, list[dict]]]:
@@ -542,7 +733,10 @@ class Bourse:
         if need_flows:
             notes.append("real_* values come from the exchange's client-type table; *_value fields are estimated as net volume x vwap.")
         if not ordered:
-            notes.append("No instrument matched. Loosen a threshold, or check field names with screener_reference.")
+            idle = None if include_untraded else await self._idle_note(
+                "past-day fields (close[1], avg(volume, 20) ...) still work, and include_untraded=True keeps every symbol in the universe."
+            )
+            notes.append(idle or "No instrument matched. Loosen a threshold, or check field names with screener_reference.")
         return {
             "filter": " and ".join(f"({text.strip()})" for text in sources),
             "preset": chosen.name if chosen else None,
@@ -947,6 +1141,41 @@ class Bourse:
             "units": "rial",
             "note": "Rows are ascending by date; 'close' is the exchange closing (weighted) price, 'last' the last trade."
             + (" Prices are back-adjusted for capital increases and dividends." if adjusted else ""),
+        }
+
+    async def technical_indicators(self, symbol: str, days: int = 5, adjusted: bool = True) -> dict:
+        inst = await self._inst(symbol)
+        raw = await self.api.daily_prices(inst.ins_code)
+        series, events = shape.shape_daily_prices(raw, adjusted=adjusted)
+        # silent days (no trade) carry yesterday's price and no high/low: they take part in the adjustment chain above,
+        # but not in the indicators
+        traded = [r for r in series if (r["trades"] or 0) > 0 and r["high"] and r["low"] and r["close"]]
+        if len(traded) < technical.MIN_SESSIONS:
+            raise InputError(f"{inst.symbol} has {len(traded)} traded session(s): too few for indicators.")
+        result = technical.compute(traded, _clamp(days, 0, TECHNICAL_MAX_DAYS))
+        latest_day = traded[-1]
+        year_ago = (dt.date.fromisoformat(latest_day["date"]) - dt.timedelta(days=365)).isoformat()
+        notes = [
+            "Computed by this server from the exchange's daily prices; the exchange does not publish these indicators.",
+            "Prices are back-adjusted for capital increases and dividends (adjusted=false uses raw prices); volumes are not adjusted."
+            if adjusted
+            else "Prices are raw (not adjusted): a capital increase or dividend shows as a price gap and distorts the indicators.",
+            "Only sessions in which the symbol traded are used; 'close' is the exchange's closing price (قیمت پایانی).",
+        ]
+        now = tehran_now()
+        if is_session_hours(now) and latest_day["date"] < now.date().isoformat():
+            notes.append("Today's session is still open: it is not in the daily series until the close.")
+        notes.append("Information, not investment advice.")
+        return {
+            "instrument": inst.brief(),
+            "as_of": {"date": latest_day["date"], "jdate": latest_day["jdate"]},
+            "adjusted": adjusted,
+            "sessions_used": len(traded),
+            "price": {k: latest_day[k] for k in ("close", "last", "open", "high", "low", "change_pct", "volume", "value")},
+            **result,
+            "adjustment_events_last_year": [e for e in events if e["date"] > year_ago] if adjusted else None,
+            "units": "prices in rial (adjusted when adjusted=true), volumes in shares, *_pct in percent",
+            "note": " ".join(notes),
         }
 
     async def real_legal_flow(self, symbol: str, days: int = 10) -> dict:
@@ -1687,6 +1916,11 @@ class Bourse:
 
 
 # ---------------------------------------------------------------------- module helpers
+def _is_fara(row: dict) -> bool:
+    """Fara Bourse? Rows of the exchange feed say so; gateway rows name their market."""
+    return bool(row["fara"] if "fara" in row else "فرابورس" in (row.get("market") or ""))
+
+
 def _real_net_value(rows: list[dict], flows: dict[str, dict]) -> int:
     """Estimated real-person net inflow of a group of symbols: net real volume x each symbol's vwap, rial."""
     total = 0.0

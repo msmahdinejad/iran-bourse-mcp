@@ -9,7 +9,7 @@
 [![CI](https://github.com/msmahdinejad/iran-bourse-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/msmahdinejad/iran-bourse-mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-2EC4B6.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%E2%80%933.13-5B7CFA.svg)](pyproject.toml)
-[![Tools](https://img.shields.io/badge/tools-40%20read--only-2EC4B6.svg)](docs/TOOLS.md)
+[![Tools](https://img.shields.io/badge/tools-41%20read--only-2EC4B6.svg)](docs/TOOLS.md)
 [![Stars](https://img.shields.io/github/stars/msmahdinejad/iran-bourse-mcp?style=flat&color=F5B53D)](https://github.com/msmahdinejad/iran-bourse-mcp/stargazers)
 
 **[وب‌سایت](https://msmahdinejad.github.io/iran-bourse-mcp/)** · **[نصب](#نصب)** · **[بنچمارک](#بنچمارک)** · **[راهنمای کامل](docs/GUIDE.fa.md)** · **[مرجع ابزارها](docs/TOOLS.md)** · **[اسکرینر](docs/SCREENER.md)** · **[نمونه خروجی‌ها](docs/EXAMPLES.md)** · **[نکات داده](docs/DATA_SOURCES.md)** · **[English](README.md)**
@@ -101,7 +101,7 @@ uvx iran-bourse-mcp call quote symbol=فولاد --compact
 | داده | ابزارها |
 |---|---|
 | وضعیت بازار، شاخص‌ها، شاخص صنایع | `market_status` `market_overview` `indices` `industry_summary` `index_contributors` |
-| دیده‌بان کل بازار (حدود ۳٬۷۰۰ نماد) و رتبه‌بندی‌ها | `market_watch` `top_movers` (بیشترین رشد/ریزش، صف خرید و فروش، ورود و خروج پول حقیقی، قدرت خریدار) `market_snapshot` |
+| دیده‌بان کل بازار (حدود ۳٬۷۰۰ نماد) و رتبه‌بندی‌ها | `market_watch` `top_movers` (بیشترین رشد/ریزش، صف خرید و فروش لحظه‌ای یا پایان یک روز گذشته، ورود و خروج پول حقیقی، قدرت خریدار) `market_snapshot` |
 | **اسکرینر** (زبان فیلتر، تاریخچه، فیلترهای آماده) | `screen_stocks` `screener_reference` |
 | تاریخچه شاخص‌ها و اعضای آن | `index_history` (روزانه از ۱۳۸۷ یا روند ۵ دقیقه‌ای امروز) `index_constituents` |
 | اختیار معامله و آتی | `option_chain` (خرید و فروش هر قیمت اعمال و سررسید، ارزش ذاتی، موقعیت‌های باز) `futures_market` (basis) |
@@ -110,6 +110,7 @@ uvx iran-bourse-mcp call quote symbol=فولاد --compact
 | توقف و نظارت | `trading_status` (متوقف، تحت احتیاط، تغییر وضعیت، تاریخچه وضعیت یک نماد) |
 | پرونده‌ی کامل یک نماد در یک فراخوانی | `symbol_overview` |
 | قیمت، دامنه نوسان، VWAP، P/E، ارزش بازار | `quote` `price_history` (با گزینه‌ی **تعدیل‌شده**) `symbol_statistics` `corporate_actions` |
+| اندیکاتورهای تکنیکال (محاسبه‌شده از قیمت‌های روزانه‌ی تعدیل‌شده) | `technical_indicators` (میانگین متحرک ساده و نمایی، RSI، MACD، بولینگر، ATR، استوکاستیک، OBV، سقف و کف ۵۲ هفته، حمایت و مقاومت، جمع‌بندی متنی) |
 | عمق بازار و صف خرید/فروش | `order_book` `order_book_history` (بازسازی از تک‌تک رویدادها، همراه با بازه‌های صف) |
 | ریز معاملات | `trades` (قابل فیلتر) `trade_summary` (کندل‌های درون‌روزی، VWAP، بزرگ‌ترین معاملات، حجم در هر قیمت، **بررسی کامل بودن داده**) |
 | حقیقی و حقوقی | `real_legal_flow` (سرانه، قدرت خریدار، ورود/خروج پول، تاریخچه روزانه) |

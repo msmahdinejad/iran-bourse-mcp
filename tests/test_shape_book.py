@@ -116,3 +116,83 @@ def test_timeline_respects_window():
     events = [row(1, 100, 10 * (i + 1), 1, 101, 10, 1, ref=i + 1, time=90000 + i * 100) for i in range(6)]
     timeline = shape.book_timeline(shape.reconstruct_book(events), 110.0, 90.0, start=90200, end=90400, step_seconds=60)
     assert timeline["snapshots_in_range"] == 3
+
+
+# ------------------------------------------------------------------ queues at the close of a past day
+
+
+def day_row(symbol, last, high, low, yesterday, value, trades=10):
+    return {"lVal18AFC": symbol, "pDrCotVal": last, "priceMax": high, "priceMin": low, "priceYesterday": yesterday,
+            "qTotCap": value, "zTotTran": trades}
+
+
+def test_limit_close_candidates_pick_the_day_extreme_in_the_queue_direction():
+    rows = [
+        day_row("up_small", 103, 103, 100, 100, 1e9),
+        day_row("up_big", 206, 206, 200, 200, 5e9),
+        day_row("faded", 101, 103, 100, 100, 9e9),  # touched the high but closed below it
+        day_row("flat", 100, 100, 100, 100, 9e9),  # high but not above yesterday
+        day_row("down", 97, 100, 97, 100, 2e9),
+        day_row("silent", 103, 103, 103, 100, 9e9, trades=0),
+        day_row("unpriced", 2, 2, 1, 1, 9e9),  # a reference price of 1 is an unpriced contract
+    ]
+    assert [r["lVal18AFC"] for r in shape.limit_close_candidates(rows, "buy")] == ["up_big", "up_small"]
+    assert [r["lVal18AFC"] for r in shape.limit_close_candidates(rows, "sell")] == ["down"]
+
+
+def test_thresholds_on_takes_the_latest_record_of_that_day():
+    rows = [
+        {"dEven": 20261103, "hEven": 1, "psGelStaMax": 22610.0, "psGelStaMin": 21310.0},
+        {"dEven": 20261104, "hEven": 1, "psGelStaMax": 1.0, "psGelStaMin": 1.0},
+        {"dEven": 20261104, "hEven": 60125, "psGelStaMax": 23280.0, "psGelStaMin": 21940.0},
+    ]
+    assert shape.thresholds_on(rows, 20261104) == (23280.0, 21940.0)
+    assert shape.thresholds_on(rows, 20261105) == (None, None)
+
+
+def test_queue_holds_agrees_with_queue_state():
+    import itertools
+    import random
+
+    rng = random.Random(7)
+    prices = [None, 0, 960, 970, 980, 1000, 1020, 1030, 1040]
+    checked = 0
+    for _ in range(3000):
+        rows = []
+        for number in range(1, rng.randint(1, 5) + 1):
+            rows.append(row(number, rng.choice(prices), rng.choice([0, 0, 5, 100]), rng.choice([1, 2]),
+                            rng.choice(prices), rng.choice([0, 0, 7, 100]), rng.choice([1, 3])))
+        rng.shuffle(rows)  # queue_holds does not rely on the order it is given
+        for upper, lower in itertools.product([1030.0, None], [970.0, None]):
+            state = shape.queue_state(*shape._levels(rows), upper, lower)["state"]
+            for wanted in ("buy_queue", "sell_queue"):
+                assert shape.queue_holds(rows, wanted, upper, lower) == (state == wanted), (rows, upper, lower, wanted)
+                checked += 1
+    assert checked == 24000
+
+
+def test_queue_at_close_reads_the_book_at_1230_and_since_when_it_held():
+    events = [
+        row(1, 1020, 100, 1, 1030, 50, 2, ref=1, time=84500),  # pre-open: a seller at the ceiling, no queue
+        row(1, 1030, 900, 9, 0, 0, 0, ref=2, time=90100),  # the queue forms
+        row(2, 1020, 10, 1, 0, 0, 0, ref=3, time=100000),
+        row(1, 1030, 0, 0, 1030, 10, 1, ref=4, time=110000),  # broken: a seller at the ceiling
+        row(1, 1030, 5000, 40, 0, 0, 0, ref=5, time=113000),  # queue again, for good
+        row(1, 1030, 7000, 55, 0, 0, 0, ref=6, time=122959),
+        row(1, 1030, 7000, 55, 1040, 300, 3, ref=7, time=123000),  # an ask above the ceiling does not break it
+        row(1, 1030, 1, 1, 1000, 999, 9, ref=8, time=140000),  # after the close: ignored
+    ]
+    snaps = shape.reconstruct_book(events)
+    out = shape.queue_at_close(snaps, 1030.0, 970.0)
+    assert out == {
+        "state": "buy_queue", "queue_volume": 7000, "queue_orders": 55, "queue_value": 7000 * 1030,
+        "book_time": "12:30:00", "queue_since": "11:30:00", "held_last_30_minutes": True,
+    }
+    late = shape.queue_at_close(snaps, 1030.0, 970.0, held_from=113000 - 1)
+    assert late["held_last_30_minutes"] is False
+    before_break = shape.queue_at_close(snaps, 1030.0, 970.0, close=105959)
+    assert before_break["queue_since"] == "09:01:00" and before_break["book_time"] == "10:00:00"
+    broken = shape.queue_at_close(snaps, 1030.0, 970.0, close=112959)
+    assert broken["state"] is None and broken["queue_since"] is None and broken["held_last_30_minutes"] is False
+    empty = shape.queue_at_close([], 1030.0, 970.0)
+    assert empty["state"] is None and empty["book_time"] is None

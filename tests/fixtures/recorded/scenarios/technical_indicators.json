@@ -1,0 +1,9 @@
+{
+ "scenario": "technical_indicators",
+ "tool": "technical_indicators",
+ "recorded_at": "2026-11-11T09:25:59",
+ "requests": [
+  "cdn__api_ClosingPrice_GetClosingPriceDailyList_46348559193224-d884a3dc",
+  "cdn__api_Instrument_GetInstrumentSearch-e76af0c4"
+ ]
+}

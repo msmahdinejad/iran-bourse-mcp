@@ -152,8 +152,8 @@ class TseApi:
     async def statistics(self, ins: str) -> list[dict]:
         return await self._cdn(f"/MarketData/GetInstrumentStatistic/{ins}", "instrumentStatistic", HOUR) or []
 
-    async def thresholds(self, ins: str, deven: int) -> list[dict]:
-        return await self._cdn(f"/MarketData/GetStaticThreshold/{ins}/{deven}", "staticThreshold", HOUR) or []
+    async def thresholds(self, ins: str, deven: int, ttl: float = HOUR) -> list[dict]:
+        return await self._cdn(f"/MarketData/GetStaticThreshold/{ins}/{deven}", "staticThreshold", ttl) or []
 
     async def etf(self, ins: str) -> dict:
         return await self._cdn(f"/Fund/GetETFByInsCode/{ins}", "etf", SHORT) or {}

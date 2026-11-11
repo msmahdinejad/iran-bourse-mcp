@@ -11,7 +11,7 @@ EXPECTED = {
     "market_status", "market_overview", "indices", "market_watch", "top_movers", "industry_summary",
     "index_contributors", "market_snapshot", "market_holder_moves", "supervisor_messages", "search_symbol",
     "symbol_overview", "quote", "order_book", "order_book_history", "trades", "trade_summary",
-    "price_history", "real_legal_flow", "shareholders", "shareholder_history", "shareholder_portfolio",
+    "price_history", "technical_indicators", "real_legal_flow", "shareholders", "shareholder_history", "shareholder_portfolio",
     "corporate_actions", "symbol_statistics", "etf_nav", "codal_filings", "codal_company", "glossary",
     "screen_stocks", "screener_reference", "option_chain", "futures_market", "top_lists", "capital_calendar", "trading_status", "index_history", "index_constituents", "fund_ranking",
     "commodity_market", "energy_market", "codal_letter", "financial_statements", "monthly_activity", "fundamentals",

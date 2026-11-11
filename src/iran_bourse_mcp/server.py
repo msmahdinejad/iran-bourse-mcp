@@ -152,9 +152,20 @@ async def top_movers(
     market: Market = None,
     security_type: Annotated[str | None, Field(description="'stock' (default, سهام), 'fund', 'option', 'bond', 'all' ...")] = "سهام",
     limit: Annotated[int, Field(ge=1, le=100, description="Maximum rows to return (1-100); the server rejects larger values")] = 20,
+    date: Annotated[
+        str | None,
+        Field(
+            description="Only with kind=buy_queue or sell_queue: a past trading day (Gregorian 2026-11-04 or Jalali 1405/08/13) to get the queues "
+            "at that session's close instead of live ones. Rejected for other kinds (use market_snapshot for past rankings)."
+        ),
+    ] = None,
 ) -> dict:
-    """Ranked lists: top gainers/losers, most traded, buy/sell queues (صف خرید/فروش, confirmed against each symbol's real order book; about 10 s on a strong day), real-person money inflow/outflow (ورود/خروج پول حقیقی), buyer power."""
-    return await svc().top_movers(kind, market, security_type, limit)
+    """Ranked lists of the live session: top gainers/losers, most traded, buy/sell queues (صف خرید/فروش, confirmed against each symbol's real order
+    book; about 10 s on a strong day), real-person money inflow/outflow (ورود/خروج پول حقیقی), buyer power.
+    With date (queues only): the queues at the close of a past session, found from that day's end-of-day table and confirmed against each candidate's
+    order-book history, with queue size at the close and since when it held (can take 20-40 s on a strong day; repeated calls are fast).
+    Before 09:00 Tehran time the live lists are empty because the exchange resets the day's data: read `note`, and pass date=<last trading day> for queues."""
+    return await svc().top_movers(kind, market, security_type, limit, date)
 
 
 @tool()
@@ -308,6 +319,20 @@ async def price_history(
 ) -> dict:
     """OHLCV price history since listing (تاریخچه قیمت), daily or aggregated to weekly/monthly/yearly bars, optionally back-adjusted for capital increases and dividends. For long ranges prefer granularity='monthly' or 'yearly' over thousands of daily rows."""
     return await svc().price_history(symbol, from_date, to_date, limit, adjusted, granularity)
+
+
+@tool()
+async def technical_indicators(
+    symbol: Symbol,
+    days: Annotated[int, Field(ge=0, le=250, description="Newest sessions of every indicator series to return (0-250); latest values are always returned")] = 5,
+    adjusted: Annotated[bool, Field(description="Use prices back-adjusted for capital increases and dividends (تعدیل شده); recommended")] = True,
+) -> dict:
+    """Technical analysis indicators of one symbol (اندیکاتورهای تکنیکال) from its daily prices: SMA 20/50/200, EMA 12/26, RSI 14 (Wilder),
+    MACD 12/26/9 with signal and histogram, Bollinger 20/2 with %B and bandwidth, ATR 14, stochastic 14/3, OBV trend, volume vs its 20-session
+    average, distance from the 52-week high and low, support and resistance from recent swing lows and highs, recent crosses (MACD/signal,
+    SMA50/SMA200) and a plain-language summary ("RSI 72: overbought", "price above SMA50 and SMA200"). Computed by this server from the
+    exchange's adjusted daily closing prices, not published by the exchange."""
+    return await svc().technical_indicators(symbol, days, adjusted)
 
 
 @tool()

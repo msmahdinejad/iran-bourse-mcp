@@ -324,3 +324,27 @@ def shape_supervision_record(raw: dict | None) -> dict | None:
     since = _since_from_iso(raw.get("insertionDateTime"))
     return {"status": status, "status_title": clean(raw.get("underSupervisionTitle")) or title, "meaning": meaning,
             "reasons": reasons, "since": fmt_date(since), "since_jdate": jdate(since)}
+
+
+# --------------------------------------------------------------------------- an empty live list before the session
+
+
+def idle_market_note(day_status: str, traded_instruments: int, last_trading_day: str, last_trading_jdate: str, hint: str) -> str | None:
+    """Why a live list is empty when nothing has traded yet today; ``None`` when that is not the reason.
+
+    ``day_status`` is ``dates.day_status`` (``before_open`` ...), ``traded_instruments`` the number of instruments with
+    volume in the live feed, ``hint`` a tool-specific way to get the last session instead.
+    """
+    if day_status != "before_open" and traded_instruments > 0:
+        return None
+    if day_status == "before_open":
+        why = "today's session has not started yet"
+    elif day_status in ("open", "after_close"):
+        why = "nothing has traded yet today"
+    else:
+        why = "the live feed shows no trades (the market is closed today)"
+    return (
+        f"Empty because {why}: the market trades Saturday to Wednesday 09:00-12:30 Tehran time, and the exchange "
+        "resets the day's live data before the open, so live lists stay empty until trading begins. This does not "
+        f"mean the last session had none. The last trading day on the calendar was {last_trading_day} ({last_trading_jdate}); {hint}"
+    )
