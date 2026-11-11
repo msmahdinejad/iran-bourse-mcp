@@ -1,5 +1,5 @@
 {
- "tests": 845,
+ "tests": 854,
  "version": "0.4.0",
  "tools": [
   {
@@ -1180,7 +1180,7 @@
   {
    "name": "financial_statements",
    "group": "Fundamentals",
-   "description": "A company's financial statements from Codal (صورت‌های مالی): income statement, balance sheet and cash flow, each as key items for this period, the same period last year and the last full year (revenue, cost of revenue, gross/operating/net profit, EPS, total assets, equity, debt, cash, operating cash flow, capex, dividends paid...), plus margins, growth, ROE/ROA on trailing twelve months, current ratio and leverage. Amendments and audited re-issues replace earlier versions. Amounts in million rial, EPS in rial. For the full tables of a letter use codal_letter.",
+   "description": "A company's financial statements from Codal (صورت‌های مالی): income statement, balance sheet and cash flow, each as key items for this period, the same period last year and the last full year (revenue, cost of revenue, gross/operating/net profit, EPS, total assets, equity, debt, cash, operating cash flow, capex, dividends paid...), plus margins, growth, ROE/ROA on trailing twelve months, current ratio and leverage. Banks (loans, customer deposits, loan interest, fee income, loans-to-deposits) and insurers (premiums, claims, technical reserves, loss ratio) are read in their own templates. Amendments and audited re-issues replace earlier versions. Amounts in million rial, EPS in rial. For the full tables of a letter use codal_letter.",
    "fa": "صورت‌های مالی: سود و زیان، ترازنامه، جریان نقد و نسبت‌ها",
    "params": [
     {
@@ -1212,7 +1212,7 @@
   {
    "name": "monthly_activity",
    "group": "Fundamentals",
-   "description": "A company's monthly activity reports from Codal (گزارش فعالیت ماهانه، ن-۳۰): sales of each month and year to date, growth on the same span last year, month-on-month change, and for the newest month each product's production, sales quantity, rate and amount (domestic, export and services). Amended reports replace the originals. Amounts in million rial.",
+   "description": "A company's monthly activity reports from Codal (گزارش فعالیت ماهانه، ن-۳۰): sales of each month and year to date, growth on the same span last year, month-on-month change, and for the newest month each product's production, sales quantity, rate and amount (domestic, export and services). Banks give operating income, loans and deposits at the month end and net interest; insurers premiums and claims; investment companies operating income and their portfolio. Amended reports replace the originals. Amounts in million rial.",
    "fa": "گزارش فعالیت ماهانه: فروش ماه و از ابتدای سال به تفکیک محصول",
    "params": [
     {
@@ -1607,16 +1607,16 @@
   }
  ],
  "snapshot": {
-  "captured_at_utc": "2026-11-11 09:14 UTC",
-  "tehran_time": "2026-11-11 12:44:11",
+  "captured_at_utc": "2026-11-11 09:30 UTC",
+  "tehran_time": "2026-11-11 13:00:48",
   "market_state": "بسته",
   "index": {
    "value": 8427304.89,
    "change": 69464.53,
    "change_pct": 0.83
   },
-  "trades_today": 1079050,
-  "value_today": 473160897477263,
+  "trades_today": 1088363,
+  "value_today": 502850139541691,
   "tape": [
    {
     "symbol": "فملی",
@@ -1705,7 +1705,7 @@
    "universe": 636,
    "jdate": "1405/08/20",
    "history_days": 20,
-   "seconds": 3.3,
+   "seconds": 1.41,
    "rows": [
     {
      "symbol": "کگل",
@@ -1849,9 +1849,9 @@
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "محصولات شیمیایی",
-    "queue_volume": 148913735,
+    "queue_volume": 138744179,
     "queue_orders": 9999,
-    "queue_value": 12998679928150
+    "queue_value": 12110979384910
    },
    {
     "symbol": "وتجارت",
@@ -1868,9 +1868,9 @@
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "بانکها و موسسات اعتباری",
-    "queue_volume": 5879908287,
-    "queue_orders": 2903,
-    "queue_value": 5679991405242
+    "queue_volume": 5455790629,
+    "queue_orders": 2712,
+    "queue_value": 5270293747614
    },
    {
     "symbol": "فولاد",
@@ -1887,28 +1887,9 @@
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "فلزات اساسی",
-    "queue_volume": 1088837692,
-    "queue_orders": 5423,
-    "queue_value": 5389746575400
-   },
-   {
-    "symbol": "شیراز",
-    "name": "پتروشیمی‌شیراز",
-    "last": 78560.0,
-    "last_pct": 2.99,
-    "close": 78560.0,
-    "close_pct": 2.99,
-    "volume": 1312663,
-    "value": 103122805280,
-    "trades": 196,
-    "pe": 7.4,
-    "market_cap": 1201968000000000,
-    "at_upper_limit": true,
-    "at_lower_limit": false,
-    "industry": "محصولات شیمیایی",
-    "queue_volume": 53467475,
-    "queue_orders": 1974,
-    "queue_value": 4200404836000
+    "queue_volume": 957617855,
+    "queue_orders": 4908,
+    "queue_value": 4740208382250
    },
    {
     "symbol": "مبین",
@@ -1925,9 +1906,28 @@
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "عرضه برق، گاز، بخاروآب گرم",
-    "queue_volume": 361314656,
-    "queue_orders": 1495,
-    "queue_value": 4035884707520
+    "queue_volume": 315358477,
+    "queue_orders": 1319,
+    "queue_value": 3522554188090
+   },
+   {
+    "symbol": "شیراز",
+    "name": "پتروشیمی‌شیراز",
+    "last": 78560.0,
+    "last_pct": 2.99,
+    "close": 78560.0,
+    "close_pct": 2.99,
+    "volume": 1312663,
+    "value": 103122805280,
+    "trades": 196,
+    "pe": 7.4,
+    "market_cap": 1201968000000000,
+    "at_upper_limit": true,
+    "at_lower_limit": false,
+    "industry": "محصولات شیمیایی",
+    "queue_volume": 44747116,
+    "queue_orders": 1662,
+    "queue_value": 3515333432960
    }
   ],
   "real_inflow": [
@@ -2113,8 +2113,8 @@
      {
       "level": 1,
       "price": 4950.0,
-      "volume": 1088743692,
-      "orders": 5422
+      "volume": 957617855,
+      "orders": 4908
      },
      {
       "level": 2,
@@ -2146,16 +2146,16 @@
     "best_ask": null,
     "spread": null,
     "spread_pct": null,
-    "total_bid_volume": 1098324214,
+    "total_bid_volume": 967198377,
     "total_ask_volume": 0,
-    "total_bid_orders": 5487,
+    "total_bid_orders": 4973,
     "total_ask_orders": 0,
     "imbalance": 1.0,
     "queue": {
      "state": "buy_queue",
-     "queue_volume": 1088743692,
-     "queue_orders": 5422,
-     "queue_value": 5389281275400
+     "queue_volume": 957617855,
+     "queue_orders": 4908,
+     "queue_value": 4740208382250
     },
     "price_limits": {
      "upper": 4950.0,

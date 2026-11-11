@@ -563,7 +563,7 @@ async def financial_statements(
     consolidated: Annotated[bool, Field(description="True for the group (تلفیقی) statements; default the company's own")] = False,
     history: Annotated[int, Field(ge=1, le=6, description="Also return revenue, profits and EPS of this many earlier periods (1 = only the latest)")] = 1,
 ) -> dict:
-    """A company's financial statements from Codal (صورت‌های مالی): income statement, balance sheet and cash flow, each as key items for this period, the same period last year and the last full year (revenue, cost of revenue, gross/operating/net profit, EPS, total assets, equity, debt, cash, operating cash flow, capex, dividends paid...), plus margins, growth, ROE/ROA on trailing twelve months, current ratio and leverage. Amendments and audited re-issues replace earlier versions. Amounts in million rial, EPS in rial. For the full tables of a letter use codal_letter."""
+    """A company's financial statements from Codal (صورت‌های مالی): income statement, balance sheet and cash flow, each as key items for this period, the same period last year and the last full year (revenue, cost of revenue, gross/operating/net profit, EPS, total assets, equity, debt, cash, operating cash flow, capex, dividends paid...), plus margins, growth, ROE/ROA on trailing twelve months, current ratio and leverage. Banks (loans, customer deposits, loan interest, fee income, loans-to-deposits) and insurers (premiums, claims, technical reserves, loss ratio) are read in their own templates. Amendments and audited re-issues replace earlier versions. Amounts in million rial, EPS in rial. For the full tables of a letter use codal_letter."""
     return await svc().financial_statements(symbol, period, consolidated, history)
 
 
@@ -573,7 +573,7 @@ async def monthly_activity(
     months: Annotated[int, Field(ge=1, le=12, description="How many recent monthly reports to read (1-12)")] = 3,
     products: Annotated[bool, Field(description="Include the product-by-product lines of the newest month")] = True,
 ) -> dict:
-    """A company's monthly activity reports from Codal (گزارش فعالیت ماهانه، ن-۳۰): sales of each month and year to date, growth on the same span last year, month-on-month change, and for the newest month each product's production, sales quantity, rate and amount (domestic, export and services). Amended reports replace the originals. Amounts in million rial."""
+    """A company's monthly activity reports from Codal (گزارش فعالیت ماهانه، ن-۳۰): sales of each month and year to date, growth on the same span last year, month-on-month change, and for the newest month each product's production, sales quantity, rate and amount (domestic, export and services). Banks give operating income, loans and deposits at the month end and net interest; insurers premiums and claims; investment companies operating income and their portfolio. Amended reports replace the originals. Amounts in million rial."""
     return await svc().monthly_activity(symbol, months, products)
 
 

@@ -1781,7 +1781,7 @@ class Bourse:
         inst, rows = await self._codal_letters(symbol, CODAL_STATEMENTS, length=12 if period == "annual" else None)
         letters = self._latest_per_period(rows, consolidated)
         if not letters:
-            return {"instrument": inst.brief(), "available": False, "note": "No structured financial statements of this company on Codal (banks, insurers and funds may use other templates; see codal_filings)."}
+            return {"instrument": inst.brief(), "available": False, "note": "No structured financial statements of this company on Codal (investment funds file NAV reports instead: see etf_nav and fund_ranking; other letters are in codal_filings)."}
         history = _clamp(history, 1, 6)
         latest = None
         while letters:
