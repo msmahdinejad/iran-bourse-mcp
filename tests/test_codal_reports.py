@@ -164,3 +164,28 @@ def test_bank_cash_flow_labels():
     ])
     it = cr.statement(g, "cashflow", "1405/12/29")["items"]
     assert it["capex"]["current"] == -43082895 and it["financing_cash_flow"]["current"] == -141868091
+
+
+def test_bank_monthly_report():
+    # بانک ملت, month ending 1405/07/30 (template «گزارش فعالیت ماهانه بانک- V4»): no production-and-sales table
+    m = cr.monthly(cr.datasource(page("bank_monthly")))
+    assert m["template"] == "bank" and m["month_end"] == "1405/07/30"
+    assert m["month_sales"] == 311887001 + 17451513 + 24244406 + 10001216 + 62474312
+    assert m["ytd_sales"] == 2128753985 + 202946805 + 162154589 + 10559307 + 415038703
+    b = m["bank"]
+    assert (b["loans_end"], b["deposits_end"]) == (53299293375, 28648495309)
+    assert (b["loan_interest_month"], b["deposit_interest_month"], b["net_interest_month"]) == (311887001, 201896614, 311887001 - 201896614)
+    assert b["loans_granted_month"] == 6586648674
+    assert [p["item"] for p in m["products"]][0] == "درآمد تسهیلات اعطایی"
+
+
+def test_monthly_report_without_a_known_layout_returns_its_tables():
+    ds = cr.datasource(page("monthly"))
+    for sheet in ds["sheets"]:
+        for t in sheet["tables"]:
+            t["title_Fa"] = "درآمد"  # a sales-like title, but none of the production-and-sales columns
+            for c in t["cells"]:
+                if isinstance(c.get("value"), str) and "یک ماهه" in c["value"]:
+                    c["value"] = c["value"].replace("یک ماهه", "")
+    m = cr.monthly(ds)
+    assert "tables" in m and "month_sales" not in m

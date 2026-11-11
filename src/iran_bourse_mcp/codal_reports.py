@@ -452,6 +452,66 @@ def _col(columns: list[str], group: str, sub: str, after: int = -1) -> int | Non
     return None
 
 
+def _bank_col(columns: list[str], *parts: str) -> int | None:
+    for i, c in enumerate(columns):
+        k = key(c)
+        if all(p in k for p in parts):
+            return i
+    return None
+
+
+def _bank_monthly(gs: list[dict], out: dict) -> dict | None:
+    """A bank's monthly report: operating income realised in the month and year to date, loans and deposits at the
+    month end, loans granted and deposits taken in the month, deposit interest. None if this is not that template."""
+    income = next((g for g in gs if "درآمدهایعملیاتیمحققشده" in key(g.get("title") or "")), None)
+    if income is None:
+        return None
+    cols = income["columns"]
+    m_col = _bank_col(cols, "طیدورهیکماهه")
+    ytd_col = next((i for i, c in enumerate(cols) if key(c).startswith("جمع") and "ازابتدایسال" in key(c)), None)
+    end = re.search(r"\d{4}/\d{2}/\d{2}", cols[m_col] if m_col is not None else "")
+    val = lambda row, i: (row["values"][i] if i is not None and i < len(row["values"]) and isinstance(row["values"][i], (int, float)) else None)  # noqa: E731
+    lines = [{"item": r["label"], "month_amount": val(r, m_col), "ytd_amount": val(r, ytd_col)}
+             for r in income["rows"] if r["label"] and val(r, m_col) is not None]
+    month = sum(x["month_amount"] or 0 for x in lines) if lines else None
+    ytd = sum(x["ytd_amount"] or 0 for x in lines) if lines and ytd_col is not None else None
+
+    def total_row(title_part: str) -> tuple[dict | None, list[str]]:
+        g = next((t for t in gs if title_part in key(t.get("title") or "")), None)
+        if g is None:
+            return None, []
+        row = next((r for r in g["rows"] if key(r["label"] or "") == "جمع"), None)
+        return row, g["columns"]
+
+    balances: dict[str, Any] = {}
+    loans, lcols = total_row("وضعیتتسهیلاتاعطایی")
+    if loans:
+        balances["loans_end"] = val(loans, _bank_col(lcols, "ماندهتسهیلاتاعطاییپایاندوره"))
+        balances["loans_granted_month"] = val(loans, _bank_col(lcols, "تسهیلاتاعطاییطیدوره"))
+        balances["loans_repaid_month"] = val(loans, _bank_col(lcols, "تسهیلاتوصولیطیدوره"))
+        balances["loan_interest_month"] = val(loans, _bank_col(lcols, "درآمدتسهیلاتاعطاییطیدورهیکماهه"))
+    deposits, dcols = total_row("وضعیتسپردهها")
+    if deposits:
+        balances["deposits_end"] = val(deposits, _bank_col(dcols, "ماندهسپردههایسرمایهگذاریپایاندوره"))
+        balances["deposit_interest_month"] = val(deposits, _bank_col(dcols, "سودسپردههایسرمایهگذاریطیدورهیکماهه"))
+    if balances.get("loan_interest_month") is not None and balances.get("deposit_interest_month") is not None:
+        balances["net_interest_month"] = balances["loan_interest_month"] - balances["deposit_interest_month"]
+    if balances.get("loans_end") and balances.get("deposits_end"):
+        balances["loans_to_deposits_pct"] = _pct(balances["loans_end"], balances["deposits_end"])
+    out.update({
+        "template": "bank",
+        "month_end": end[0] if end else out.get("period_end"),
+        "unit": income.get("unit_note") or "million rial",
+        "month_sales": month,
+        "ytd_sales": ytd,
+        "bank": {k: v for k, v in balances.items() if v is not None},
+        "products": lines,
+        "note": "Bank template: month_sales / ytd_sales are the operating income lines the report lists (loan interest, deposits placed, "
+                "bonds, investments, fees); the report says they are not every operating income line. The template has no same period last year.",
+    })
+    return {k: v for k, v in out.items() if v not in (None, {}, [])}
+
+
 def monthly(ds: dict) -> dict:
     """A monthly activity report (ن-۳۰): month and year-to-date sales by product, with totals.
 
@@ -459,8 +519,13 @@ def monthly(ds: dict) -> dict:
     تا تاریخ ...' (year to date, this year and the same span last year); amounts are million Rial.
     """
     gs = grids(ds)
-    g = _sales_table(gs)
     out: dict[str, Any] = {**meta(ds)}
+    bank = _bank_monthly(gs, dict(out))
+    if bank is not None:
+        return bank
+    g = _sales_table(gs)
+    if g and _col(g["columns"], "یکماهه", "مبلغ") is None:
+        g = None  # a table about income or sales, but not the production-and-sales layout this parser reads
     if not g:
         out["tables"] = gs
         out["note"] = "No production-and-sales table in this report template; the tables are returned as they are."
