@@ -569,7 +569,8 @@ def _generic_monthly(gs: list[dict]) -> dict | None:
             continue
         ytd_cols = [i for i, c in enumerate(cols) if "ازابتدایسال" in key(c.split("|")[0]) and end[0] in c and "اصلاح" not in key(c) and "درصد" not in key(c)]
         group = lambda c: tidy(c.split("|")[1]) if c.count("|") >= 1 and len(c.split("|")) > 2 else tidy(c.split("|")[-1]) if "|" in c else ""  # noqa: E731
-        val = lambda i: total["values"][i] if i < len(total["values"]) and isinstance(total["values"][i], (int, float)) else None  # noqa: E731
+        vals = total["values"]
+        val = lambda i, vals=vals: vals[i] if i < len(vals) and isinstance(vals[i], (int, float)) else None  # noqa: E731
         totals: dict[str, dict] = {}
         for i in month_cols:
             name = group(cols[i]) or "total"
