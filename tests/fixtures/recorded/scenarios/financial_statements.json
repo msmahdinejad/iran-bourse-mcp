@@ -1,0 +1,12 @@
+{
+ "scenario": "financial_statements",
+ "tool": "financial_statements",
+ "recorded_at": "2026-11-11T09:39:02",
+ "requests": [
+  "cdn__api_Instrument_GetInstrumentSearch-e76af0c4",
+  "codal__api_search_v2_q-be71bb35",
+  "codalpage__Reports_Decision_aspx-2855f338",
+  "codalpage__Reports_Decision_aspx-443b4aec",
+  "codalpage__Reports_Decision_aspx-c2c4f2c3"
+ ]
+}

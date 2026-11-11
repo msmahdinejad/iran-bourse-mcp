@@ -1,0 +1,9 @@
+{
+ "scenario": "codal_letter",
+ "tool": "codal_letter",
+ "recorded_at": "2026-11-11T09:39:02",
+ "requests": [
+  "codal__api_search_v2_q-c8359bc7",
+  "codalpage__Reports_Decision_aspx-443b4aec"
+ ]
+}

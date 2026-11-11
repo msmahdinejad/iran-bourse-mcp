@@ -484,7 +484,7 @@ class RecordingTransport(httpx.AsyncBaseTransport):
                 pass
         if not is_json:
             rec.text = text
-            if status == 200 and "/Reports/Decision.aspx" in str(request.url):
+            if status == 200 and "codal.ir/Reports/" in str(request.url) and "var datasource" in text:
                 # a Codal letter page is up to ~1 MB of ASP.NET markup; keep only what codal_reports reads
                 slim = codal_reports.slim_page(text)
                 rec.trimmed = [{"rule": "codal page: datasource cells, sheet list and unit labels only", "kept_bytes": len(slim), "original_bytes": len(text)}]
@@ -551,6 +551,21 @@ class RecordingTransport(httpx.AsyncBaseTransport):
                     )
                 self.log(f"  HTTP {status}: waiting {waits[attempt]} s before asking again")
                 await self.sleep(waits[attempt])
+            location = response.headers.get("location")
+            if status in (301, 302, 303, 307, 308) and location and request.method == "GET":
+                # recordings keep no headers, so a redirect could not be replayed: record where it leads instead
+                # (Codal sends some monthly reports from Decision.aspx on to MonthlyActivity.aspx)
+                target = httpx.Request("GET", request.url.join(location), headers=request.headers)
+                self.log(f"  following the redirect to {str(target.url)[:150]}")
+                self.upstream_requests += 1
+                gap = self.delays.get(host, self.delays["default"]) - (self.clock() - self._last.get(host, float("-inf")))
+                if gap > 0:
+                    await self.sleep(gap)
+                followed = await self.inner.handle_async_request(target)
+                content = await followed.aread()
+                await followed.aclose()
+                self._last[host] = self.clock()
+                status, response = followed.status_code, followed
             self._raw[key] = (status, response.headers.get("content-type"), content)
             return self._raw[key]
 

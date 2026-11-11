@@ -1,0 +1,18 @@
+{
+ "scenario": "fundamentals",
+ "tool": "fundamentals",
+ "recorded_at": "2026-11-11T09:58:02",
+ "requests": [
+  "cdn__api_ClosingPrice_GetClosingPriceInfo_46348559193224090-d9c9fb13",
+  "cdn__api_Instrument_GetInstrumentInfo_46348559193224090-73110f46",
+  "cdn__api_Instrument_GetInstrumentSearch-e76af0c4",
+  "codal__api_search_v2_q-a85e57e5",
+  "codal__api_search_v2_q-be71bb35",
+  "codalpage__Reports_Decision_aspx-2855f338",
+  "codalpage__Reports_Decision_aspx-443b4aec",
+  "codalpage__Reports_Decision_aspx-5ddec56c",
+  "codalpage__Reports_Decision_aspx-b168365a",
+  "codalpage__Reports_Decision_aspx-c2c4f2c3",
+  "codalpage__Reports_Decision_aspx-d373d8ca"
+ ]
+}

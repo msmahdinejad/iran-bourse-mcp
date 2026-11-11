@@ -164,7 +164,7 @@ def _fundamentals(run):
     out = run.out
     assert_keys(out, "instrument market latest_statement profitability balance_sheet valuation monthly_sales units")
     m, v = out["market"], out["valuation"]
-    assert m["market_cap"] == m["price"] * m["shares_outstanding"] or abs(m["market_cap"] - m["price"] * m["shares_outstanding"]) <= m["shares_outstanding"]
+    assert m["market_cap"] == int(m["price"] * m["shares_outstanding"])  # the same price as the ratios
     assert v["pe_ttm_estimated"] == round(m["price"] / v["eps_ttm_estimated"], 2)
     # the computed trailing EPS lands close to the exchange's own EPS for a company that has published its statements
     assert abs(v["eps_ttm_estimated"] - m["exchange_eps"]) / m["exchange_eps"] < 0.15

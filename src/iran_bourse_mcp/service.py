@@ -1700,9 +1700,9 @@ class Bourse:
             if len(letters) < 20 or len(rows) >= 40:
                 break
         # the search also lists the reports of subsidiaries filed under the parent's symbol: their titles end with
-        # «(شرکت ...)» and their page links carry rt != 0. Keep the company's own reports.
+        # «(شرکت ...)» (and their report template says «زیرمجموعه», checked after reading). Keep the company's own reports.
         def own(r: dict) -> bool:
-            return not re.search(r"\(شرکت[^)]*\)\s*$", cr.tidy(r.get("Title") or "")) and "rt=0" in (r.get("Url") or "rt=0")
+            return not re.search(r"\(شرکت[^)]*\)\s*$", cr.tidy(r.get("Title") or ""))
         return inst, [r for r in rows if own(r)]
 
     @staticmethod
@@ -1757,7 +1757,16 @@ class Bourse:
         if not letters:
             return {"instrument": inst.brief(), "available": False, "note": "No structured financial statements of this company on Codal (banks, insurers and funds may use other templates; see codal_filings)."}
         history = _clamp(history, 1, 6)
-        latest = await self._statement_set(letters[0], ("income", "balance", "cashflow"))
+        latest = None
+        while letters:
+            candidate = await self._statement_set(letters[0], ("income", "balance", "cashflow"))
+            if "زیرمجموعه" in (candidate["report"].get("report") or ""):  # a subsidiary's report under the parent's symbol
+                letters = letters[1:]
+                continue
+            latest = candidate
+            break
+        if latest is None:
+            return {"instrument": inst.brief(), "available": False, "note": "Only subsidiaries' statements were found under this symbol on Codal."}
         months = latest["report"].get("period_months")
         latest["ratios"] = cr.ratios(latest["income"], latest["balance"], latest["cashflow"], months)
         out: dict[str, Any] = {"instrument": inst.brief(), "latest": latest}
@@ -1792,6 +1801,8 @@ class Bourse:
             if ds is None:
                 continue
             m = cr.monthly(ds)
+            if "زیرمجموعه" in (m.get("report") or ""):
+                continue
             m["tracing_no"] = r.get("TracingNo")
             m["page"] = shape.shape_codal_letter(r, CODAL_SITE)["links"]["page"]
             if not products or i > 0:
@@ -1829,7 +1840,8 @@ class Bourse:
         if isinstance(quote, dict):
             price = (quote.get("close") or {}).get("price") or (quote.get("last") or {}).get("price")
             f = quote.get("fundamentals") or {}
-            shares, mcap = f.get("shares_outstanding"), f.get("market_cap")
+            shares = f.get("shares_outstanding")
+            mcap = int(price * shares) if price and shares else f.get("market_cap")  # one price for market cap and every ratio
             out["market"] = {"price": price, "date": quote.get("jdate"), "shares_outstanding": shares, "market_cap": mcap,
                              "exchange_eps": f.get("eps"), "exchange_pe": f.get("pe"), "sector_pe": f.get("sector_pe")}
         if isinstance(fs, dict) and fs.get("latest"):
