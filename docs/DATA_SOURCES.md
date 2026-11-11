@@ -49,6 +49,7 @@ All requests need a browser-like `User-Agent`; without one TSETMC answers 403.
 | `supervisor_messages` | `Msg/GetMsgByInsCode/{ins}`, `Msg/GetMsgByFlow/{flow}/{top}` |
 | `codal_filings` | Codal search API |
 | `codal_company` | `Codal/GetCodalPublisherBySymbol/{symbol}` |
+| `codal_letter`, `financial_statements`, `monthly_activity`, `fundamentals` | Codal search API (letter type 6 statements, 58 monthly reports, or `TracingNo`) and the letter pages `www.codal.ir/Reports/Decision.aspx?...&sheetId=N` |
 
 ## Quirks we found, and what we do about them
 
@@ -80,6 +81,10 @@ All requests need a browser-like `User-Agent`; without one TSETMC answers 403.
 26. **Adjustment chains break on silent days.** The `priceYesterday` chain used to infer capital-increase adjustments (quirk 11) is not linked across days on which a symbol did not trade; the adjuster skips days without a close and links the traded days across the gap.
 27. **Calendar quirks.** The exchange also closes on days that are not holidays (4 to 6 July 2026, for instance). `market_status` knows the official holidays and says so when the exchange's own newest data disagrees with its calendar; see the next section.
 28. **Small oddities seen on 5 November.** `exchange_server_time` (`GetTime`) is UTC in `MM/DD/YYYY` form; the holder-history endpoint stamps its newest row with the next trading day.
+29. **Codal letter contents are JSON inside the page.** A structured letter page carries its whole sheet as `var datasource = {...}`: tables of cells with `rowSequence`, `columnSequence`, `colSpan`, `cellGroupName` (Header/Body) and string values, usually in million rial (`description` / `ctl00_pPriceNote`). Each page shows one sheet; the others (balance sheet `0`, cash flow `9`, income `1`, notes...) are listed in the `ctl00$ddlTable` drop-down and fetched with `&sheetId=`. Some pages open on the auditor's report, which has no datasource, so sheets are chosen by name.
+30. **Subsidiaries under the parent's symbol.** Searching Codal by a symbol also returns the statements of its subsidiaries; their titles end with «(شرکت ...)» and their page links carry `rt` ≠ 0. They are excluded from `financial_statements` and `monthly_activity`. Group (تلفیقی) statements are told apart by title, because the search's consolidation flags are ignored by the server.
+31. **Statement columns differ by period.** An interim statement has this period, the same period last year and the last full fiscal year (restated); an annual one has this year and last year. Columns are matched by the dates in their headers, which also lets `financial_statements` compute trailing-twelve-month revenue and profit (last full year + this period − the same period last year). For فولاد on 1405/06/31 the computed TTM EPS was 692.9 rial against the exchange's own 693.
+32. **Codal's captcha.** After a burst of report pages from one address, `www.codal.ir` answers with a captcha page («تأیید کاربر ... کد امنیتی») for several minutes, and the search API answers HTTP 429. Report pages are therefore fetched one at a time, at least 1.5 s apart (`IRAN_BOURSE_CODAL_PAGE_GAP`), cached for six hours (a published letter does not change), and a captcha page becomes a clear error with a five-minute pause instead of an empty answer.
 
 ## Public holidays (`market_status`)
 

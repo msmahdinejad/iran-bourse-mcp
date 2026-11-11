@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import datetime as dt
+import re
 import time
 from typing import Any
 
 from . import calendar_events, commodity, derivatives, energy, screener, shape, status, toplists
+from . import codal_reports as cr
 from . import funds as fundmod
 from . import indices as indexmod
 from . import market as marketfeed
@@ -40,6 +42,9 @@ MARKET_FLOW = {"bourse": 1, "fara": 2, "fara-bourse": 2, "ifb": 2}
 MAX_ROWS = 5000
 QUEUE_CANDIDATES = 400  # every limit-locked symbol (about 200 on a strong day); one BestLimits call each
 CODAL_SCAN_PAGES = 8  # pages of 20 filings read while a title filter is looking for matches
+CODAL_STATEMENTS = 6  # Codal letter type: financial statements (ن-۱۰)
+CODAL_MONTHLY = 58  # Codal letter type: monthly activity report (ن-۳۰)
+MAX_TABLE_ROWS = 160  # rows returned per Codal table
 SECTION_TIMEOUT = 8.0  # seconds an optional symbol_overview section may take before it is reported as unavailable
 SESSION_WINDOW = (83000, 123500)  # HHMMSS: pre-open through just after close
 
@@ -1405,6 +1410,234 @@ class Bourse:
             "fax": data.get("faxNo"),
             "activity": clean(data.get("activitySubject")),
         }
+
+    # ------------------------------------------------------------------ Codal letter contents
+    async def _codal_row(self, tracing_no: int) -> dict:
+        data = await self.api.codal_search(TracingNo=int(tracing_no))
+        for row in data.get("Letters") or []:
+            if row.get("TracingNo") == int(tracing_no):
+                return row
+        raise InputError(f"No Codal letter has tracing number {tracing_no}. Find one with codal_filings.")
+
+    async def codal_letter(self, tracing_no: int, sheet: int | None = None) -> dict:
+        row = await self._codal_row(tracing_no)
+        out: dict[str, Any] = shape.shape_codal_letter(row, CODAL_SITE)
+        url = row.get("Url") or ""
+        if not (row.get("HasHtml") and "Decision.aspx" in url):
+            out["note"] = "This letter has no readable page on Codal; use its PDF or Excel link."
+            return out
+        html = await self.api.codal_page(url, sheet)
+        ds = cr.datasource(html)
+        if ds is None:
+            out["text"], truncated = cr.visible_text(html)
+            if truncated:
+                out["truncated"] = True
+            return out
+        out["report"] = cr.meta(ds)
+        out["sheets"] = cr.sheets(html)
+        out["sheet"] = cr.selected_sheet(html) if sheet is None else sheet
+        out["unit_note"] = cr.label(html, "ctl00_pPriceNote")
+        capital = cr.number(cr.label(html, "ctl00_lblListedCapital"))
+        if capital is not None:
+            out["listed_capital_million_rial"] = capital
+        tables = cr.grids(ds)
+        for t in tables:
+            if len(t["rows"]) > MAX_TABLE_ROWS:
+                t["rows"], t["rows_cut"] = t["rows"][:MAX_TABLE_ROWS], len(t["rows"])
+        out["tables"] = tables
+        if ds.get("type") == CODAL_MONTHLY:
+            summary = cr.monthly(ds)
+            out["monthly_summary"] = {k: v for k, v in summary.items() if k not in ("tables",) and k not in out["report"]}
+        elif ds.get("type") == CODAL_STATEMENTS and tables:
+            name = next((o["name"] for o in out["sheets"] if o["sheet"] == out["sheet"]), "")
+            kind = next((k for k in ("income", "balance", "cashflow") if cr.pick_sheet([{"sheet": 0, "name": name}], k) == 0), None)
+            if kind:
+                out["key_items"] = cr.statement(tables[0], kind, out["report"].get("fiscal_year_end"))
+        if out["sheets"] and len(out["sheets"]) > 1:
+            out["note"] = "This page shows one sheet; call again with sheet=<id from sheets> for another (balance sheet, cash flow, notes...)."
+        return out
+
+    async def _codal_letters(self, symbol: str, letter_type: int, *, length: int | None = None, pages: int = 1) -> tuple[Instrument, list[dict]]:
+        """Letters of one company and type, newest period first; amended or audited re-issues replace earlier ones."""
+        inst = await self._inst(symbol)
+        rows: list[dict] = []
+        for page in range(1, pages + 1):
+            params: dict[str, Any] = {"Symbol": inst.symbol, "LetterType": letter_type, "PageNumber": page}
+            if length:
+                params["Length"] = length
+            data = await self.api.codal_search(**params)
+            letters = data.get("Letters") or []
+            rows += [r for r in letters if clean(r.get("Symbol")) == inst.symbol and r.get("HasHtml") and "Decision.aspx" in (r.get("Url") or "") and not r.get("IsEstimate")]
+            if len(letters) < 20 or len(rows) >= 40:
+                break
+        # the search also lists the reports of subsidiaries filed under the parent's symbol: their titles end with
+        # «(شرکت ...)» and their page links carry rt != 0. Keep the company's own reports.
+        def own(r: dict) -> bool:
+            return not re.search(r"\(شرکت[^)]*\)\s*$", cr.tidy(r.get("Title") or "")) and "rt=0" in (r.get("Url") or "rt=0")
+        return inst, [r for r in rows if own(r)]
+
+    @staticmethod
+    def _period_of(title: str) -> tuple[str | None, int | None, bool]:
+        t = cr.tidy(title)
+        end = re.search(r"منتهی به\s*(\d{4}/\d{2}/\d{2})", t)
+        months = re.search(r"(\d+)\s*ماهه", t)
+        n = 12 if "سال مالی" in t and not months else (int(months[1]) if months else None)
+        return (end[1] if end else None), n, "تلفیقی" in t
+
+    def _latest_per_period(self, rows: list[dict], consolidated: bool | None = None) -> list[dict]:
+        best: dict[tuple, dict] = {}
+        for r in rows:
+            end, months, cons = self._period_of(r.get("Title") or "")
+            if end is None or (consolidated is not None and cons != consolidated):
+                continue
+            k = (end, months, cons)
+            audited = "حسابرسی شده" in cr.tidy(r.get("Title") or "")
+            rank = (audited, r.get("PublishDateTime") or "")
+            if k not in best or rank > best[k]["_rank"]:
+                best[k] = {**r, "_rank": rank, "_end": end, "_months": months, "_consolidated": cons}
+        return sorted(best.values(), key=lambda r: (r["_end"], r["_months"] or 0, r["_rank"]), reverse=True)
+
+    async def _statement_set(self, row: dict, kinds: tuple[str, ...]) -> dict:
+        first = await self.api.codal_page(row["Url"])
+        options = cr.sheets(first)
+        if not options:
+            raise UpstreamError(f"Codal letter {row.get('TracingNo')} has no structured statements")
+        shown = cr.selected_sheet(first)
+        out: dict[str, Any] = {"letter": shape.shape_codal_letter(row, CODAL_SITE), "report": None}
+        for kind in kinds:
+            sid = cr.pick_sheet(options, kind)
+            if sid is None:
+                out[kind] = {"available": False}
+                continue
+            html = first if sid == shown else await self.api.codal_page(row["Url"], sid)
+            ds = cr.datasource(html)
+            if ds and out["report"] is None:
+                out["report"] = cr.meta(ds)
+            tables = cr.grids(ds) if ds else []
+            fy_end = (out["report"] or {}).get("fiscal_year_end")
+            out[kind] = cr.statement(tables[0], kind, fy_end) if tables else {"available": False}
+        if out["report"] is None:
+            raise UpstreamError(f"Codal letter {row.get('TracingNo')} has no structured statements")
+        return out
+
+    async def financial_statements(self, symbol: str, period: str = "latest", consolidated: bool = False, history: int = 1) -> dict:
+        if period not in ("latest", "annual"):
+            raise InputError("period must be 'latest' (newest report, interim or annual) or 'annual' (newest full fiscal year)")
+        inst, rows = await self._codal_letters(symbol, CODAL_STATEMENTS, length=12 if period == "annual" else None)
+        letters = self._latest_per_period(rows, consolidated)
+        if not letters:
+            return {"instrument": inst.brief(), "available": False, "note": "No structured financial statements of this company on Codal (banks, insurers and funds may use other templates; see codal_filings)."}
+        history = _clamp(history, 1, 6)
+        latest = await self._statement_set(letters[0], ("income", "balance", "cashflow"))
+        months = latest["report"].get("period_months")
+        latest["ratios"] = cr.ratios(latest["income"], latest["balance"], latest["cashflow"], months)
+        out: dict[str, Any] = {"instrument": inst.brief(), "latest": latest}
+        if history > 1:
+            series = []
+            for r in letters[1:history]:
+                try:
+                    st = await self._statement_set(r, ("income",))
+                except (UpstreamError, InputError):
+                    continue
+                items = st["income"].get("items", {}) if isinstance(st.get("income"), dict) else {}
+                series.append({"period_end": st["report"].get("period_end"), "period_months": st["report"].get("period_months"), "tracing_no": st["letter"]["tracing_no"],
+                               **{k: (items.get(k) or {}).get("current") for k in ("revenue", "gross_profit", "operating_profit", "net_profit", "eps")}})
+            out["earlier_periods"] = series
+        out["units"] = "statement amounts in million rial (see unit); per-share figures in rial"
+        out["note"] = (
+            "Read from the company's own Codal statements. 'previous' is the same period last year, 'last_year' the last full fiscal year "
+            "(restated where the company restated it). revenue_ttm/net_profit_ttm are computed here: last full year + this period - the same period last year."
+        )
+        return out
+
+    async def monthly_activity(self, symbol: str, months: int = 3, products: bool = True) -> dict:
+        inst, rows = await self._codal_letters(symbol, CODAL_MONTHLY, pages=2 if months > 8 else 1)
+        letters = self._latest_per_period(rows)
+        if not letters:
+            return {"instrument": inst.brief(), "available": False, "note": "No monthly activity reports (ن-۳۰) of this company on Codal."}
+        months = _clamp(months, 1, 12)
+        reports = []
+        for i, r in enumerate(letters[:months]):
+            html = await self.api.codal_page(r["Url"])
+            ds = cr.datasource(html)
+            if ds is None:
+                continue
+            m = cr.monthly(ds)
+            m["tracing_no"] = r.get("TracingNo")
+            m["page"] = shape.shape_codal_letter(r, CODAL_SITE)["links"]["page"]
+            if not products or i > 0:
+                m.pop("products", None)
+                m.pop("tables", None)
+            reports.append(m)
+        for a, b in zip(reports, reports[1:], strict=False):
+            if a.get("month_sales") and b.get("month_sales"):
+                a["month_change_pct"] = round((a["month_sales"] - b["month_sales"]) / abs(b["month_sales"]) * 100, 1)
+        return {
+            "instrument": inst.brief(),
+            "reports": reports,
+            "units": "sales amounts in million rial, rates in rial, quantities in the unit shown",
+            "note": "From the company's monthly activity reports on Codal (amended reports replace the originals). Products are listed for the newest month.",
+        }
+
+    async def fundamentals(self, symbol: str) -> dict:
+        inst = await self._inst(symbol)
+        # Codal's search answers HTTP 429 to bursts, so its two lookups run one after the other (the quote is TSETMC, in parallel)
+        async def codal() -> tuple[Any, Any]:
+            try:
+                fs_: Any = await self.financial_statements(symbol)
+            except (UpstreamError, InputError) as e:
+                fs_ = e
+            try:
+                ma_: Any = await self.monthly_activity(symbol, months=3, products=False)
+            except (UpstreamError, InputError) as e:
+                ma_ = e
+            return fs_, ma_
+
+        quote, both = await asyncio.gather(self.quote(symbol), codal(), return_exceptions=True)
+        fs, ma = both if isinstance(both, tuple) else (both, both)
+        out: dict[str, Any] = {"instrument": inst.brief()}
+        price = shares = mcap = None
+        if isinstance(quote, dict):
+            price = (quote.get("close") or {}).get("price") or (quote.get("last") or {}).get("price")
+            f = quote.get("fundamentals") or {}
+            shares, mcap = f.get("shares_outstanding"), f.get("market_cap")
+            out["market"] = {"price": price, "date": quote.get("jdate"), "shares_outstanding": shares, "market_cap": mcap,
+                             "exchange_eps": f.get("eps"), "exchange_pe": f.get("pe"), "sector_pe": f.get("sector_pe")}
+        if isinstance(fs, dict) and fs.get("latest"):
+            lt = fs["latest"]
+            mult = cr.unit_multiplier((lt.get("income") or {}).get("unit"))
+            r = lt.get("ratios") or {}
+            inc = (lt.get("income") or {}).get("items", {})
+            bal = (lt.get("balance") or {}).get("items", {})
+            out["latest_statement"] = {"period_end": lt["report"].get("period_end"), "period_months": lt["report"].get("period_months"),
+                                       "audited": lt["report"].get("audited"), "tracing_no": lt["letter"]["tracing_no"],
+                                       **{k: (inc.get(k) or {}).get("current") for k in ("revenue", "net_profit", "eps")},
+                                       "equity": (bal.get("equity") or {}).get("current"), "unit": "million rial (eps in rial)"}
+            out["profitability"] = {k: r[k] for k in ("gross_margin_pct", "operating_margin_pct", "net_margin_pct", "roe_ttm_pct", "roa_ttm_pct", "revenue_growth_pct", "net_profit_growth_pct") if k in r}
+            out["balance_sheet"] = {k: r[k] for k in ("current_ratio", "debt_ratio_pct", "liabilities_to_equity", "financial_debt_to_equity", "free_cash_flow") if k in r}
+            val: dict[str, Any] = {}
+            ni_ttm, rev_ttm = r.get("net_profit_ttm"), r.get("revenue_ttm")
+            equity = (bal.get("equity") or {}).get("current")
+            if ni_ttm is not None and shares:
+                val["eps_ttm_estimated"] = round(ni_ttm * mult / shares, 1)
+                if price and val["eps_ttm_estimated"] > 0:
+                    val["pe_ttm_estimated"] = round(price / val["eps_ttm_estimated"], 2)
+            if mcap and rev_ttm:
+                val["ps_ttm_estimated"] = round(mcap / (rev_ttm * mult), 2)
+            if mcap and equity:
+                val["pb_estimated"] = round(mcap / (equity * mult), 2)
+            if val:
+                val["note"] = "Computed here from the price and the company's latest Codal statements (trailing twelve months); not published by the exchange."
+                out["valuation"] = val
+        elif isinstance(fs, dict):
+            out["latest_statement"] = {"available": False, "note": fs.get("note")}
+        if isinstance(ma, dict) and ma.get("reports"):
+            out["monthly_sales"] = [{k: m.get(k) for k in ("month_end", "month_sales", "month_change_pct", "ytd_sales", "ytd_growth_pct") if m.get(k) is not None} for m in ma["reports"]]
+        errors = {n: str(e) for n, e in (("quote", quote), ("financial_statements", fs), ("monthly_activity", ma)) if isinstance(e, Exception)}
+        if errors:
+            out["unavailable"] = errors
+        out["units"] = "price and market cap in rial; statement amounts in million rial; sales in million rial"
+        return out
 
     # ------------------------------------------------------------------ everything about one symbol
     async def symbol_overview(self, symbol: str) -> dict:

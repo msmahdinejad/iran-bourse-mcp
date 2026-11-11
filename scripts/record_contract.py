@@ -39,12 +39,16 @@ sys.path.insert(0, str(ROOT / "tests" / "contract"))
 
 import contract_replay as cr  # noqa: E402
 
-from iran_bourse_mcp import market, service  # noqa: E402
+from iran_bourse_mcp import (  # noqa: E402
+    codal_reports,  # noqa: E402
+    market,
+    service,
+)
 from iran_bourse_mcp.dates import from_date, tehran_now  # noqa: E402
 from iran_bourse_mcp.text import clean  # noqa: E402
 
 MARKET_WATCH = "https://cdn.tsetmc.com/api/ClosingPrice/GetMarketWatch?market=0&industrialGroup=&showTraded=false&withBestLimits=true&hEven=0&RefID=0"
-DELAYS = {"default": 0.5, "search.codal.ir": 6.0}  # seconds between two requests to a host
+DELAYS = {"default": 0.5, "search.codal.ir": 6.0, "www.codal.ir": 5.0}  # seconds between two requests to a host (www.codal.ir shows a captcha to bursts of report pages)
 RETRY_STATUS = {403, 408, 425, 429, 502, 503, 504}
 WAIT_429 = (30, 60, 120, 180, 240)  # seconds before each retry of a rate-limited request
 WAIT_OTHER = (3, 10, 30, 60)
@@ -436,6 +440,11 @@ class RecordingTransport(httpx.AsyncBaseTransport):
                 pass
         if not is_json:
             rec.text = text
+            if status == 200 and "/Reports/Decision.aspx" in str(request.url):
+                # a Codal letter page is up to ~1 MB of ASP.NET markup; keep only what codal_reports reads
+                slim = codal_reports.slim_page(text)
+                rec.trimmed = [{"rule": "codal page: datasource cells, sheet list and unit labels only", "kept_bytes": len(slim), "original_bytes": len(text)}]
+                rec.text = slim
         elif status == 200:
             rule = next((r for r in RULES if r.matches(request.url)), None)
             if rule and rule.universe:

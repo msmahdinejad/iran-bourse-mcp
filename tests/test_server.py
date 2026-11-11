@@ -14,7 +14,7 @@ EXPECTED = {
     "price_history", "real_legal_flow", "shareholders", "shareholder_history", "shareholder_portfolio",
     "corporate_actions", "symbol_statistics", "etf_nav", "codal_filings", "codal_company", "glossary",
     "screen_stocks", "screener_reference", "option_chain", "futures_market", "top_lists", "capital_calendar", "trading_status", "index_history", "index_constituents", "fund_ranking",
-    "commodity_market", "energy_market",
+    "commodity_market", "energy_market", "codal_letter", "financial_statements", "monthly_activity", "fundamentals",
 }
 
 

@@ -522,6 +522,42 @@ async def codal_company(symbol: Symbol) -> dict:
     return await svc().codal_company(symbol)
 
 
+@tool()
+async def codal_letter(
+    tracing_no: Annotated[int, Field(ge=1, description="Tracing number (شماره پیگیری) of the letter, from codal_filings or recent_filings")],
+    sheet: Annotated[int | None, Field(description="Sheet id from the 'sheets' list of a previous call (e.g. the balance sheet or cash flow of a statement); omit for the first sheet")] = None,
+) -> dict:
+    """Read the CONTENT of any Codal letter (متن و جدول‌های اطلاعیه کدال): financial statements, monthly activity reports, meeting decisions (DPS, capital increases), explanations and notices. Structured reports come back as tables (columns from the report's own headers, numbers parsed, usually million rial: see unit_note), one sheet per call, with the other sheets listed in 'sheets'; a statement sheet also gets 'key_items' (revenue, profits, EPS, assets, equity, cash flows...) and a monthly report a 'monthly_summary' (month and year-to-date sales, by product). Plain letters come back as text. For the usual questions prefer financial_statements, monthly_activity or fundamentals, which find and read the right letters for you."""
+    return await svc().codal_letter(tracing_no, sheet)
+
+
+@tool()
+async def financial_statements(
+    symbol: Symbol,
+    period: Annotated[str, Field(description="'latest' = the newest statements, interim (3/6/9 months) or annual; 'annual' = the newest full fiscal year")] = "latest",
+    consolidated: Annotated[bool, Field(description="True for the group (تلفیقی) statements; default the company's own")] = False,
+    history: Annotated[int, Field(ge=1, le=6, description="Also return revenue, profits and EPS of this many earlier periods (1 = only the latest)")] = 1,
+) -> dict:
+    """A company's financial statements from Codal (صورت‌های مالی): income statement, balance sheet and cash flow, each as key items for this period, the same period last year and the last full year (revenue, cost of revenue, gross/operating/net profit, EPS, total assets, equity, debt, cash, operating cash flow, capex, dividends paid...), plus margins, growth, ROE/ROA on trailing twelve months, current ratio and leverage. Amendments and audited re-issues replace earlier versions. Amounts in million rial, EPS in rial. For the full tables of a letter use codal_letter."""
+    return await svc().financial_statements(symbol, period, consolidated, history)
+
+
+@tool()
+async def monthly_activity(
+    symbol: Symbol,
+    months: Annotated[int, Field(ge=1, le=12, description="How many recent monthly reports to read (1-12)")] = 3,
+    products: Annotated[bool, Field(description="Include the product-by-product lines of the newest month")] = True,
+) -> dict:
+    """A company's monthly activity reports from Codal (گزارش فعالیت ماهانه، ن-۳۰): sales of each month and year to date, growth on the same span last year, month-on-month change, and for the newest month each product's production, sales quantity, rate and amount (domestic, export and services). Amended reports replace the originals. Amounts in million rial."""
+    return await svc().monthly_activity(symbol, months, products)
+
+
+@tool()
+async def fundamentals(symbol: Symbol) -> dict:
+    """One-call fundamental picture of a company (تحلیل بنیادی): price and market cap, the exchange's EPS and P/E, the latest Codal statements (revenue, net profit, EPS, equity), margins, growth, ROE/ROA, liquidity and leverage, valuation computed on trailing twelve months (EPS, P/E, P/S, P/B, marked estimated), and the last three months of sales from the monthly reports."""
+    return await svc().fundamentals(symbol)
+
+
 # ----------------------------------------------------------------------------- misc
 
 

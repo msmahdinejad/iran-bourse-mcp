@@ -413,6 +413,37 @@ Fund/ETF issue and redemption NAV vs market price: premium/discount (صدور و
 |---|---|---|
 | `symbol`* | string | Persian symbol such as 'فولاد', or an insCode |
 
+## Fundamentals
+
+### `fundamentals`
+
+One-call fundamental picture of a company (تحلیل بنیادی): price and market cap, the exchange's EPS and P/E, the latest Codal statements (revenue, net profit, EPS, equity), margins, growth, ROE/ROA, liquidity and leverage, valuation computed on trailing twelve months (EPS, P/E, P/S, P/B, marked estimated), and the last three months of sales from the monthly reports.
+
+| parameter | type | description |
+|---|---|---|
+| `symbol`* | string | Persian symbol such as 'فولاد', or an insCode |
+
+### `financial_statements`
+
+A company's financial statements from Codal (صورت‌های مالی): income statement, balance sheet and cash flow, each as key items for this period, the same period last year and the last full year (revenue, cost of revenue, gross/operating/net profit, EPS, total assets, equity, debt, cash, operating cash flow, capex, dividends paid...), plus margins, growth, ROE/ROA on trailing twelve months, current ratio and leverage. Amendments and audited re-issues replace earlier versions. Amounts in million rial, EPS in rial. For the full tables of a letter use codal_letter.
+
+| parameter | type | description |
+|---|---|---|
+| `symbol`* | string | Persian symbol such as 'فولاد', or an insCode |
+| `period` | string | 'latest' = the newest statements, interim (3/6/9 months) or annual; 'annual' = the newest full fiscal year (default `latest`) |
+| `consolidated` | boolean | True for the group (تلفیقی) statements; default the company's own (default `False`) |
+| `history` | integer | Also return revenue, profits and EPS of this many earlier periods (1 = only the latest) (default `1`) |
+
+### `monthly_activity`
+
+A company's monthly activity reports from Codal (گزارش فعالیت ماهانه، ن-۳۰): sales of each month and year to date, growth on the same span last year, month-on-month change, and for the newest month each product's production, sales quantity, rate and amount (domestic, export and services). Amended reports replace the originals. Amounts in million rial.
+
+| parameter | type | description |
+|---|---|---|
+| `symbol`* | string | Persian symbol such as 'فولاد', or an insCode |
+| `months` | integer | How many recent monthly reports to read (1-12) (default `3`) |
+| `products` | boolean | Include the product-by-product lines of the newest month (default `True`) |
+
 ## Codal
 
 ### `codal_filings`
@@ -429,6 +460,15 @@ Search Codal disclosures (کدال): title, publish time, tracing number and lin
 | `letter_type` | integer | Codal letter type id, -1 for all (default `-1`) |
 | `limit` | integer | Maximum rows to return (1-100); the server rejects larger values (default `20`) |
 | `page` | integer |  (default `1`) |
+
+### `codal_letter`
+
+Read the CONTENT of any Codal letter (متن و جدول‌های اطلاعیه کدال): financial statements, monthly activity reports, meeting decisions (DPS, capital increases), explanations and notices. Structured reports come back as tables (columns from the report's own headers, numbers parsed, usually million rial: see unit_note), one sheet per call, with the other sheets listed in 'sheets'; a statement sheet also gets 'key_items' (revenue, profits, EPS, assets, equity, cash flows...) and a monthly report a 'monthly_summary' (month and year-to-date sales, by product). Plain letters come back as text. For the usual questions prefer financial_statements, monthly_activity or fundamentals, which find and read the right letters for you.
+
+| parameter | type | description |
+|---|---|---|
+| `tracing_no`* | integer | Tracing number (شماره پیگیری) of the letter, from codal_filings or recent_filings |
+| `sheet` | integer | Sheet id from the 'sheets' list of a previous call (e.g. the balance sheet or cash flow of a statement); omit for the first sheet |
 
 ### `codal_company`
 

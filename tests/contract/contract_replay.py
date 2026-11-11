@@ -40,6 +40,7 @@ HOSTS = {
     "cdn.tsetmc.com": "cdn",
     "webgw.tse.ir": "webgw",
     "search.codal.ir": "codal",
+    "www.codal.ir": "codalpage",
     "www.ime.co.ir": "ime",
     "webapi.iee.ir": "iee",
 }

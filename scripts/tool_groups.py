@@ -10,7 +10,8 @@ GROUPS = {
     "Commodity and energy exchanges": ["commodity_market", "energy_market"],
     "Lists, calendar and status": ["top_lists", "capital_calendar", "trading_status"],
     "Symbol": ["search_symbol", "symbol_overview", "quote", "order_book", "order_book_history", "trades", "trade_summary", "price_history", "real_legal_flow", "shareholders", "shareholder_history", "shareholder_portfolio", "corporate_actions", "symbol_statistics", "etf_nav"],
-    "Codal": ["codal_filings", "codal_company"],
+    "Fundamentals": ["fundamentals", "financial_statements", "monthly_activity"],
+    "Codal": ["codal_filings", "codal_letter", "codal_company"],
     "Help": ["glossary"],
 }
 
@@ -31,5 +32,7 @@ FA = {
     "price_history": "تاریخچه قیمت (تعدیل‌شده)", "real_legal_flow": "حقیقی و حقوقی، سرانه و قدرت خریدار", "shareholders": "سهامداران عمده",
     "shareholder_history": "تاریخچه سهامداران و موقعیت هر سهامدار در طول زمان", "shareholder_portfolio": "پرتفوی یک سهامدار", "corporate_actions": "افزایش سرمایه و تعدیل",
     "symbol_statistics": "آمارهای نماد", "etf_nav": "حباب صندوق نسبت به NAV", "codal_filings": "اطلاعیه‌های کدال با لینک PDF و اکسل",
-    "codal_company": "اطلاعات ناشر کدال", "glossary": "واژه‌نامه بازار",
+    "codal_company": "اطلاعات ناشر کدال", "codal_letter": "خواندن متن و جدول‌های هر اطلاعیه کدال",
+    "fundamentals": "تحلیل بنیادی یک‌جا: سود، حاشیه سود، ROE، P/E و P/B و فروش ماهانه", "financial_statements": "صورت‌های مالی: سود و زیان، ترازنامه، جریان نقد و نسبت‌ها",
+    "monthly_activity": "گزارش فعالیت ماهانه: فروش ماه و از ابتدای سال به تفکیک محصول", "glossary": "واژه‌نامه بازار",
 }
