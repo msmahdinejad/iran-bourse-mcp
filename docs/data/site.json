@@ -1,6 +1,6 @@
 {
  "tests": 854,
- "version": "0.4.0",
+ "version": "0.5.0",
  "tools": [
   {
    "name": "market_status",
@@ -1607,16 +1607,16 @@
   }
  ],
  "snapshot": {
-  "captured_at_utc": "2026-11-11 09:30 UTC",
-  "tehran_time": "2026-11-11 13:00:48",
+  "captured_at_utc": "2026-11-11 09:32 UTC",
+  "tehran_time": "2026-11-11 13:01:47",
   "market_state": "بسته",
   "index": {
    "value": 8427304.89,
    "change": 69464.53,
    "change_pct": 0.83
   },
-  "trades_today": 1088363,
-  "value_today": 502850139541691,
+  "trades_today": 1088558,
+  "value_today": 503286355458478,
   "tape": [
    {
     "symbol": "فملی",
@@ -1705,7 +1705,7 @@
    "universe": 636,
    "jdate": "1405/08/20",
    "history_days": 20,
-   "seconds": 1.41,
+   "seconds": 2.16,
    "rows": [
     {
      "symbol": "کگل",
@@ -1849,9 +1849,9 @@
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "محصولات شیمیایی",
-    "queue_volume": 138744179,
+    "queue_volume": 138340107,
     "queue_orders": 9999,
-    "queue_value": 12110979384910
+    "queue_value": 12075707940030
    },
    {
     "symbol": "وتجارت",
@@ -1868,9 +1868,9 @@
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "بانکها و موسسات اعتباری",
-    "queue_volume": 5455790629,
-    "queue_orders": 2712,
-    "queue_value": 5270293747614
+    "queue_volume": 5398720935,
+    "queue_orders": 2691,
+    "queue_value": 5215164423210
    },
    {
     "symbol": "فولاد",
@@ -1887,9 +1887,9 @@
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "فلزات اساسی",
-    "queue_volume": 957617855,
-    "queue_orders": 4908,
-    "queue_value": 4740208382250
+    "queue_volume": 954805440,
+    "queue_orders": 4895,
+    "queue_value": 4726286928000
    },
    {
     "symbol": "مبین",
@@ -1906,9 +1906,9 @@
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "عرضه برق، گاز، بخاروآب گرم",
-    "queue_volume": 315358477,
-    "queue_orders": 1319,
-    "queue_value": 3522554188090
+    "queue_volume": 314753477,
+    "queue_orders": 1316,
+    "queue_value": 3515796338090
    },
    {
     "symbol": "شیراز",
@@ -1925,9 +1925,9 @@
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "محصولات شیمیایی",
-    "queue_volume": 44747116,
-    "queue_orders": 1662,
-    "queue_value": 3515333432960
+    "queue_volume": 44637487,
+    "queue_orders": 1658,
+    "queue_value": 3506720978720
    }
   ],
   "real_inflow": [
@@ -2113,8 +2113,8 @@
      {
       "level": 1,
       "price": 4950.0,
-      "volume": 957617855,
-      "orders": 4908
+      "volume": 954805440,
+      "orders": 4895
      },
      {
       "level": 2,
@@ -2146,16 +2146,16 @@
     "best_ask": null,
     "spread": null,
     "spread_pct": null,
-    "total_bid_volume": 967198377,
+    "total_bid_volume": 964385962,
     "total_ask_volume": 0,
-    "total_bid_orders": 4973,
+    "total_bid_orders": 4960,
     "total_ask_orders": 0,
     "imbalance": 1.0,
     "queue": {
      "state": "buy_queue",
-     "queue_volume": 957617855,
-     "queue_orders": 4908,
-     "queue_value": 4740208382250
+     "queue_volume": 954805440,
+     "queue_orders": 4895,
+     "queue_value": 4726286928000
     },
     "price_limits": {
      "upper": 4950.0,
@@ -2249,128 +2249,7 @@
      }
     ]
    },
-   "filings": [
-    {
-     "tracing_no": 1629421,
-     "symbol": "فولاد",
-     "company": "فولاد مبارکه اصفهان",
-     "title": "اطلاعات و صورت‌های مالی میاندوره‌ای دوره ۶ ماهه منتهی به ۱۴۰۵/۰۶/۳۱ (حسابرسی شده) (شرکت صنایع نیرو و انرژی پاک فولاد)",
-     "letter_code": "ن-۱۰",
-     "published": "1405/08/19 08:57:08",
-     "sent": "1405/08/19 08:57:08",
-     "under_supervision": false,
-     "is_estimate": false,
-     "has": {
-      "html": true,
-      "pdf": true,
-      "excel": true,
-      "xbrl": false,
-      "attachment": true
-     },
-     "links": {
-      "page": "https://codal.ir/Reports/Decision.aspx?LetterSerial=Ymf2WWNQQQaQQQdOOObOOOJ6F2Nwl4dxSA%3d%3d&rt=5&let=6&ct=0&ft=-1",
-      "pdf": "https://codal.ir/DownloadFile.aspx?hs=Ymf2WWNQQQaQQQdOOObOOOJ6F2Nwl4dxSA%3d%3d&ft=1005&let=6",
-      "excel": "https://excel.codal.ir/service/Excel/GetAll/Ymf2WWNQQQaQQQdOOObOOOJ6F2Nwl4dxSA%3d%3d/0",
-      "attachments": "https://codal.ir/Reports/Attachment.aspx?LetterSerial=Ymf2WWNQQQaQQQdOOObOOOJ6F2Nwl4dxSA%3d%3d"
-     }
-    },
-    {
-     "tracing_no": 1629336,
-     "symbol": "فولاد",
-     "company": "فولاد مبارکه اصفهان",
-     "title": "اطلاعات و صورت‌های مالی میاندوره‌ای دوره ۶ ماهه منتهی به ۱۴۰۵/۰۶/۳۱ (حسابرسی شده) (شرکت امین طب سپانو)",
-     "letter_code": "ن-۱۰",
-     "published": "1405/08/19 08:48:29",
-     "sent": "1405/08/19 08:48:29",
-     "under_supervision": false,
-     "is_estimate": false,
-     "has": {
-      "html": true,
-      "pdf": true,
-      "excel": true,
-      "xbrl": false,
-      "attachment": true
-     },
-     "links": {
-      "page": "https://codal.ir/Reports/Decision.aspx?LetterSerial=25OOObOOOYB5sux7AdXlvlOOObOOO2bbuw%3d%3d&rt=5&let=6&ct=0&ft=-1",
-      "pdf": "https://codal.ir/DownloadFile.aspx?hs=25OOObOOOYB5sux7AdXlvlOOObOOO2bbuw%3d%3d&ft=1005&let=6",
-      "excel": "https://excel.codal.ir/service/Excel/GetAll/25OOObOOOYB5sux7AdXlvlOOObOOO2bbuw%3d%3d/0",
-      "attachments": "https://codal.ir/Reports/Attachment.aspx?LetterSerial=25OOObOOOYB5sux7AdXlvlOOObOOO2bbuw%3d%3d"
-     }
-    },
-    {
-     "tracing_no": 1629692,
-     "symbol": "فولاد",
-     "company": "فولاد مبارکه اصفهان",
-     "title": "اطلاعات و صورت‌های مالی میاندوره‌ای دوره ۶ ماهه منتهی به ۱۴۰۵/۰۶/۳۱ (حسابرسی شده) (شرکت باشگاه فرهنگی ورزشی سپاهان نوین)",
-     "letter_code": "ن-۱۰",
-     "published": "1405/08/18 13:07:33",
-     "sent": "1405/08/18 13:07:33",
-     "under_supervision": false,
-     "is_estimate": false,
-     "has": {
-      "html": true,
-      "pdf": true,
-      "excel": true,
-      "xbrl": false,
-      "attachment": true
-     },
-     "links": {
-      "page": "https://codal.ir/Reports/Decision.aspx?LetterSerial=yDanjzuBbpuaLah1Z7d7iw%3d%3d&rt=5&let=6&ct=0&ft=-1",
-      "pdf": "https://codal.ir/DownloadFile.aspx?hs=yDanjzuBbpuaLah1Z7d7iw%3d%3d&ft=1005&let=6",
-      "excel": "https://excel.codal.ir/service/Excel/GetAll/yDanjzuBbpuaLah1Z7d7iw%3d%3d/0",
-      "attachments": "https://codal.ir/Reports/Attachment.aspx?LetterSerial=yDanjzuBbpuaLah1Z7d7iw%3d%3d"
-     }
-    },
-    {
-     "tracing_no": 1621524,
-     "symbol": "فولاد",
-     "company": "فولاد مبارکه اصفهان",
-     "title": "گزارش فعالیت ماهانه دوره ۱ ماهه منتهی به ۱۴۰۵/۰۷/۳۰",
-     "letter_code": "ن-۳۰",
-     "published": "1405/08/06 16:01:48",
-     "sent": "1405/08/06 16:01:48",
-     "under_supervision": false,
-     "is_estimate": false,
-     "has": {
-      "html": true,
-      "pdf": true,
-      "excel": true,
-      "xbrl": false,
-      "attachment": true
-     },
-     "links": {
-      "page": "https://codal.ir/Reports/Decision.aspx?LetterSerial=LyQnlYP7OOObOOOIDLto8TGJDkDQ%3d%3d&rt=0&let=58&ct=0&ft=-1",
-      "pdf": "https://codal.ir/DownloadFile.aspx?hs=LyQnlYP7OOObOOOIDLto8TGJDkDQ%3d%3d&ft=1005&let=58",
-      "excel": "https://excel.codal.ir/service/Excel/GetAll/LyQnlYP7OOObOOOIDLto8TGJDkDQ%3d%3d/0",
-      "attachments": "https://codal.ir/Reports/Attachment.aspx?LetterSerial=LyQnlYP7OOObOOOIDLto8TGJDkDQ%3d%3d"
-     }
-    },
-    {
-     "tracing_no": 1618277,
-     "symbol": "فولاد",
-     "company": "فولاد مبارکه اصفهان",
-     "title": "توضیحات در خصوص اطلاعات و صورت های مالی منتشر شده",
-     "letter_code": "ن-۲۶",
-     "published": "1405/07/30 14:40:53",
-     "sent": "1405/07/30 14:40:53",
-     "under_supervision": false,
-     "is_estimate": false,
-     "has": {
-      "html": true,
-      "pdf": true,
-      "excel": false,
-      "xbrl": false,
-      "attachment": true
-     },
-     "links": {
-      "page": "https://codal.ir/Reports/Decision.aspx?LetterSerial=q1TwzvITsscrZmqLPHatbw%3d%3d&rt=0&let=174&ct=0&ft=-1",
-      "pdf": "https://codal.ir/DownloadFile.aspx?hs=q1TwzvITsscrZmqLPHatbw%3d%3d&ft=1005&let=174",
-      "excel": null,
-      "attachments": "https://codal.ir/Reports/Attachment.aspx?LetterSerial=q1TwzvITsscrZmqLPHatbw%3d%3d"
-     }
-    }
-   ],
+   "filings": null,
    "trade_summary": {
     "summary": {
      "ticks": 7941,

@@ -8,8 +8,8 @@ authors:
 repository-code: "https://github.com/msmahdinejad/iran-bourse-mcp"
 url: "https://msmahdinejad.github.io/iran-bourse-mcp/"
 license: MIT
-version: 0.4.0
-date-released: "2026-11-05"
+version: 0.5.0
+date-released: "2026-11-11"
 keywords:
   - model-context-protocol
   - tehran-stock-exchange

@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 (2026-11-11)
+
+Fundamental analysis from Codal (45 tools in total): financial statements, monthly activity and fundamentals for industrial companies, banks, insurers and investment companies; technical indicators; market-wide queues of a past day; option chains by Jalali month with covered-call figures.
 
 - **`technical_indicators`**: for one symbol, from its daily prices back-adjusted for capital increases and dividends: SMA 20/50/200, EMA 12/26, RSI 14 (Wilder), MACD 12/26/9 with signal and histogram, Bollinger 20/2 with %B and bandwidth, ATR 14, stochastic 14/3, OBV and its trend, volume against its 20-session average, distance from the 52-week high and low, support and resistance from recent swing lows and highs, the latest MACD/signal and SMA50/SMA200 crosses and a plain-language `summary` ("RSI 72: overbought", "MACD crossed above signal 2 sessions ago"). The maths lives in the pure module `technical.py`, tested against hand-computed values; the output says the indicators are computed by the server, not published by the exchange.
 - **Queues of a past day**: `top_movers(kind="buy_queue" | "sell_queue", date=...)` returns the queues at the close of that session. Candidates come from the day's end-of-day table of the whole market (last trade at the day's high or low), are checked against that day's official limits and confirmed against the day's order-book history rebuilt at 12:30, with the queue's volume, orders and value at the close, `queue_since` and `held_last_30_minutes`. Capped at the 250 largest by traded value, and the output says how candidates were chosen. `date` is rejected for the other kinds.
