@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-2EC4B6.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%E2%80%933.13-5B7CFA.svg)](pyproject.toml)
 [![MCP SDK 1.x and 2.x](https://img.shields.io/badge/MCP%20SDK-1.x%20%7C%202.x-F5B53D.svg)](https://modelcontextprotocol.io)
-[![Tools](https://img.shields.io/badge/tools-41%20read--only-2EC4B6.svg)](docs/TOOLS.md)
+[![Tools](https://img.shields.io/badge/tools-45%20read--only-2EC4B6.svg)](docs/TOOLS.md)
 [![Stars](https://img.shields.io/github/stars/msmahdinejad/iran-bourse-mcp?style=flat&color=F5B53D)](https://github.com/msmahdinejad/iran-bourse-mcp/stargazers)
 
 **[Website](https://msmahdinejad.github.io/iran-bourse-mcp/)** · **[Install](#install)** · **[Benchmarks](#benchmarks)** · **[Tools](docs/TOOLS.md)** · **[Screener](docs/SCREENER.md)** · **[Real examples](docs/EXAMPLES.md)** · **[Data notes](docs/DATA_SOURCES.md)** · **[راهنمای فارسی](docs/GUIDE.fa.md)** · **[فارسی](README.fa.md)**
@@ -397,7 +397,8 @@ The language is a safe expression grammar (parsed with `ast`, never `eval`), acc
 | Shareholders (سهامداران عمده) | `shareholders` `shareholder_history` (also one holder's position over time) `shareholder_portfolio` `market_holder_moves` |
 | Commodity and energy exchanges | `commodity_market` (IME physical trades by contract, roll-ups, dollar rate) `energy_market` (Iran Energy Exchange: trades, announced offers, one auction's order levels) |
 | Funds | `fund_ranking` (579 funds: NAV, returns, size, portfolio mix) `etf_nav` (premium/discount to issue and redemption NAV) |
-| Codal | `codal_filings` (links to page, PDF, Excel) `codal_company` |
+| Fundamentals (read from Codal) | `fundamentals` (EPS, P/E, P/S, P/B on trailing twelve months, margins, ROE, leverage, recent sales) `financial_statements` (income statement, balance sheet, cash flow, ratios) `monthly_activity` (monthly sales by product) |
+| Codal | `codal_filings` (links to page, PDF, Excel) `codal_letter` (any letter's tables or text) `codal_company` |
 | Supervisor notices | `supervisor_messages` |
 | Vocabulary | `glossary` (Persian ↔ English market terms) |
 
