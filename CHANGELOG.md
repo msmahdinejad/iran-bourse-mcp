@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Codal contents and fundamentals**: `codal_letter` reads any Codal letter (financial statements, monthly activity reports, meeting decisions, notices) as tables with parsed numbers or as text; `financial_statements` returns the income statement, balance sheet and cash flow as key items for this period, the same period last year and the last full year, with margins, growth, ROE/ROA on trailing twelve months and leverage; `monthly_activity` returns monthly and year-to-date sales by product; `fundamentals` puts price, statements, computed TTM EPS, P/E, P/S, P/B and recent monthly sales in one call. Subsidiaries filed under the parent's symbol are excluded, and Codal's captcha is detected and reported.
 - Install commands, snippets and one-click links now use PyPI (`uvx iran-bourse-mcp`) instead of the GitHub URL. `IRAN_BOURSE_SOURCE=git+https://github.com/msmahdinejad/iran-bourse-mcp` still selects the repository.
 
 ## 0.4.0 (2026-11-05)
