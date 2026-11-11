@@ -3,6 +3,7 @@
     uv run python scripts/record_contract.py                       # list scenarios and their recordings (offline)
     uv run python scripts/record_contract.py --record              # record every scenario, then verify it by replay
     uv run python scripts/record_contract.py --record --only quote,top_movers_real_inflow
+    uv run python scripts/record_contract.py --record --only technical_indicators --reuse   # add one scenario, keep the rest
     uv run python scripts/record_contract.py --show quote          # replay a recorded scenario, print the output (offline)
 
 Every scenario (tests/contract/contract_scenarios_*.py) calls one MCP tool through the real server stack on top of a
@@ -14,7 +15,8 @@ the file), and only the status, the content type and the body are stored: no req
 that sends a JSON body (the IME's POSTs) is recorded with that body, which is part of its identity.
 
 Re-record everything (no --only) when you want a consistent snapshot: scenarios share their requests, so recording one
-scenario alone refreshes the requests it uses for the others too.
+scenario alone refreshes the requests it uses for the others too. With --reuse a request that already has a recording is
+served from disk instead, so a new scenario can be added without touching what the others replay.
 """
 
 from __future__ import annotations
@@ -111,6 +113,7 @@ def build_universe(rows: list[dict]) -> Universe:
 class TrimContext:
     universe: Universe | None
     now: Any
+    tool: str | None = None  # the tool of the scenario being recorded
 
 
 def _list(body: Any, key: str) -> list:
@@ -234,6 +237,39 @@ def cap_rows(key: str, n: int) -> Callable[[Any, TrimContext], list[dict]]:
     return lambda body, ctx: keep_first(body, key, n)
 
 
+BOOK_ROWS = 4000  # order_book_history: the first rows of the day
+CLOSE_WINDOW = (122500, 123000)  # top_movers on a past day reads the book at 12:30: keep what rebuilds its last minutes
+
+
+def trim_book_history(body: Any, ctx: TrimContext) -> list[dict]:
+    """``BestLimits/{ins}/{date}``: the first rows for order_book_history; for a past-day queue scan, the rows that rebuild
+    the book from 12:25 to the close (each level's last row before 12:25, then every row up to 12:30)."""
+    if ctx.tool != "top_movers":
+        return keep_first(body, "bestLimitsHistory", BOOK_ROWS)
+    rows = _list(body, "bestLimitsHistory")
+    start, end = CLOSE_WINDOW
+    before: dict[int, int] = {}  # level -> index of its newest row before the window
+    for i, row in enumerate(rows):
+        if (row.get("hEven") or 0) < start and (
+            row["number"] not in before or row["refID"] >= rows[before[row["number"]]]["refID"]
+        ):
+            before[row["number"]] = i
+    keep = sorted(
+        set(before.values()) | {i for i, row in enumerate(rows) if start <= (row.get("hEven") or 0) <= end}
+    )
+    if len(keep) == len(rows):
+        return []
+    body["bestLimitsHistory"] = [rows[i] for i in keep]
+    return [
+        {
+            "path": "bestLimitsHistory",
+            "kept": len(keep),
+            "of": len(rows),
+            "rule": "each level's last row before 12:25:00, then every row from 12:25:00 to 12:30:00",
+        }
+    ]
+
+
 POWER_HELD_KEPT = 3
 
 
@@ -344,7 +380,7 @@ RULES = (
     ),
     Rule(r"/Trade/GetTrade/\d+$", cap_rows("trade", 3000)),
     Rule(r"/Trade/GetTradeHistory/", cap_rows("tradeHistory", 3000)),
-    Rule(r"/BestLimits/\d+/\d+$", cap_rows("bestLimitsHistory", 4000)),
+    Rule(r"/BestLimits/\d+/\d+$", trim_book_history),
     Rule(r"imedata\.asmx/GetAmareMoamelatList$", trim_ime_trades),
     Rule(r"/PowerMarket/GetPowerMarketAuctionAnnouncements$", trim_power_announcements),
 )
@@ -392,6 +428,7 @@ class RecordingTransport(httpx.AsyncBaseTransport):
         self.cache: dict[str, cr.Recorded] = {}
         self.used: dict[str, cr.Recorded] = {}
         self.errors: list[str] = []
+        self.tool: str | None = None
         self.upstream_requests = 0
         self._universe: Universe | None = None
         self._raw: dict[
@@ -401,8 +438,15 @@ class RecordingTransport(httpx.AsyncBaseTransport):
         self._lock = asyncio.Lock()
         self._universe_lock = asyncio.Lock()
 
-    def begin(self) -> None:
-        self.used, self.errors = {}, []
+    def begin(self, tool: str | None = None) -> None:
+        self.used, self.errors, self.tool = {}, [], tool
+
+    def reuse_recordings(self) -> int:
+        """Serve every request that already has a recording on disk from that recording (``--reuse``)."""
+        for path in cr.REQUESTS.glob("*.json"):
+            rec = cr.Recorded.from_file(path.read_text(encoding="utf-8"))
+            self.cache.setdefault(cr.request_key(rec.method, rec.url, rec.request_body), rec)
+        return len(self.cache)
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         key = cr.request_key(request.method, str(request.url), request_body(request))
@@ -440,7 +484,7 @@ class RecordingTransport(httpx.AsyncBaseTransport):
             rule = next((r for r in RULES if r.matches(request.url)), None)
             if rule and rule.universe:
                 await self._ensure_universe()
-            rec.trimmed = trim(request.url, rec.json, TrimContext(self._universe, self.now))
+            rec.trimmed = trim(request.url, rec.json, TrimContext(self._universe, self.now, self.tool))
         size = len(rec.to_file().encode("utf-8"))
         if size > MAX_BODY_BYTES:
             raise RecordingError(
@@ -534,7 +578,7 @@ async def verify(sc: cr.Scenario) -> None:
 
 
 async def record_one(sc: cr.Scenario, transport: RecordingTransport, now: Any) -> int:
-    transport.begin()
+    transport.begin(sc.tool)
     await cr.call_tool(sc.tool, sc.args, transport, now)
     if transport.errors:
         raise RecordingError("; ".join(transport.errors[:3]))
@@ -573,6 +617,8 @@ async def record(scenarios: list[cr.Scenario], args: argparse.Namespace) -> int:
         transport = RecordingTransport(
             inner, now=now, delays=delays, log=print if args.verbose else (lambda line: None)
         )
+        if args.reuse:
+            print(f"reusing {transport.reuse_recordings()} recordings already on disk")
         pending, failed = scenarios, {}
         for round_no in range(1, args.rounds + 1):
             failed = {}
@@ -672,6 +718,11 @@ def main() -> int:
     )
     parser.add_argument("--proxy", help="HTTP(S) proxy (default: IRAN_BOURSE_PROXY or HTTPS_PROXY)")
     parser.add_argument("--verbose", action="store_true", help="print every upstream request")
+    parser.add_argument(
+        "--reuse",
+        action="store_true",
+        help="serve requests that already have a recording from disk (add a scenario without refreshing the others)",
+    )
     args = parser.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")

@@ -182,3 +182,13 @@ def test_unpublished_year_falls_back_to_fixed_holidays():
     assert dates.holiday_name(dt.date(2027, 4, 1)) == "روز جمهوری اسلامی"  # 12 Farvardin 1406
     assert dates.holiday_name(dt.date(2027, 8, 4)) is None  # religious holidays of 1406 are unknown, never guessed
     assert dates.holiday_name(dt.date(2028, 2, 11)) == "پیروزی انقلاب اسلامی"  # 22 Bahman 1406
+
+
+def test_previous_trading_day_skips_weekends_and_holidays():
+    import datetime as _dt
+
+    from iran_bourse_mcp.dates import previous_trading_day
+
+    assert previous_trading_day(_dt.date(2026, 11, 11)) == _dt.date(2026, 11, 10)  # Wednesday -> Tuesday
+    assert previous_trading_day(_dt.date(2026, 11, 14)) == _dt.date(2026, 11, 11)  # Saturday -> Wednesday
+    assert previous_trading_day(_dt.date(2026, 12, 26)) == _dt.date(2026, 12, 22)  # 23 Dec is a holiday

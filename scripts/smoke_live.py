@@ -12,6 +12,7 @@ import json
 import sys
 import time
 
+from iran_bourse_mcp.dates import previous_trading_day, tehran_now
 from iran_bourse_mcp.service import Bourse
 
 
@@ -28,6 +29,7 @@ async def main(symbol: str, full: bool) -> int:
         ("market_watch full fara", b.market_watch(market="fara", limit=2, detail="full")),
         ("top_movers gainers", b.top_movers("gainers", limit=5)),
         ("top_movers buy_queue", b.top_movers("buy_queue", limit=5)),
+        ("top_movers buy_queue past fara", b.top_movers("buy_queue", market="fara", limit=5, date=str(previous_trading_day(tehran_now().date())))),
         ("top_movers real_inflow", b.top_movers("real_inflow", limit=5)),
         ("top_movers real_buyer_power", b.top_movers("real_buyer_power", limit=5)),
         ("industry_summary", b.industry_summary()),
@@ -45,6 +47,7 @@ async def main(symbol: str, full: bool) -> int:
         ("trade_summary", b.trade_summary(symbol)),
         ("price_history", b.price_history(symbol, limit=3)),
         ("price_history adjusted", b.price_history(symbol, limit=3, adjusted=True)),
+        ("technical_indicators", b.technical_indicators(symbol, days=3)),
         ("real_legal_flow", b.real_legal_flow(symbol, 5)),
         ("shareholders", b.shareholders(symbol)),
         ("shareholder_history", b.shareholder_history(symbol)),
