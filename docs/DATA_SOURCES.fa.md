@@ -27,10 +27,12 @@
 | `order_book_history` | `BestLimits/{ins}/{date}`, `MarketData/GetStaticThreshold/{ins}/{date}` |
 | `trades`, `trade_summary` | `Trade/GetTrade/{ins}` (آخرین روز)، `Trade/GetTradeHistory/{ins}/{date}/false`، جمع‌ها از `ClosingPrice/GetClosingPriceDailyList` |
 | `price_history` | `ClosingPrice/GetClosingPriceDailyList/{ins}/0` |
+| `technical_indicators` | `ClosingPrice/GetClosingPriceDailyList/{ins}/0` (همان سری؛ اندیکاتورها را سرور محاسبه می‌کند) |
 | `real_legal_flow` | `ClientType/GetClientType/{ins}/1/0`، `ClientType/GetClientTypeHistory/{ins}` (همهٔ روزها در یک فراخوانی، مقادیر دقیق به ریال)، `.../{ins}/{date}` برای یک روز |
 | `market_watch`, `top_movers`, `industry_summary` | `ClosingPrice/GetMarketWatch?market=0&industrialGroup=&showTraded=false&withBestLimits=true&hEven=0&RefID=0` (همهٔ نمادها با عمق پنج‌سطحی)، `StaticData/GetStaticData` (نام صنعت‌ها)؛ دیده‌بان gateway فقط به‌عنوان جایگزین و برای نام زیرصنعت‌ها و وضعیت |
 | `top_movers` (real_*) | `ClientType/GetClientTypeAll`, `ClosingPrice/GetInstrmentsHistoryInDay/{date}`، فید دیده‌بان بازار |
 | صف‌ها در `top_movers` | فید دیده‌بان بازار برای پیدا کردن نمادهای قفل‌شده روی سقف یا کف مجاز، و بعد `BestLimits/{ins}` برای اندازهٔ واقعی صف |
+| صف‌های یک روز گذشته در `top_movers` با `date` | `ClosingPrice/GetInstrmentsHistoryInDay/{date}` (یک درخواست برای کل بازار) برای نمادهایی که آخرین معامله‌شان بیشترین یا کمترین قیمت روز بوده، `MarketData/GetStaticThreshold/{ins}/{date}` برای دامنهٔ مجاز همان روز، و بعد `BestLimits/{ins}/{date}` برای عمق بازار در ساعت ۱۲:۳۰ |
 | `screen_stocks`, `screener_reference` | امروز: فید دیده‌بان بازار و `ClientType/GetClientTypeAll`؛ روزهای گذشته: `ClosingPrice/GetInstrmentsHistoryInDay/{date}`، برای هر روز معاملاتی یک درخواست برای کل بازار، تا 60 روز |
 | `shareholders` | `Shareholder/GetInstrumentShareHolderLast/{ins}` |
 | `shareholder_history` | `Shareholder/{ins}/{date}`، و برای یک سهامدار `Shareholder/GetShareHolderHistory/{ins}/{id}/{top}` |

@@ -23,10 +23,12 @@ All requests need a browser-like `User-Agent`; without one TSETMC answers 403.
 | `order_book_history` | `BestLimits/{ins}/{date}`, `MarketData/GetStaticThreshold/{ins}/{date}` |
 | `trades`, `trade_summary` | `Trade/GetTrade/{ins}` (latest day), `Trade/GetTradeHistory/{ins}/{date}/false`, totals from `ClosingPrice/GetClosingPriceDailyList` |
 | `price_history` | `ClosingPrice/GetClosingPriceDailyList/{ins}/0` |
+| `technical_indicators` | `ClosingPrice/GetClosingPriceDailyList/{ins}/0` (the same series; the indicators are computed by the server) |
 | `real_legal_flow` | `ClientType/GetClientType/{ins}/1/0`, `ClientType/GetClientTypeHistory/{ins}` (all days in one call, exact rial values), `.../{ins}/{date}` for one day |
 | `market_watch`, `top_movers`, `industry_summary` | `ClosingPrice/GetMarketWatch?market=0&industrialGroup=&showTraded=false&withBestLimits=true&hEven=0&RefID=0` (every instrument with a five-level book), `StaticData/GetStaticData` (industry names); the gateway market watch only as fallback and for sub-industry names and status |
 | `top_movers` (real_*) | `ClientType/GetClientTypeAll`, `ClosingPrice/GetInstrmentsHistoryInDay/{date}`, the market-watch feed |
 | queues in `top_movers` | the market-watch feed to find limit-locked symbols, then `BestLimits/{ins}` for the true queue size |
+| queues in `top_movers` with `date` | `ClosingPrice/GetInstrmentsHistoryInDay/{date}` (one request for the whole market) to find symbols whose last trade was the day's high or low, `MarketData/GetStaticThreshold/{ins}/{date}` for that day's limits, then `BestLimits/{ins}/{date}` (about 2.5 MB, 170 KB gzipped, per symbol) for the book at 12:30 |
 | `screen_stocks`, `screener_reference` | today: the market-watch feed and `ClientType/GetClientTypeAll`; past days: `ClosingPrice/GetInstrmentsHistoryInDay/{date}`, one request per trading day for the whole market, up to 60 days |
 | `shareholders` | `Shareholder/GetInstrumentShareHolderLast/{ins}` |
 | `shareholder_history` | `Shareholder/{ins}/{date}`, and for one holder `Shareholder/GetShareHolderHistory/{ins}/{id}/{top}` |
@@ -80,6 +82,8 @@ All requests need a browser-like `User-Agent`; without one TSETMC answers 403.
 26. **Adjustment chains break on silent days.** The `priceYesterday` chain used to infer capital-increase adjustments (quirk 11) is not linked across days on which a symbol did not trade; the adjuster skips days without a close and links the traded days across the gap.
 27. **Calendar quirks.** The exchange also closes on days that are not holidays (4 to 6 July 2026, for instance). `market_status` knows the official holidays and says so when the exchange's own newest data disagrees with its calendar; see the next section.
 28. **Small oddities seen on 5 November.** `exchange_server_time` (`GetTime`) is UTC in `MM/DD/YYYY` form; the holder-history endpoint stamps its newest row with the next trading day.
+29. **Live tables are reset before the open.** The exchange resets the day's live data in the morning, so until trading starts at 09:00 a live ranking (`top_movers`, `market_watch`, `screen_stocks`) is empty; that says nothing about the previous session. The tools then explain it in `note` and point to the past-day form (`top_movers(kind="buy_queue", date=...)`, `market_snapshot`).
+30. **Past queues need the day's order book.** No endpoint lists the queues of a past day. A queue at the close shows in the end-of-day table only indirectly (last trade = the day's high = the official ceiling), so `top_movers(date=...)` confirms each such symbol against `BestLimits/{ins}/{date}`, rebuilt up to 12:30:00. On 4 November 2026, a strong day, 435 shares closed at their high, 383 of them at the official ceiling, and 194 of the 250 largest were still in a buy queue at the close; the scan took about 30 s the first time and about 1 s when repeated (results of past days are kept in memory). A symbol that did not trade at all that day is absent from the end-of-day table, so a queue without a single trade is not found. `zOrdMeDem` (orders at a level) was 9999 for the longest queues, which looks like a ceiling of the feed.
 
 ## Public holidays (`market_status`)
 

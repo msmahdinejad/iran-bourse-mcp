@@ -46,7 +46,11 @@ Whole-market table (دیده‌بان بازار) of the exchange's own feed: ab
 
 ### `top_movers`
 
-Ranked lists: top gainers/losers, most traded, buy/sell queues (صف خرید/فروش, confirmed against each symbol's real order book; about 10 s on a strong day), real-person money inflow/outflow (ورود/خروج پول حقیقی), buyer power.
+Ranked lists of the live session: top gainers/losers, most traded, buy/sell queues (صف خرید/فروش, confirmed against each symbol's real order
+    book; about 10 s on a strong day), real-person money inflow/outflow (ورود/خروج پول حقیقی), buyer power.
+    With date (queues only): the queues at the close of a past session, found from that day's end-of-day table and confirmed against each candidate's
+    order-book history, with queue size at the close and since when it held (can take 20-40 s on a strong day; repeated calls are fast).
+    Before 09:00 Tehran time the live lists are empty because the exchange resets the day's data: read `note`, and pass date=<last trading day> for queues.
 
 | parameter | type | description |
 |---|---|---|
@@ -54,6 +58,7 @@ Ranked lists: top gainers/losers, most traded, buy/sell queues (صف خرید/ف
 | `market` | string | 'bourse' or 'fara' (Fara Bourse). Omit for both where applicable. |
 | `security_type` | string | 'stock' (default, سهام), 'fund', 'option', 'bond', 'all' ... (default `سهام`) |
 | `limit` | integer | Maximum rows to return (1-100); the server rejects larger values (default `20`) |
+| `date` | string | Only with kind=buy_queue or sell_queue: a past trading day (Gregorian 2026-11-04 or Jalali 1405/08/13) to get the queues at that session's close instead of live ones. Rejected for other kinds (use market_snapshot for past rankings). |
 
 ### `industry_summary`
 
@@ -352,6 +357,20 @@ OHLCV price history since listing (تاریخچه قیمت), daily or aggregated
 | `limit` | integer | Newest rows to return (max 5000). 250 daily rows is about 70 KB; for long ranges use granularity instead of a big limit (default `250`) |
 | `adjusted` | boolean | Back-adjust for capital increases/dividends (تعدیل شده) (default `False`) |
 | `granularity` | string | 'daily' (default), 'weekly' (Saturday-start), 'monthly' or 'yearly' (Jalali) bars: open/high/low/close, summed volume and value, change % per period (default `daily`) |
+
+### `technical_indicators`
+
+Technical analysis indicators of one symbol (اندیکاتورهای تکنیکال) from its daily prices: SMA 20/50/200, EMA 12/26, RSI 14 (Wilder),
+    MACD 12/26/9 with signal and histogram, Bollinger 20/2 with %B and bandwidth, ATR 14, stochastic 14/3, OBV trend, volume vs its 20-session
+    average, distance from the 52-week high and low, support and resistance from recent swing lows and highs, recent crosses (MACD/signal,
+    SMA50/SMA200) and a plain-language summary ("RSI 72: overbought", "price above SMA50 and SMA200"). Computed by this server from the
+    exchange's adjusted daily closing prices, not published by the exchange.
+
+| parameter | type | description |
+|---|---|---|
+| `symbol`* | string | Persian symbol such as 'فولاد', or an insCode |
+| `days` | integer | Newest sessions of every indicator series to return (0-250); latest values are always returned (default `5`) |
+| `adjusted` | boolean | Use prices back-adjusted for capital increases and dividends (تعدیل شده); recommended (default `True`) |
 
 ### `real_legal_flow`
 

@@ -9,7 +9,7 @@ GROUPS = {
     "Derivatives": ["option_chain", "futures_market"],
     "Commodity and energy exchanges": ["commodity_market", "energy_market"],
     "Lists, calendar and status": ["top_lists", "capital_calendar", "trading_status"],
-    "Symbol": ["search_symbol", "symbol_overview", "quote", "order_book", "order_book_history", "trades", "trade_summary", "price_history", "real_legal_flow", "shareholders", "shareholder_history", "shareholder_portfolio", "corporate_actions", "symbol_statistics", "etf_nav"],
+    "Symbol": ["search_symbol", "symbol_overview", "quote", "order_book", "order_book_history", "trades", "trade_summary", "price_history", "technical_indicators", "real_legal_flow", "shareholders", "shareholder_history", "shareholder_portfolio", "corporate_actions", "symbol_statistics", "etf_nav"],
     "Codal": ["codal_filings", "codal_company"],
     "Help": ["glossary"],
 }
@@ -28,7 +28,8 @@ FA = {
     "top_lists": "فهرست‌های رسمی برترین‌ها", "capital_calendar": "تقویم افزایش سرمایه و تعدیل قیمت", "trading_status": "نمادهای متوقف، تحت نظارت و تغییر وضعیت",
     "symbol_overview": "پرونده کامل نماد در یک فراخوانی", "quote": "قیمت لحظه‌ای با درصد تغییر درست", "order_book": "عمق بازار و صف",
     "order_book_history": "تاریخچه عمق بازار و بازه‌های صف", "trades": "ریز معاملات", "trade_summary": "خلاصه ریز معاملات، VWAP و بزرگ‌ترین معاملات",
-    "price_history": "تاریخچه قیمت (تعدیل‌شده)", "real_legal_flow": "حقیقی و حقوقی، سرانه و قدرت خریدار", "shareholders": "سهامداران عمده",
+    "price_history": "تاریخچه قیمت (تعدیل‌شده)",
+    "technical_indicators": "اندیکاتورهای تکنیکال: میانگین متحرک، RSI، MACD، بولینگر، حمایت و مقاومت", "real_legal_flow": "حقیقی و حقوقی، سرانه و قدرت خریدار", "shareholders": "سهامداران عمده",
     "shareholder_history": "تاریخچه سهامداران و موقعیت هر سهامدار در طول زمان", "shareholder_portfolio": "پرتفوی یک سهامدار", "corporate_actions": "افزایش سرمایه و تعدیل",
     "symbol_statistics": "آمارهای نماد", "etf_nav": "حباب صندوق نسبت به NAV", "codal_filings": "اطلاعیه‌های کدال با لینک PDF و اکسل",
     "codal_company": "اطلاعات ناشر کدال", "glossary": "واژه‌نامه بازار",
