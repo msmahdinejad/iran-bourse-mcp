@@ -96,3 +96,71 @@ def test_slim_page_keeps_what_the_parser_reads():
     again = cr.slim_page(html)
     assert cr.grids(cr.datasource(again)) == cr.grids(cr.datasource(html))
     assert cr.sheets(again) == cr.sheets(html)
+
+
+BANK_COLUMNS = ["دوره منتهی به 1405/06/31 | حسابرسی نشده", "تجدید ارائه شده 1404/06/31 | حسابرسی نشده", "تجدید ارائه شده 1404/12/29", "درصد تغییرات"]
+
+
+def bank_grid(rows):
+    return {"columns": BANK_COLUMNS, "rows": [{"label": lab, "values": vals} for lab, vals in rows]}
+
+
+def test_bank_income_statement_items_and_eps_fallback():
+    # بانک ملت, 1405/06/31 (template «بانک- بورسی - V6»): the full-year column is left 0 and «پایه هر سهم» is 0
+    g = bank_grid([
+        ("درآمد تسهیلات اعطایی", [1835435722, 1100000000, 0, 66]),
+        ("درآمد عملیاتی", [2150761533, 1325688483, 0, 62]),
+        ("هزینه سود سپرده‌ها", [-1220160496, -800000000, 0, 52]),
+        ("سود(زیان) ناخالص", [930601037, 525688483, 0, 77]),
+        ("درآمد کارمزد", [264372382, 200000000, 0, 32]),
+        ("هزینه های اداری و عمومی", [-707453017, -500000000, 0, 41]),
+        ("هزینه مطالبات مشکوک الوصول", [-43432141, -30000000, 0, 44]),
+        ("سود(زیان) عملیاتی", [1271936747, 700000000, 0, 81]),
+        ("هزینه مالیات بر درآمد", [-87428386, -50000000, 0, 74]),
+        ("سود(زیان)خالص", [1025278132, 525848988, 0, 95]),
+        ("سود(زیان) پایه هر سهم (ریال)", [0, 0, 0, None]),
+        ("سود (زیان) خالص هر سهم– ریال", [303, 155, 0, 95]),
+        ("سرمایه", [3382000000, 3382000000, 0, 0]),
+    ])
+    st = cr.statement(g, "income", "1405/12/29")
+    it = st["items"]
+    assert st["layout"] == "bank" and not {"cost_of_revenue", "selling_admin_expenses", "eps"} & set(st["missing"])
+    assert it["cost_of_revenue"]["current"] == -1220160496 and it["selling_admin_expenses"]["current"] == -707453017
+    assert it["loan_interest_income"]["current"] == 1835435722 and it["fee_income"]["current"] == 264372382
+    assert it["eps"] == {"current": 303, "previous": 155, "last_year": 0} and st["notes"]
+    assert cr.ttm(it, "net_profit", 6) is None  # a 0 full-year column is missing, not zero profit
+    it["net_profit"]["last_year"] = 1200000000
+    assert cr.ttm(it, "net_profit", 6) == 1200000000 + 1025278132 - 525848988
+
+
+def test_bank_balance_sheet_sums_loans_and_skips_the_current_split():
+    g = bank_grid([
+        ("موجودی نقد", [3536996227, 2718638069, 0, None]),
+        ("تسهیلات اعطایی و مطالبات از اشخاص دولتی", [28271151298, 1, 0, None]),
+        ("تسهیلات اعطایی و مطالبات از اشخاص غیر دولتی", [16938083501, 1, 0, None]),
+        ("سپرده قانونی", [3209073832, 1, 0, None]),
+        ("جمع دارایی‌ها", [59110304681, 1, 0, None]),
+        ("سپرده‌های مشتریان", [27590264476, 1, 0, None]),
+        ("بدهی به بانکها و موسسات اعتباری غیر بانکی", [8454139269, 1, 0, None]),
+        ("جمع بدهی‌ها", [52628589262, 1, 0, None]),
+        ("سرمایه", [3382000000, 1, 0, None]),
+        ("سود (زیان) انباشته", [2021921399, 1, 0, None]),
+        ("جمع حقوق مالکانه", [6481715419, 1, 0, None]),
+    ])
+    st = cr.statement(g, "balance", "1405/12/29")
+    assert st["layout"] == "bank"
+    assert st["items"]["loans"]["current"] == 28271151298 + 16938083501
+    assert "current_assets" not in st["missing"] and "inventory" not in st["missing"]
+    r = cr.ratios({"items": {}}, st, {"items": {}}, 6)
+    assert r["loans_to_deposits_pct"] == round((28271151298 + 16938083501) / 27590264476 * 100, 1)
+    assert r["equity_to_assets_pct"] == round(6481715419 / 59110304681 * 100, 1)
+
+
+def test_bank_cash_flow_labels():
+    g = bank_grid([
+        ("جریان ‌خالص ‌ورود‌ (خروج) ‌نقد حاصل از فعالیت‌های ‌عملیاتی", [386206543, 1, 1, None]),
+        ("پرداخت های نقدی برای تحصیل دارایی ثابت مشهود", [-43082895, 1, 1, None]),
+        ("جریان خالص ورود(خروج) نقد ناشی از فعالیت های تامین مالی", [-141868091, 1, 1, None]),
+    ])
+    it = cr.statement(g, "cashflow", "1405/12/29")["items"]
+    assert it["capex"]["current"] == -43082895 and it["financing_cash_flow"]["current"] == -141868091

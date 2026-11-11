@@ -1749,6 +1749,32 @@ class Bourse:
             raise UpstreamError(f"Codal letter {row.get('TracingNo')} has no structured statements")
         return out
 
+    async def _fill_last_year(self, symbol: str, latest: dict, consolidated: bool) -> None:
+        """Interim reports of some templates (banks) leave the last-full-year column empty or 0; take it from that year's annual report."""
+        items = (latest.get("income") or {}).get("items") or {}
+        if not any(c in items and not items[c].get("last_year") for c in ("revenue", "net_profit")):
+            return
+        col = ((latest.get("income") or {}).get("columns") or {}).get("last_year") or ""
+        found = re.search(r"\d{4}/\d{2}/\d{2}", col)
+        try:
+            _, rows = await self._codal_letters(symbol, CODAL_STATEMENTS, length=12)
+            annual = [r for r in self._latest_per_period(rows, consolidated) if r["_months"] == 12]
+            if found:
+                annual = [r for r in annual if r["_end"] == found[0]] or annual
+            for r in annual[:2]:
+                st = await self._statement_set(r, ("income",))
+                if "زیرمجموعه" in (st["report"].get("report") or ""):
+                    continue
+                year = (st.get("income") or {}).get("items") or {}
+                for concept, vals in items.items():
+                    full = (year.get(concept) or {}).get("current")
+                    if full is not None and not vals.get("last_year"):
+                        vals["last_year"] = full
+                latest["income"]["last_year_from"] = {"tracing_no": st["letter"]["tracing_no"], "period_end": st["report"].get("period_end")}
+                return
+        except (UpstreamError, InputError):
+            return
+
     async def financial_statements(self, symbol: str, period: str = "latest", consolidated: bool = False, history: int = 1) -> dict:
         if period not in ("latest", "annual"):
             raise InputError("period must be 'latest' (newest report, interim or annual) or 'annual' (newest full fiscal year)")
@@ -1768,6 +1794,8 @@ class Bourse:
         if latest is None:
             return {"instrument": inst.brief(), "available": False, "note": "Only subsidiaries' statements were found under this symbol on Codal."}
         months = latest["report"].get("period_months")
+        if (months or 12) < 12:
+            await self._fill_last_year(symbol, latest, consolidated)
         latest["ratios"] = cr.ratios(latest["income"], latest["balance"], latest["cashflow"], months)
         out: dict[str, Any] = {"instrument": inst.brief(), "latest": latest}
         if history > 1:
@@ -1855,7 +1883,7 @@ class Bourse:
                                        **{k: (inc.get(k) or {}).get("current") for k in ("revenue", "net_profit", "eps")},
                                        "equity": (bal.get("equity") or {}).get("current"), "unit": "million rial (eps in rial)"}
             out["profitability"] = {k: r[k] for k in ("gross_margin_pct", "operating_margin_pct", "net_margin_pct", "roe_ttm_pct", "roa_ttm_pct", "revenue_growth_pct", "net_profit_growth_pct") if k in r}
-            out["balance_sheet"] = {k: r[k] for k in ("current_ratio", "debt_ratio_pct", "liabilities_to_equity", "financial_debt_to_equity", "free_cash_flow") if k in r}
+            out["balance_sheet"] = {k: r[k] for k in ("current_ratio", "debt_ratio_pct", "liabilities_to_equity", "financial_debt_to_equity", "free_cash_flow", "loans_to_deposits_pct", "equity_to_assets_pct") if k in r}
             val: dict[str, Any] = {}
             ni_ttm, rev_ttm = r.get("net_profit_ttm"), r.get("revenue_ttm")
             equity = (bal.get("equity") or {}).get("current")

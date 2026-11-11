@@ -237,17 +237,22 @@ def unit_multiplier(note: str | None) -> int:
 # concept -> label patterns (keys, see key()); "=" means the label must equal it, otherwise it must start with it
 INCOME = {
     "revenue": ["=درآمدهایعملیاتی", "=درآمدعملیاتی", "=فروشخالص", "=فروشخالصودرآمدارائهخدمات", "=جمعدرآمدهایعملیاتی", "=جمعدرآمدها"],
-    "cost_of_revenue": ["بهایتمامشدهدرآمدهایعملیاتی", "بهایتمامشدهدرآمد", "=بهایتمامشدهکالایفروشرفته", "بهایتمامشده"],
+    "cost_of_revenue": ["بهایتمامشدهدرآمدهایعملیاتی", "بهایتمامشدهدرآمد", "=بهایتمامشدهکالایفروشرفته", "بهایتمامشده", "=هزینهسودسپردهها"],
     "gross_profit": ["=سود(زیان)ناخالص"],
-    "selling_admin_expenses": ["هزینههایفروش،اداریوعمومی", "هزینههایفروشاداریوعمومی"],
+    "selling_admin_expenses": ["هزینههایفروش،اداریوعمومی", "هزینههایفروشاداریوعمومی", "=هزینههایاداریوعمومی"],
     "operating_profit": ["=سود(زیان)عملیاتی"],
     "finance_costs": ["=هزینههایمالی"],
     "pretax_profit": ["سود(زیان)عملیاتدرحالتداومقبلازمالیات", "=سود(زیان)قبلازمالیات"],
     "net_profit": ["=سود(زیان)خالص"],
-    "eps": ["=سود(زیان)پایههرسهم"],
+    "eps": ["=سود(زیان)پایههرسهم", "=سود(زیان)پایههرسهم(ریال)"],
     "eps_operating": ["=عملیاتی(ریال)"],
     "net_profit_per_share": ["=سود(زیان)خالصهرسهم–ریال", "=سود(زیان)خالصهرسهم-ریال"],
     "capital": ["=سرمایه"],
+    "income_tax": ["=هزینهمالیاتبردرآمد", "=مالیاتبردرآمد"],
+    # banks
+    "loan_interest_income": ["=درآمدتسهیلاتاعطایی"],
+    "fee_income": ["=درآمدکارمزد"],
+    "loan_loss_provisions": ["=هزینهمطالباتمشکوکالوصول"],
 }
 BALANCE = {
     "total_assets": ["=جمعداراییها"],
@@ -265,16 +270,27 @@ BALANCE = {
     "equity": ["=جمعحقوقمالکانه", "=جمعحقوقصاحبانسهام"],
     "capital": ["=سرمایه"],
     "retained_earnings": ["=سود(زیان)انباشته"],
+    # banks
+    "customer_deposits": ["=سپردههایمشتریان"],
+    "loans": ["تسهیلاتاعطاییومطالباتازاشخاص"],  # government and private rows, summed
+    "due_to_banks": ["=بدهیبهبانکهاوموسساتاعتباریغیربانکی"],
+    "statutory_deposit": ["=سپردهقانونی"],
 }
 CASH_FLOW = {
     "operating_cash_flow": ["جریانخالصورود(خروج)نقدحاصلازفعالیتهایعملیاتی"],
     "investing_cash_flow": ["جریانخالصورود(خروج)نقدحاصلازفعالیتهایسرمایهگذاری"],
-    "financing_cash_flow": ["جریانخالصورود(خروج)نقدحاصلازفعالیتهایتامینمالی"],
-    "capex": ["پرداختهاینقدیبرایخریدداراییهایثابتمشهود"],
+    "financing_cash_flow": ["جریانخالصورود(خروج)نقدحاصلازفعالیتهایتامینمالی", "جریانخالصورود(خروج)نقدناشیازفعالیتهایتامینمالی"],
+    "capex": ["پرداختهاینقدیبرایخریدداراییهایثابتمشهود", "پرداختهاینقدیبرایتحصیلداراییثابتمشهود",
+              "پرداختهاینقدیبرایتحصیلداراییهایثابتمشهود"],
     "dividends_paid": ["پرداختهاینقدیبابتسودسهام"],
     "cash_at_end": ["ماندهموجودینقددرپایان"],
 }
 KINDS = {"income": INCOME, "balance": BALANCE, "cashflow": CASH_FLOW}
+OPTIONAL = {"income_tax", "loan_interest_income", "fee_income", "loan_loss_provisions", "customer_deposits", "loans", "due_to_banks",
+            "statutory_deposit"}  # not every template has them: never reported as missing
+SUMMED = {"loans"}  # every matching row is added up
+NOT_IN_BANK_BALANCE = {"current_assets", "non_current_assets", "short_term_investments", "trade_receivables", "inventory",
+                       "current_liabilities", "borrowings_current", "borrowings_long_term"}  # a bank's balance sheet has no current/non-current split
 SHEET_NAMES = {  # sheet drop-down names, matched with key()
     "income": ["صورتسودوزیان", "سودوزیان"],
     "balance": ["صورتوضعیتمالی", "ترازنامه"],
@@ -334,17 +350,34 @@ def statement(g: dict, kind: str, fiscal_year_end: str | None = None) -> dict:
         if not lab:
             continue
         for concept, patterns in concepts.items():
-            if concept in items or not _match(lab, patterns):
+            if (concept in items and concept not in SUMMED) or not _match(lab, patterns):
                 continue
             vals = {r: row["values"][i] for r, i in roles.items() if i < len(row["values"]) and isinstance(row["values"][i], (int, float))}
-            if vals:
+            if not vals:
+                continue
+            if concept in items:
+                items[concept] = {r: items[concept].get(r, 0) + v for r, v in vals.items()}
+            else:
                 items[concept] = vals
-    return {
+    notes = []
+    if kind == "income" and "net_profit_per_share" in items and not any((items.get("eps") or {}).values()):
+        items["eps"] = dict(items["net_profit_per_share"])  # banks leave «پایه هر سهم» empty or 0 and report the net figure
+        notes.append("eps is the report's «سود خالص هر سهم» row: its basic-EPS row is empty or 0.")
+    missing = [c for c in concepts if c not in items and c not in OPTIONAL]
+    layout = "bank" if "customer_deposits" in items or "loan_interest_income" in items else None
+    if layout == "bank" and kind == "balance":
+        missing = [c for c in missing if c not in NOT_IN_BANK_BALANCE]
+    out = {
         "items": items,
         "columns": {r: g["columns"][i] for r, i in roles.items()},
         "unit": g.get("unit_note"),
-        "missing": [c for c in concepts if c not in items],
+        "missing": missing,
     }
+    if layout:
+        out["layout"] = layout
+    if notes:
+        out["notes"] = notes
+    return out
 
 
 def _div(a, b):
@@ -362,6 +395,8 @@ def ttm(items: dict, concept: str, period_months: int | None) -> float | None:
     if period_months == 12:
         return v.get("current")
     if None in (v.get("current"), v.get("previous"), v.get("last_year")):
+        return None
+    if v["last_year"] == 0 and v["current"]:  # some templates (banks) leave the full-year column as 0 in interim reports
         return None
     return v["last_year"] + v["current"] - v["previous"]
 
@@ -388,6 +423,8 @@ def ratios(income: dict, balance: dict, cash: dict, period_months: int | None) -
         "liabilities_to_equity": round(_div(cur(bal, "total_liabilities"), eq), 2) if _div(cur(bal, "total_liabilities"), eq) is not None else None,
         "financial_debt_to_equity": round(_div(debt, eq), 2) if debt and eq else None,
         "free_cash_flow": (ocf + capex) if ocf is not None and capex is not None else None,
+        "loans_to_deposits_pct": _pct(cur(bal, "loans"), cur(bal, "customer_deposits")),
+        "equity_to_assets_pct": _pct(eq, ta) if cur(bal, "customer_deposits") else None,
         "revenue_ttm": rev_ttm,
         "net_profit_ttm": ni_ttm,
     }
