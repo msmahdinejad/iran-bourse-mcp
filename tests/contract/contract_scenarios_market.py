@@ -959,7 +959,7 @@ def _option_chain_underlyings(run):
     top = out["underlyings"][0]
     assert_keys(
         top,
-        "underlying underlying_ins_code spot_close expiries nearest_expiry nearest_expiry_jalali days_to_nearest_expiry strikes open_interest put_call_oi_ratio volume value",
+        "underlying underlying_ins_code spot_close expiries expiries_jalali nearest_expiry nearest_expiry_jalali days_to_nearest_expiry strikes open_interest put_call_oi_ratio volume value",
     )
     rows = [r for r in raw if r["uaInsCode"] == top["underlying_ins_code"]]
     assert top["open_interest"] == sum(r["oP_C"] + r["oP_P"] for r in rows)
@@ -977,7 +977,7 @@ def _option_chain(run):
     out, raw = run.out, run.rec.body("GetInstrumentOptionMarketWatch")["instrumentOptMarketWatch"]
     assert_keys(
         out,
-        "mode market underlying underlying_ins_code sorted_by groups other_expiries units notes",
+        "mode market underlying underlying_ins_code sorted_by expiries_listed expiry_note groups other_expiries units notes",
     )
     assert (out["mode"], out["underlying"], out["sorted_by"]) == ("chain", "اهرم", "strike")
     rows = [r for r in raw if r["uaInsCode"] == out["underlying_ins_code"]]

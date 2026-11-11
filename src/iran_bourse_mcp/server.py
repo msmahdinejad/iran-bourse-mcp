@@ -470,7 +470,7 @@ async def trading_status(
 @tool()
 async def option_chain(
     underlying: Annotated[str | None, Field(description="Underlying symbol or fragment, e.g. 'اهرم', 'شستا', 'وبملت', 'شپنا' (or one of its option symbols such as 'ضهرم8029'). Omit to list the underlyings that have options, with expiries, open interest and volume.")] = None,
-    expiry: Annotated[str | None, Field(description="'nearest' (default), 'all', or one expiry date: Gregorian 2026-11-18 or Jalali 1405/08/27.")] = None,
+    expiry: Annotated[str | None, Field(description="'nearest' (default), 'all', one expiry date (Gregorian 2026-11-18 or Jalali 1405/08/27), or a Jalali month for every expiry in it: 9, 'آذر', 'برج ۹' or 1405/09. Underlyings often have 2-3 expiries; the nearest-only result lists the others in expiries_listed and other_expiries.")] = None,
     market: Market = None,
     option_type: Annotated[str | None, Field(description="'call' (خرید), 'put' (فروش) or omit for both")] = None,
     moneyness: Annotated[str | None, Field(description="'itm' (in the money), 'otm' or 'atm' (the strike nearest the underlying's price). Applies to each leg: an ITM call at 50,000 pairs with an OTM put.")] = None,
@@ -480,7 +480,7 @@ async def option_chain(
     sort_by: Annotated[str | None, Field(description="Chain: strike (default), distance (from the underlying's price), volume, open_interest, value. Underlyings list: open_interest (default), volume, value, name, expiry.")] = None,
     limit: Annotated[int | None, Field(ge=1, le=60, description="Chain: maximum strike rows over all expiries (default 15; the strikes nearest the underlying's price, or the top by sort_by, are kept). Underlyings list: maximum underlyings (default 30). (max 60)")] = None,
 ) -> dict:
-    """Option chain (اختیار معامله) of the Tehran derivatives market: for an underlying ('اهرم', 'شستا', 'وبملت' ...) and expiry, every strike with its call (خرید) and put (فروش) leg - last/close price, bid/ask, volume, value, open interest, change % - plus derived (computed, not published) moneyness ITM/OTM, intrinsic and time value, break-even, bid-ask spread, put/call ratios, top open-interest strikes and an estimated max pain. Omit underlying to list the underlyings that have options. Prices are rial per underlying unit, one contract = contract_size units; legs with no trade today show no price; open interest is the clearing house's daily figure."""
+    """Option chain (اختیار معامله) of the Tehran derivatives market: for an underlying ('اهرم', 'شستا', 'وبملت' ...) and expiry, every strike with its call (خرید) and put (فروش) leg - last/close price, bid/ask, volume, value, open interest, change % - plus derived (computed, not published) moneyness ITM/OTM, intrinsic and time value, break-even, bid-ask spread, put/call ratios, top open-interest strikes and an estimated max pain, and on every call the covered-call figures (net cost, return if called or unchanged, annualized, downside protection). For «کاورد کال برج ۹» pass expiry=9. Omit underlying to list the underlyings that have options. Prices are rial per underlying unit, one contract = contract_size units; legs with no trade today show no price; open interest is the clearing house's daily figure."""
     return await svc().option_chain(underlying, expiry, market, option_type, moneyness, min_volume, min_open_interest, strike_window_pct, sort_by, limit)
 
 

@@ -384,7 +384,7 @@ The language is a safe expression grammar (parsed with `ast`, never `eval`), acc
 | Whole-market tables (~3,700 instruments: shares, funds, bonds, options, futures) | `market_watch` `top_movers` (gainers, losers, buy/sell queues live or at the close of a past day, real-money inflow/outflow, buyer power) `market_snapshot` |
 | **Stock screener** (filter language, history, presets) | `screen_stocks` `screener_reference` |
 | Index history, members and their effect | `index_history` (daily since 2008, or today's 5-minute path) `index_constituents` |
-| Options and futures | `option_chain` (calls and puts by strike and expiry, moneyness, intrinsic value, open interest) `futures_market` (basis) |
+| Options and futures | `option_chain` (calls and puts by strike and expiry, moneyness, intrinsic value, open interest, covered-call returns, expiry by Jalali month) `futures_market` (basis) |
 | The exchange's own best-of lists (برترین‌ها) | `top_lists` (69 lists: blocks, rights, ETFs, queues, options ...) |
 | Corporate-action calendar | `capital_calendar` (upcoming capital increases, price adjustments) |
 | Halts and supervision | `trading_status` (suspended, under caution, state changes, one symbol's history) |

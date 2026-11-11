@@ -23,12 +23,13 @@ Anything the exchange does not publish lives under a ``derived`` key (or is name
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from typing import Any
 
 from .dates import DateError, fmt_date, jdate, parse_date
 from .shape import _f, _i, _r, pct_change
-from .text import clean, match_key
+from .text import ascii_digits, clean, match_key
 
 OPTION_MARKETS = {"all": 0, "both": 0, "bourse": 1, "fara": 2, "fara-bourse": 2, "ifb": 2}  # option-chain "flow" of each market word
 MARKET_LABELS = {0: "all", 1: "bourse", 2: "fara"}
@@ -50,6 +51,10 @@ CHAIN_NOTES = [
     "max(strike - spot, 0) for a put, time_value = close - intrinsic (negative when the two prices are from different moments), "
     "breakeven = strike + close (call) or strike - close (put), spread_pct = (ask - bid) / mid, put_call_* = put / call, "
     "max_pain_estimate = the listed strike where the summed intrinsic value of all open calls and puts is lowest.",
+    "covered_call (calls only, derived) = buy the underlying at its close and sell this call at its close: net_cost = spot - premium, "
+    "return_if_called_pct = (strike - net_cost) / net_cost (the most the position makes, if the underlying ends at or above the strike), "
+    "return_if_unchanged_pct = (min(spot, strike) - net_cost) / net_cost, annualized_if_called_pct = return_if_called_pct x 365 / days_to_expiry "
+    "(simple), protection_pct = premium / spot (how far the underlying can fall before the position loses). Before fees and taxes.",
     "null last/close = no trade today (the feed repeats an old price); {symbol, active: false} = no trades, open interest or quotes. "
     "totals and derived ratios cover the whole expiry. open_interest is the clearing house's daily figure, not intraday.",
 ]
@@ -134,8 +139,37 @@ def _check_sort(sort_by: str | None, allowed: tuple[str, ...], default: str) -> 
     return key
 
 
-def _expiry_arg(expiry: str | int | None) -> tuple[str, int | None]:
-    """('default'|'nearest'|'all'|'date', YYYYMMDD)."""
+JALALI_MONTHS = {
+    "فروردین": 1, "اردیبهشت": 2, "خرداد": 3, "تیر": 4, "مرداد": 5, "امرداد": 5, "شهریور": 6,
+    "مهر": 7, "آبان": 8, "ابان": 8, "آذر": 9, "اذر": 9, "دی": 10, "بهمن": 11, "اسفند": 12,
+}
+_MONTH_WORDS = re.compile(r"^(?:برج|ماه|month)\s*")
+
+
+def _expiry_month(text: str) -> tuple[int | None, int] | None:
+    """A Jalali month: '9', 'برج ۹', 'ماه 9', 'آذر', 'آذر 1405', '1405/09' -> (year or None, month). None if it is not one."""
+    t = _MONTH_WORDS.sub("", ascii_digits(text).strip().casefold()).strip()
+    words = t.replace("/", " ").replace("-", " ").split()
+    if not words or len(words) > 2:
+        return None
+    year: int | None = None
+    month: int | None = None
+    for w in words:
+        if w in JALALI_MONTHS and month is None:
+            month = JALALI_MONTHS[w]
+        elif w.isdigit() and 1300 <= int(w) <= 1499 and year is None:
+            year = int(w)
+        elif w.isdigit() and 1 <= int(w) <= 12 and month is None:
+            month = int(w)
+        else:
+            return None
+    if month is None:
+        return None
+    return year, month
+
+
+def _expiry_arg(expiry: str | int | None) -> tuple[str, Any]:
+    """('default'|'nearest'|'all', None), ('date', YYYYMMDD) or ('month', (jalali year or None, month))."""
     if expiry is None or not str(expiry).strip():
         return "default", None
     text = clean(expiry) or ""
@@ -144,12 +178,22 @@ def _expiry_arg(expiry: str | int | None) -> tuple[str, int | None]:
         return "nearest", None
     if key in ("all", "*"):
         return "all", None
+    month = _expiry_month(text)
+    if month is not None:
+        return "month", month
     try:
         return "date", parse_date(text)
     except DateError as exc:
         raise ValueError(
-            f"expiry '{expiry}' is not 'nearest', 'all' or a date. Use 2026-11-18 or 20261118 (Gregorian) or 1405/08/27 (Jalali)."
+            f"expiry '{expiry}' is not 'nearest', 'all', a date or a Jalali month. Use 2026-11-18 or 20261118 (Gregorian), "
+            "1405/08/27 (Jalali), or a month such as 9, آذر or 1405/09 (every expiry in that month)."
         ) from exc
+
+
+def _in_month(deven: int, month: tuple[int | None, int]) -> bool:
+    year, m = month
+    jy, jm = (int(x) for x in (jdate(deven) or "0/0").split("/")[:2])
+    return jm == m and (year is None or jy == year)
 
 
 def _expiry_label(deven: int) -> str:
@@ -231,7 +275,24 @@ def _intrinsic(side: str, strike: float, spot: float | None) -> int | float | No
     return _n(max(spot - strike, 0) if side == "C" else max(strike - spot, 0))
 
 
-def _derived(side: str, strike: float, spot: float | None, leg: dict) -> dict:
+def covered_call(strike: float, spot: float | None, premium: float | None, days: int | None) -> dict | None:
+    """Buy the underlying at ``spot`` and sell the call at ``premium``: returns if called and if unchanged, protection. None without prices."""
+    if not spot or premium is None or premium <= 0:
+        return None
+    net = spot - premium
+    if net <= 0:
+        return None
+    called = (strike - net) / net * 100
+    return {
+        "net_cost": _n(net),
+        "return_if_called_pct": _r(called),
+        "return_if_unchanged_pct": _r((min(spot, strike) - net) / net * 100),
+        "annualized_if_called_pct": _r(called * DAYS_PER_YEAR / days) if days else None,
+        "protection_pct": _r(premium / spot * 100),
+    }
+
+
+def _derived(side: str, strike: float, spot: float | None, leg: dict, days: int | None = None) -> dict:
     """Moneyness, intrinsic value, time value, break-even and spread of one leg. None where an input is missing."""
     intrinsic, close = _intrinsic(side, strike, spot), leg["close"]
     time_value = _n(close - intrinsic) if close is not None and intrinsic is not None else None
@@ -242,7 +303,7 @@ def _derived(side: str, strike: float, spot: float | None, leg: dict) -> dict:
     spread = None
     if bid is not None and ask is not None and ask >= bid:
         spread = _r((ask - bid) / ((ask + bid) / 2) * 100)
-    return {
+    out = {
         "moneyness": _moneyness(side, strike, spot),
         "intrinsic": intrinsic,
         "time_value": time_value,
@@ -250,6 +311,9 @@ def _derived(side: str, strike: float, spot: float | None, leg: dict) -> dict:
         "breakeven_pct": pct_change(breakeven, spot) if breakeven is not None else None,
         "spread_pct": spread,
     }
+    if side == "C":
+        out["covered_call"] = covered_call(strike, spot, close, days)
+    return out
 
 
 def max_pain_estimate(strikes: list[dict], size: int, spot: float | None) -> dict | None:
@@ -344,9 +408,16 @@ def resolve_underlying(parsed: list[dict], query: str) -> tuple[str, str, int | 
     )
 
 
-def _pick_expiries(available: list[int], mode: str, date: int | None, hint: int | None, name: str) -> list[int]:
+def _pick_expiries(available: list[int], mode: str, date: Any, hint: int | None, name: str) -> list[int]:
     if mode == "all":
         return available
+    if mode == "month":
+        picked = [d for d in available if _in_month(d, date)]
+        if not picked:
+            listed = ", ".join(_expiry_label(d) for d in available)
+            year, m = date
+            raise ValueError(f"{name} has no option expiring in Jalali month {m}{f' of {year}' if year else ''}. Listed expiries: {listed}.")
+        return picked
     if mode == "date":
         if date not in available:
             listed = ", ".join(_expiry_label(d) for d in available)
@@ -370,7 +441,7 @@ def _expiry_info(group: list[dict]) -> dict:
 
 def _leg_out(side: str, p: dict, spot: float | None) -> dict:
     leg = p[side]
-    derived = _derived(side, p["strike"], spot, leg)
+    derived = _derived(side, p["strike"], spot, leg, p["days"])
     if not leg["active"]:
         return {"symbol": leg["symbol"], "active": False, "derived": {"moneyness": derived["moneyness"], "intrinsic": derived["intrinsic"]}}
     return {
@@ -500,13 +571,19 @@ def option_chain(
     }.items() if v is not None}
     result: dict[str, Any] = {
         "mode": "chain", "market": label, "underlying": name, "underlying_ins_code": code, "sorted_by": sort,
-        "groups": groups,
+        "expiries_listed": [_expiry_label(end) for end in available],
     }
-    if filters:
-        result["filters"] = filters
     others = [_expiry_info(sorted(by_expiry[end], key=lambda p: p["strike"])) for end in available if end not in chosen]
     if others:
+        shown = ", ".join(_expiry_label(end) for end in chosen)
+        result["expiry_note"] = (
+            f"{name} has {len(available)} expiries; this result shows only {shown}. The others are in other_expiries: "
+            "pass expiry='all', one of their dates, or a Jalali month (e.g. 9 or آذر) to see their strikes."
+        )
         result["other_expiries"] = others
+    if filters:
+        result["filters"] = filters
+    result["groups"] = groups
     if not any(g["strikes"] for g in groups):
         result["note"] = "No strike matches these filters; loosen them or call without filters."
     result["units"] = UNITS
@@ -526,6 +603,8 @@ def _underlyings_out(parsed: list[dict], label: str, mode: str, date: int | None
             expiries = expiries[:1]
         elif mode == "date":
             expiries = [d for d in expiries if d == date]
+        elif mode == "month":
+            expiries = [d for d in expiries if _in_month(d, date)]
         if not expiries:
             continue
         sel = [p for p in rows if p["end"] in expiries]
@@ -533,7 +612,8 @@ def _underlyings_out(parsed: list[dict], label: str, mode: str, date: int | None
         first = min(sel, key=lambda p: p["end"])
         items.append({
             "underlying": rows[0]["ua_name"], "underlying_ins_code": code, "spot_close": first["spot_close"],
-            "expiries": len(expiries), "nearest_expiry": fmt_date(expiries[0]), "nearest_expiry_jalali": jdate(expiries[0]),
+            "expiries": len(expiries), "expiries_jalali": [jdate(d) for d in expiries],
+            "nearest_expiry": fmt_date(expiries[0]), "nearest_expiry_jalali": jdate(expiries[0]),
             "days_to_nearest_expiry": first["days"], "strikes": len(sel),
             "open_interest": call_oi + put_oi, "put_call_oi_ratio": _ratio(put_oi, call_oi),
             "volume": sum(p["C"]["volume"] + p["P"]["volume"] for p in sel), "value": sum(p["C"]["value"] + p["P"]["value"] for p in sel),
@@ -552,7 +632,12 @@ def _underlyings_out(parsed: list[dict], label: str, mode: str, date: int | None
         "units": UNITS,
     }
     if not items:
-        result["note"] = f"No option expires {_expiry_label(date)}. expiries_listed has the expiry dates." if date else "The exchange lists no options right now."
+        if mode == "month":
+            result["note"] = f"No option expires in Jalali month {date[1]}{f' of {date[0]}' if date[0] else ''}. expiries_listed has the expiry dates."
+        elif date:
+            result["note"] = f"No option expires {_expiry_label(date)}. expiries_listed has the expiry dates."
+        else:
+            result["note"] = "The exchange lists no options right now."
     return result
 
 
