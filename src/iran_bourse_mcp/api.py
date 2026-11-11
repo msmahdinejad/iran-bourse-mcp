@@ -6,8 +6,10 @@ unit-explicit output is the job of :mod:`iran_bourse_mcp.shape`.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
+import time
 from typing import Any
 from urllib.parse import quote, urlencode
 
@@ -17,6 +19,7 @@ CDN = os.environ.get("IRAN_BOURSE_CDN_URL", "https://cdn.tsetmc.com/api").rstrip
 WEBGW = os.environ.get("IRAN_BOURSE_WEBGW_URL", "https://webgw.tse.ir").rstrip("/")
 CODAL_SEARCH = os.environ.get("IRAN_BOURSE_CODAL_URL", "https://search.codal.ir/api/search/v2/q")
 CODAL_SITE = "https://codal.ir"
+CODAL_WWW = os.environ.get("IRAN_BOURSE_CODAL_SITE_URL", "https://www.codal.ir").rstrip("/")
 IME = os.environ.get("IRAN_BOURSE_IME_URL", "https://www.ime.co.ir/SubSystems/IME/Services/Home/imedata.asmx").rstrip("/")
 IEE = os.environ.get("IRAN_BOURSE_IEE_URL", "https://webapi.iee.ir/api").rstrip("/")
 
@@ -26,9 +29,17 @@ HOUR = 3600.0
 STATIC = 6 * 3600.0
 
 
+CODAL_PAGE_GAP = float(os.environ.get("IRAN_BOURSE_CODAL_PAGE_GAP", "1.5"))  # seconds between two Codal report pages
+CODAL_CAPTCHA_COOLDOWN = 300.0  # seconds to stop asking for report pages once Codal has shown its captcha
+
+
 class TseApi:
     def __init__(self, http: Http) -> None:
         self.http = http
+        self._codal_lock: asyncio.Lock | None = None
+        self._codal_last = 0.0
+        self._codal_blocked_until = 0.0
+        self._codal_gap = float(os.environ.get("IRAN_BOURSE_CODAL_PAGE_GAP", str(CODAL_PAGE_GAP)))
 
     # -- plumbing ------------------------------------------------------------------------
     async def _cdn(self, path: str, key: str | None, ttl: float) -> Any:
@@ -141,8 +152,8 @@ class TseApi:
     async def statistics(self, ins: str) -> list[dict]:
         return await self._cdn(f"/MarketData/GetInstrumentStatistic/{ins}", "instrumentStatistic", HOUR) or []
 
-    async def thresholds(self, ins: str, deven: int) -> list[dict]:
-        return await self._cdn(f"/MarketData/GetStaticThreshold/{ins}/{deven}", "staticThreshold", HOUR) or []
+    async def thresholds(self, ins: str, deven: int, ttl: float = HOUR) -> list[dict]:
+        return await self._cdn(f"/MarketData/GetStaticThreshold/{ins}/{deven}", "staticThreshold", ttl) or []
 
     async def etf(self, ins: str) -> dict:
         return await self._cdn(f"/Fund/GetETFByInsCode/{ins}", "etf", SHORT) or {}
@@ -345,6 +356,42 @@ class TseApi:
         }
         query.update({k: str(v) for k, v in params.items() if v is not None})
         return await self.http.get_json(f"{CODAL_SEARCH}?{urlencode(query)}", ttl=SHORT) or {}
+
+    async def codal_page(self, url: str, sheet: int | None = None) -> str:
+        """One Codal letter page (Reports/Decision.aspx...). A published letter never changes, so it is cached for hours."""
+        full = url if url.startswith("http") else f"{CODAL_WWW}{url if url.startswith('/') else '/' + url}"
+        if sheet is not None:
+            full += ("&" if "?" in full else "?") + f"sheetId={int(sheet)}"
+        cached = self.http._cache_get(f"t:{full}")
+        if cached is not None:
+            return cached
+        # Codal answers bursts of report pages with a captcha («کد امنیتی») for several minutes: one page at a time, spaced
+        if self._codal_lock is None:
+            self._codal_lock = asyncio.Lock()
+        async with self._codal_lock:
+            wait_blocked = self._codal_blocked_until - time.monotonic()
+            if wait_blocked > 0:
+                raise UpstreamError(
+                    f"Codal is asking for a captcha after many report pages; not asking again for about {int(wait_blocked) + 1} s. "
+                    "Retry in a few minutes (the filings list still works).",
+                    status=429,
+                )
+            gap = self._codal_last + self._codal_gap - time.monotonic()
+            if gap > 0:
+                await asyncio.sleep(gap)
+            try:
+                html = await self.http.get_text(full, ttl=0.0)
+            finally:
+                self._codal_last = time.monotonic()
+            if "datasource" not in html and ("کد امنیتی" in html or "captcha" in html.lower()):
+                self._codal_blocked_until = time.monotonic() + CODAL_CAPTCHA_COOLDOWN
+                raise UpstreamError(
+                    "Codal is asking for a captcha after many report pages in a short time. Retry in a few minutes "
+                    "(the filings list and its PDF/Excel links still work).",
+                    status=429,
+                )
+            self.http._cache_put(f"t:{full}", html, STATIC, len(html))
+            return html
 
     async def codal_attachments(self, main_table_row_id: int | str) -> list[dict]:
         return (

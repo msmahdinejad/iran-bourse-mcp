@@ -4,10 +4,22 @@ from __future__ import annotations
 
 import asyncio
 import datetime as dt
+import re
 import time
 from typing import Any
 
-from . import calendar_events, commodity, derivatives, energy, screener, shape, status, toplists
+from . import (
+    calendar_events,
+    commodity,
+    derivatives,
+    energy,
+    screener,
+    shape,
+    status,
+    technical,
+    toplists,
+)
+from . import codal_reports as cr
 from . import funds as fundmod
 from . import indices as indexmod
 from . import market as marketfeed
@@ -29,6 +41,7 @@ from .dates import (
     next_session,
     parse_date,
     parse_time,
+    previous_trading_day,
     tehran_now,
     to_date,
     upcoming_holidays,
@@ -39,9 +52,16 @@ from .text import ascii_digits, clean, match_key
 MARKET_FLOW = {"bourse": 1, "fara": 2, "fara-bourse": 2, "ifb": 2}
 MAX_ROWS = 5000
 QUEUE_CANDIDATES = 400  # every limit-locked symbol (about 200 on a strong day); one BestLimits call each
+PAST_QUEUE_BOOKS = 250  # past day: order-book histories read (each about 170 KB gzipped), largest traded value first
+PAST_MEMO_ENTRIES = 5000  # per-symbol results of past days kept in memory (they never change)
+TECHNICAL_MAX_DAYS = 250
 CODAL_SCAN_PAGES = 8  # pages of 20 filings read while a title filter is looking for matches
+CODAL_STATEMENTS = 6  # Codal letter type: financial statements (ن-۱۰)
+CODAL_MONTHLY = 58  # Codal letter type: monthly activity report (ن-۳۰)
+MAX_TABLE_ROWS = 160  # rows returned per Codal table
 SECTION_TIMEOUT = 8.0  # seconds an optional symbol_overview section may take before it is reported as unavailable
 SESSION_WINDOW = (83000, 123500)  # HHMMSS: pre-open through just after close
+SESSION_CLOSE = 123000
 
 
 class InputError(ValueError):
@@ -112,6 +132,7 @@ class Bourse:
         self.api = TseApi(self.http)
         self.resolver = Resolver(self.api)
         self.market_source = "tsetmc"
+        self._past_memo: dict[tuple, Any] = {}
 
     async def aclose(self) -> None:
         await self.http.aclose()
@@ -133,10 +154,9 @@ class Bourse:
             rows = await self.api.thresholds(ins, deven)
         except NotAvailable:
             rows = []
-        same_day = [r for r in rows if int(r.get("dEven") or 0) == deven]
-        if same_day:
-            row = sorted(same_day, key=lambda r: r.get("hEven") or 0)[-1]
-            return shape._f(row.get("psGelStaMax")), shape._f(row.get("psGelStaMin"))
+        upper, lower = shape.thresholds_on(rows, deven)
+        if upper is not None or lower is not None:
+            return upper, lower
         if info is None:
             info = await self.api.instrument_info(ins)
         thr = info.get("staticThreshold") or {}
@@ -245,7 +265,7 @@ class Bourse:
 
         if market_name:
             want_fara = _flow(market_name) == 2
-            rows = [r for r in rows if bool(r["fara"] if "fara" in r else "فرابورس" in (r["market"] or "")) == want_fara]
+            rows = [r for r in rows if _is_fara(r) == want_fara]
         rows = [
             r
             for r in rows
@@ -281,7 +301,24 @@ class Bourse:
             rows = [_compact_watch(r) for r in rows]
         else:
             rows = [{k: v for k, v in r.items() if k != "book"} for r in rows]
-        return {"total_instruments": total, "source": self.market_source, "matched": matched, "returned": len(rows), "sorted_by": sort_by, "rows": rows, "units": "rial"}
+        note = None
+        if not rows and only_traded:
+            note = await self._idle_note("market_snapshot(date=<that day>) gives its end-of-day table.")
+        return {
+            "total_instruments": total, "source": self.market_source, "matched": matched, "returned": len(rows),
+            "sorted_by": sort_by, "rows": rows, "units": "rial", "note": note,
+        }
+
+    async def _idle_note(self, hint: str) -> str | None:
+        """The explanation for an empty live list when nothing has traded yet today (see ``status.idle_market_note``)."""
+        now = tehran_now()
+        try:
+            rows, _ = await self._market_rows()
+        except (NotAvailable, UpstreamError):
+            rows = []
+        traded = sum(1 for r in rows if (r["volume"] or 0) > 0)
+        last = from_date(previous_trading_day(now.date()))
+        return status.idle_market_note(day_status(now), traded, fmt_date(last), jdate(last), hint)
 
     async def _instrument_index(self) -> dict[str, str]:
         """instrumentId (as used by the TSE gateway) -> insCode (as used by the cdn API).
@@ -336,13 +373,34 @@ class Bourse:
         out.sort(key=lambda r: r["queue_value"], reverse=True)
         return out
 
-    async def top_movers(self, kind: str = "gainers", market: str | None = None, security_type: str | None = "سهام", limit: int = 20) -> dict:
+    async def top_movers(
+        self,
+        kind: str = "gainers",
+        market: str | None = None,
+        security_type: str | None = "سهام",
+        limit: int = 20,
+        date: str | int | None = None,
+    ) -> dict:
         kinds = {
             "gainers", "losers", "value", "volume", "trades",
             "buy_queue", "sell_queue", "real_inflow", "real_outflow", "real_buyer_power",
         }
         if kind not in kinds:
             raise InputError(f"kind must be one of {sorted(kinds)}")
+        deven = _date_arg(date)
+        past_note = None
+        if deven is not None:
+            if kind not in ("buy_queue", "sell_queue"):
+                raise InputError(
+                    "date works only with kind='buy_queue' or 'sell_queue'. For other rankings of a past day use "
+                    "market_snapshot(date=..., sort_by='change_pct' | 'value' | 'volume' | 'trades')."
+                )
+            today = _today_deven()
+            if deven > today:
+                raise InputError(f"date {fmt_date(deven)} is in the future (today is {fmt_date(today)} in Tehran).")
+            if deven < today:
+                return await self._past_queues(kind, deven, market, security_type, _clamp(limit, 1, 100))
+            past_note = "date is today: these are the live queues (the same as without date)."
         watch = await self.market_watch(
             market=market, security_type=security_type, only_traded=True, sort_by="value", limit=700, detail="full"
         )
@@ -390,7 +448,145 @@ class Bourse:
             _compact_watch(r, extra=("real_net_volume", "real_net_value_estimated", "real_buyer_power", "real_buyers", "real_sellers", "queue_volume", "queue_orders", "queue_value"))
             for r in rows[:limit]
         ]
-        return {"kind": kind, "count": len(out), "rows": out, "note": "real_* values are estimates: net real volume x symbol VWAP." if kind.startswith("real") else None}
+        notes = []
+        if kind.startswith("real"):
+            notes.append("real_* values are estimates: net real volume x symbol VWAP.")
+        if past_note:
+            notes.append(past_note)
+        if not out:
+            hint = (
+                f"pass that date with kind='{kind}' for the queues at that session's close."
+                if kind in ("buy_queue", "sell_queue")
+                else "market_snapshot(date=<that day>) ranks that session's end-of-day table."
+            )
+            idle = await self._idle_note(hint)
+            if idle:
+                notes.insert(0, idle)
+        return {"kind": kind, "count": len(out), "rows": out, "note": " ".join(notes) or None}
+
+    async def _past_queues(self, kind: str, deven: int, market: str | None, security_type: str | None, limit: int) -> dict:
+        """Queues at the close of a past session: whole-market end-of-day table -> official limits -> rebuilt order book."""
+        _check_type(security_type)
+        want_fara = None if market is None else _flow(market) == 2
+        side = "buy" if kind == "buy_queue" else "sell"
+        head = {"kind": kind, "date": fmt_date(deven), "jdate": jdate(deven)}
+        table = await self.api.prices_on_day(deven)
+        if sum(1 for r in table if r.get("zTotTran")) < 20:
+            return {
+                **head, "count": 0, "confirmed": 0, "rows": [], "candidates": None, "method": None, "units": None,
+                "note": f"The exchange has no end-of-day table for {fmt_date(deven)}: it was not a trading day (weekend, public holiday or closure).",
+            }
+        try:
+            live = {r["instrument_id"]: r for r in (await self._market_rows())[0]}
+        except (NotAvailable, UpstreamError):
+            live = {}
+
+        def wanted(raw: dict) -> bool:
+            row = live.get(raw.get("instrumentID"))
+            kind_of = row["security_type"] if row else marketfeed.type_from_instrument_id(raw.get("instrumentID"))
+            if not marketfeed.security_type_matches(kind_of, security_type):
+                return False
+            return want_fara is None or (row is not None and _is_fara(row) == want_fara)
+
+        universe = [r for r in table if r.get("zTotTran") and wanted(r)]
+        extremes = shape.limit_close_candidates(universe, side)
+        checked = extremes[:QUEUE_CANDIDATES]
+
+        async def limits_of(raw: dict) -> tuple[float | None, float | None]:
+            key = ("limits", str(raw["insCode"]), deven)
+            if key not in self._past_memo:
+                rows = await self.api.thresholds(str(raw["insCode"]), deven, ttl=0)  # small, but hundreds: kept in the memo, not the cache
+                self._past_memo[key] = shape.thresholds_on(rows, deven)
+            return self._past_memo[key]
+
+        limits = await asyncio.gather(*(limits_of(r) for r in checked), return_exceptions=True)
+        errors = sum(1 for item in limits if isinstance(item, Exception))
+        at_limit = []
+        for raw, item in zip(checked, limits, strict=True):
+            if isinstance(item, Exception):
+                continue
+            upper, lower = item
+            last = shape._f(raw.get("pDrCotVal"))
+            if last is not None and ((side == "buy" and upper and last >= upper) or (side == "sell" and lower and last <= lower)):
+                at_limit.append((raw, upper, lower))
+        books = at_limit[:PAST_QUEUE_BOOKS]
+
+        async def close_of(raw: dict, upper: float | None, lower: float | None) -> dict:
+            key = ("close", str(raw["insCode"]), deven)
+            if key not in self._past_memo:
+                history = await self.api.best_limits_history(str(raw["insCode"]), deven, ttl=0)  # about 2.5 MB: reduced, not cached
+                snapshots = shape.reconstruct_book(history)
+                self._past_memo[key] = shape.queue_at_close(snapshots, upper, lower, close=SESSION_CLOSE, start=SESSION_WINDOW[0])
+            return self._past_memo[key]
+
+        closes = await asyncio.gather(*(close_of(*item) for item in books), return_exceptions=True)
+        if len(self._past_memo) > PAST_MEMO_ENTRIES:
+            self._past_memo.clear()
+        confirmed = []
+        for (raw, upper, lower), result in zip(books, closes, strict=True):
+            if isinstance(result, Exception):
+                errors += 1
+                continue
+            if result["state"] != kind:
+                continue
+            row = live.get(raw.get("instrumentID")) or {}
+            close, last, yesterday = shape._f(raw.get("pClosing")), shape._f(raw.get("pDrCotVal")), shape._f(raw.get("priceYesterday"))
+            confirmed.append(
+                {
+                    "symbol": clean(raw.get("lVal18AFC")),
+                    "name": clean(raw.get("lVal30")),
+                    "industry": row.get("industry"),
+                    "last": last,
+                    "last_pct": shape.pct_change(last, yesterday),
+                    "close": close,
+                    "close_pct": shape.pct_change(close, yesterday),
+                    "yesterday": yesterday,
+                    "volume": shape._i(raw.get("qTotTran5J")),
+                    "value": shape._i(raw.get("qTotCap")),
+                    "trades": shape._i(raw.get("zTotTran")),
+                    "price_limits": {"upper": upper, "lower": lower},
+                    "queue_volume": result["queue_volume"],
+                    "queue_orders": result["queue_orders"],
+                    "queue_value": result["queue_value"],
+                    "book_time": result["book_time"],
+                    "queue_since": result["queue_since"],
+                    "held_last_30_minutes": result["held_last_30_minutes"],
+                }
+            )
+        confirmed.sort(key=lambda r: r["queue_value"] or 0, reverse=True)
+        notes = []
+        if len(extremes) > len(checked) or len(at_limit) > len(books):
+            notes.append(
+                f"Capped: only the {len(books)} candidates with the largest traded value were checked against the order book; "
+                "smaller queues may be missing. Narrow with market or security_type."
+            )
+        if errors:
+            notes.append(f"{errors} candidate(s) could not be checked (upstream error) and are left out.")
+        extreme = "high, above" if side == "buy" else "low, below"
+        return {
+            **head,
+            "count": min(len(confirmed), limit),
+            "confirmed": len(confirmed),
+            "rows": confirmed[:limit],
+            "candidates": {
+                "traded_instruments": len(universe),
+                "last_trade_at_day_extreme": len(extremes),
+                "limits_checked": len(checked),
+                "closed_at_official_limit": len(at_limit),
+                "order_books_checked": len(books),
+            },
+            "method": (
+                f"Past session: candidates are the instruments whose last trade that day was the day's {extreme} the previous "
+                "close, from the exchange's end-of-day table of the whole market (one request). Their official price limits of that "
+                "day are read (GetStaticThreshold); those whose last trade was at the limit are confirmed against the day's "
+                "order-book history (BestLimits/{insCode}/{date}) rebuilt up to 12:30:00. queue_* is the queue at the close "
+                "(book_time: the last order-book event before it); queue_since is when the final unbroken queue began (looked for "
+                "from 08:30, pre-open included); held_last_30_minutes: it held from 12:00 to the close. An instrument that did not "
+                "trade at all that day is not in the exchange's table and is not found."
+            ),
+            "units": "prices and values in rial, volumes in shares",
+            "note": " ".join(notes) or None,
+        }
 
     # ------------------------------------------------------------------ screener
     async def _trading_day_tables(self, today: int, depth: int) -> list[tuple[int, list[dict]]]:
@@ -537,7 +733,10 @@ class Bourse:
         if need_flows:
             notes.append("real_* values come from the exchange's client-type table; *_value fields are estimated as net volume x vwap.")
         if not ordered:
-            notes.append("No instrument matched. Loosen a threshold, or check field names with screener_reference.")
+            idle = None if include_untraded else await self._idle_note(
+                "past-day fields (close[1], avg(volume, 20) ...) still work, and include_untraded=True keeps every symbol in the universe."
+            )
+            notes.append(idle or "No instrument matched. Loosen a threshold, or check field names with screener_reference.")
         return {
             "filter": " and ".join(f"({text.strip()})" for text in sources),
             "preset": chosen.name if chosen else None,
@@ -942,6 +1141,41 @@ class Bourse:
             "units": "rial",
             "note": "Rows are ascending by date; 'close' is the exchange closing (weighted) price, 'last' the last trade."
             + (" Prices are back-adjusted for capital increases and dividends." if adjusted else ""),
+        }
+
+    async def technical_indicators(self, symbol: str, days: int = 5, adjusted: bool = True) -> dict:
+        inst = await self._inst(symbol)
+        raw = await self.api.daily_prices(inst.ins_code)
+        series, events = shape.shape_daily_prices(raw, adjusted=adjusted)
+        # silent days (no trade) carry yesterday's price and no high/low: they take part in the adjustment chain above,
+        # but not in the indicators
+        traded = [r for r in series if (r["trades"] or 0) > 0 and r["high"] and r["low"] and r["close"]]
+        if len(traded) < technical.MIN_SESSIONS:
+            raise InputError(f"{inst.symbol} has {len(traded)} traded session(s): too few for indicators.")
+        result = technical.compute(traded, _clamp(days, 0, TECHNICAL_MAX_DAYS))
+        latest_day = traded[-1]
+        year_ago = (dt.date.fromisoformat(latest_day["date"]) - dt.timedelta(days=365)).isoformat()
+        notes = [
+            "Computed by this server from the exchange's daily prices; the exchange does not publish these indicators.",
+            "Prices are back-adjusted for capital increases and dividends (adjusted=false uses raw prices); volumes are not adjusted."
+            if adjusted
+            else "Prices are raw (not adjusted): a capital increase or dividend shows as a price gap and distorts the indicators.",
+            "Only sessions in which the symbol traded are used; 'close' is the exchange's closing price (قیمت پایانی).",
+        ]
+        now = tehran_now()
+        if is_session_hours(now) and latest_day["date"] < now.date().isoformat():
+            notes.append("Today's session is still open: it is not in the daily series until the close.")
+        notes.append("Information, not investment advice.")
+        return {
+            "instrument": inst.brief(),
+            "as_of": {"date": latest_day["date"], "jdate": latest_day["jdate"]},
+            "adjusted": adjusted,
+            "sessions_used": len(traded),
+            "price": {k: latest_day[k] for k in ("close", "last", "open", "high", "low", "change_pct", "volume", "value")},
+            **result,
+            "adjustment_events_last_year": [e for e in events if e["date"] > year_ago] if adjusted else None,
+            "units": "prices in rial (adjusted when adjusted=true), volumes in shares, *_pct in percent",
+            "note": " ".join(notes),
         }
 
     async def real_legal_flow(self, symbol: str, days: int = 10) -> dict:
@@ -1406,6 +1640,274 @@ class Bourse:
             "activity": clean(data.get("activitySubject")),
         }
 
+    # ------------------------------------------------------------------ Codal letter contents
+    async def _codal_row(self, tracing_no: int) -> dict:
+        data = await self.api.codal_search(TracingNo=int(tracing_no))
+        for row in data.get("Letters") or []:
+            if row.get("TracingNo") == int(tracing_no):
+                return row
+        raise InputError(f"No Codal letter has tracing number {tracing_no}. Find one with codal_filings.")
+
+    async def codal_letter(self, tracing_no: int, sheet: int | None = None) -> dict:
+        row = await self._codal_row(tracing_no)
+        out: dict[str, Any] = shape.shape_codal_letter(row, CODAL_SITE)
+        url = row.get("Url") or ""
+        if not (row.get("HasHtml") and "Decision.aspx" in url):
+            out["note"] = "This letter has no readable page on Codal; use its PDF or Excel link."
+            return out
+        html = await self.api.codal_page(url, sheet)
+        ds = cr.datasource(html)
+        if ds is None:
+            out["text"], truncated = cr.visible_text(html)
+            if truncated:
+                out["truncated"] = True
+            return out
+        out["report"] = cr.meta(ds)
+        out["sheets"] = cr.sheets(html)
+        out["sheet"] = cr.selected_sheet(html) if sheet is None else sheet
+        out["unit_note"] = cr.label(html, "ctl00_pPriceNote")
+        capital = cr.number(cr.label(html, "ctl00_lblListedCapital"))
+        if capital is not None:
+            out["listed_capital_million_rial"] = capital
+        tables = cr.grids(ds)
+        for t in tables:
+            if len(t["rows"]) > MAX_TABLE_ROWS:
+                t["rows"], t["rows_cut"] = t["rows"][:MAX_TABLE_ROWS], len(t["rows"])
+        out["tables"] = tables
+        if ds.get("type") == CODAL_MONTHLY:
+            summary = cr.monthly(ds)
+            out["monthly_summary"] = {k: v for k, v in summary.items() if k not in ("tables",) and k not in out["report"]}
+        elif ds.get("type") == CODAL_STATEMENTS and tables:
+            name = next((o["name"] for o in out["sheets"] if o["sheet"] == out["sheet"]), "")
+            kind = next((k for k in ("income", "balance", "cashflow") if cr.pick_sheet([{"sheet": 0, "name": name}], k) == 0), None)
+            if kind:
+                out["key_items"] = cr.statement(tables[0], kind, out["report"].get("fiscal_year_end"))
+        if out["sheets"] and len(out["sheets"]) > 1:
+            out["note"] = "This page shows one sheet; call again with sheet=<id from sheets> for another (balance sheet, cash flow, notes...)."
+        return out
+
+    async def _codal_letters(self, symbol: str, letter_type: int, *, length: int | None = None, pages: int = 1) -> tuple[Instrument, list[dict]]:
+        """Letters of one company and type, newest period first; amended or audited re-issues replace earlier ones."""
+        inst = await self._inst(symbol)
+        rows: list[dict] = []
+        for page in range(1, pages + 1):
+            params: dict[str, Any] = {"Symbol": inst.symbol, "LetterType": letter_type, "PageNumber": page}
+            if length:
+                params["Length"] = length
+            data = await self.api.codal_search(**params)
+            letters = data.get("Letters") or []
+            rows += [r for r in letters if clean(r.get("Symbol")) == inst.symbol and r.get("HasHtml") and "Decision.aspx" in (r.get("Url") or "") and not r.get("IsEstimate")]
+            if len(letters) < 20 or len(rows) >= 40:
+                break
+        # the search also lists the reports of subsidiaries filed under the parent's symbol: their titles end with
+        # «(شرکت ...)» (and their report template says «زیرمجموعه», checked after reading). Keep the company's own reports.
+        def own(r: dict) -> bool:
+            return not re.search(r"\(شرکت[^)]*\)\s*$", cr.tidy(r.get("Title") or ""))
+        return inst, [r for r in rows if own(r)]
+
+    @staticmethod
+    def _period_of(title: str) -> tuple[str | None, int | None, bool]:
+        t = cr.tidy(title)
+        end = re.search(r"منتهی به\s*(\d{4}/\d{2}/\d{2})", t)
+        months = re.search(r"(\d+)\s*ماهه", t)
+        n = 12 if "سال مالی" in t and not months else (int(months[1]) if months else None)
+        return (end[1] if end else None), n, "تلفیقی" in t
+
+    def _latest_per_period(self, rows: list[dict], consolidated: bool | None = None) -> list[dict]:
+        best: dict[tuple, dict] = {}
+        for r in rows:
+            end, months, cons = self._period_of(r.get("Title") or "")
+            if end is None or (consolidated is not None and cons != consolidated):
+                continue
+            k = (end, months, cons)
+            audited = "حسابرسی شده" in cr.tidy(r.get("Title") or "")
+            rank = (audited, r.get("PublishDateTime") or "")
+            if k not in best or rank > best[k]["_rank"]:
+                best[k] = {**r, "_rank": rank, "_end": end, "_months": months, "_consolidated": cons}
+        return sorted(best.values(), key=lambda r: (r["_end"], r["_months"] or 0, r["_rank"]), reverse=True)
+
+    async def _statement_set(self, row: dict, kinds: tuple[str, ...]) -> dict:
+        first = await self.api.codal_page(row["Url"])
+        options = cr.sheets(first)
+        if not options:
+            raise UpstreamError(f"Codal letter {row.get('TracingNo')} has no structured statements")
+        shown = cr.selected_sheet(first)
+        out: dict[str, Any] = {"letter": shape.shape_codal_letter(row, CODAL_SITE), "report": None}
+        for kind in kinds:
+            sid = cr.pick_sheet(options, kind)
+            if sid is None:
+                out[kind] = {"available": False}
+                continue
+            html = first if sid == shown else await self.api.codal_page(row["Url"], sid)
+            ds = cr.datasource(html)
+            if ds and out["report"] is None:
+                out["report"] = cr.meta(ds)
+            tables = cr.grids(ds) if ds else []
+            fy_end = (out["report"] or {}).get("fiscal_year_end")
+            out[kind] = cr.statement(tables[0], kind, fy_end) if tables else {"available": False}
+        if out["report"] is None:
+            raise UpstreamError(f"Codal letter {row.get('TracingNo')} has no structured statements")
+        return out
+
+    async def _fill_last_year(self, symbol: str, latest: dict, consolidated: bool) -> None:
+        """Interim reports of some templates (banks) leave the last-full-year column empty or 0; take it from that year's annual report."""
+        items = (latest.get("income") or {}).get("items") or {}
+        if not any(c in items and not items[c].get("last_year") for c in ("revenue", "net_profit")):
+            return
+        col = ((latest.get("income") or {}).get("columns") or {}).get("last_year") or ""
+        found = re.search(r"\d{4}/\d{2}/\d{2}", col)
+        try:
+            _, rows = await self._codal_letters(symbol, CODAL_STATEMENTS, length=12)
+            annual = [r for r in self._latest_per_period(rows, consolidated) if r["_months"] == 12]
+            if found:
+                annual = [r for r in annual if r["_end"] == found[0]] or annual
+            for r in annual[:2]:
+                st = await self._statement_set(r, ("income",))
+                if "زیرمجموعه" in (st["report"].get("report") or ""):
+                    continue
+                year = (st.get("income") or {}).get("items") or {}
+                for concept, vals in items.items():
+                    full = (year.get(concept) or {}).get("current")
+                    if full is not None and not vals.get("last_year"):
+                        vals["last_year"] = full
+                latest["income"]["last_year_from"] = {"tracing_no": st["letter"]["tracing_no"], "period_end": st["report"].get("period_end")}
+                return
+        except (UpstreamError, InputError):
+            return
+
+    async def financial_statements(self, symbol: str, period: str = "latest", consolidated: bool = False, history: int = 1) -> dict:
+        if period not in ("latest", "annual"):
+            raise InputError("period must be 'latest' (newest report, interim or annual) or 'annual' (newest full fiscal year)")
+        inst, rows = await self._codal_letters(symbol, CODAL_STATEMENTS, length=12 if period == "annual" else None)
+        letters = self._latest_per_period(rows, consolidated)
+        if not letters:
+            return {"instrument": inst.brief(), "available": False, "note": "No structured financial statements of this company on Codal (investment funds file NAV reports instead: see etf_nav and fund_ranking; other letters are in codal_filings)."}
+        history = _clamp(history, 1, 6)
+        latest = None
+        while letters:
+            candidate = await self._statement_set(letters[0], ("income", "balance", "cashflow"))
+            if "زیرمجموعه" in (candidate["report"].get("report") or ""):  # a subsidiary's report under the parent's symbol
+                letters = letters[1:]
+                continue
+            latest = candidate
+            break
+        if latest is None:
+            return {"instrument": inst.brief(), "available": False, "note": "Only subsidiaries' statements were found under this symbol on Codal."}
+        months = latest["report"].get("period_months")
+        if (months or 12) < 12:
+            await self._fill_last_year(symbol, latest, consolidated)
+        latest["ratios"] = cr.ratios(latest["income"], latest["balance"], latest["cashflow"], months)
+        out: dict[str, Any] = {"instrument": inst.brief(), "latest": latest}
+        if history > 1:
+            series = []
+            for r in letters[1:history]:
+                try:
+                    st = await self._statement_set(r, ("income",))
+                except (UpstreamError, InputError):
+                    continue
+                items = st["income"].get("items", {}) if isinstance(st.get("income"), dict) else {}
+                series.append({"period_end": st["report"].get("period_end"), "period_months": st["report"].get("period_months"), "tracing_no": st["letter"]["tracing_no"],
+                               **{k: (items.get(k) or {}).get("current") for k in ("revenue", "gross_profit", "operating_profit", "net_profit", "eps")}})
+            out["earlier_periods"] = series
+        out["units"] = "statement amounts in million rial (see unit); per-share figures in rial"
+        out["note"] = (
+            "Read from the company's own Codal statements. 'previous' is the same period last year, 'last_year' the last full fiscal year "
+            "(restated where the company restated it). revenue_ttm/net_profit_ttm are computed here: last full year + this period - the same period last year."
+        )
+        return out
+
+    async def monthly_activity(self, symbol: str, months: int = 3, products: bool = True) -> dict:
+        inst, rows = await self._codal_letters(symbol, CODAL_MONTHLY, pages=2 if months > 8 else 1)
+        letters = self._latest_per_period(rows)
+        if not letters:
+            return {"instrument": inst.brief(), "available": False, "note": "No monthly activity reports (ن-۳۰) of this company on Codal."}
+        months = _clamp(months, 1, 12)
+        reports = []
+        for i, r in enumerate(letters[:months]):
+            html = await self.api.codal_page(r["Url"])
+            ds = cr.datasource(html)
+            if ds is None:
+                continue
+            m = cr.monthly(ds)
+            if "زیرمجموعه" in (m.get("report") or ""):
+                continue
+            m["tracing_no"] = r.get("TracingNo")
+            m["page"] = shape.shape_codal_letter(r, CODAL_SITE)["links"]["page"]
+            if not products or i > 0:
+                m.pop("products", None)
+                m.pop("tables", None)
+            reports.append(m)
+        for a, b in zip(reports, reports[1:], strict=False):
+            if a.get("month_sales") and b.get("month_sales"):
+                a["month_change_pct"] = round((a["month_sales"] - b["month_sales"]) / abs(b["month_sales"]) * 100, 1)
+        return {
+            "instrument": inst.brief(),
+            "reports": reports,
+            "units": "sales amounts in million rial, rates in rial, quantities in the unit shown",
+            "note": "From the company's monthly activity reports on Codal (amended reports replace the originals). Products are listed for the newest month.",
+        }
+
+    async def fundamentals(self, symbol: str) -> dict:
+        inst = await self._inst(symbol)
+        # Codal's search answers HTTP 429 to bursts, so its two lookups run one after the other (the quote is TSETMC, in parallel)
+        async def codal() -> tuple[Any, Any]:
+            try:
+                fs_: Any = await self.financial_statements(symbol)
+            except (UpstreamError, InputError) as e:
+                fs_ = e
+            try:
+                ma_: Any = await self.monthly_activity(symbol, months=3, products=False)
+            except (UpstreamError, InputError) as e:
+                ma_ = e
+            return fs_, ma_
+
+        quote, both = await asyncio.gather(self.quote(symbol), codal(), return_exceptions=True)
+        fs, ma = both if isinstance(both, tuple) else (both, both)
+        out: dict[str, Any] = {"instrument": inst.brief()}
+        price = shares = mcap = None
+        if isinstance(quote, dict):
+            price = (quote.get("close") or {}).get("price") or (quote.get("last") or {}).get("price")
+            f = quote.get("fundamentals") or {}
+            shares = f.get("shares_outstanding")
+            mcap = int(price * shares) if price and shares else f.get("market_cap")  # one price for market cap and every ratio
+            out["market"] = {"price": price, "date": quote.get("jdate"), "shares_outstanding": shares, "market_cap": mcap,
+                             "exchange_eps": f.get("eps"), "exchange_pe": f.get("pe"), "sector_pe": f.get("sector_pe")}
+        if isinstance(fs, dict) and fs.get("latest"):
+            lt = fs["latest"]
+            mult = cr.unit_multiplier((lt.get("income") or {}).get("unit"))
+            r = lt.get("ratios") or {}
+            inc = (lt.get("income") or {}).get("items", {})
+            bal = (lt.get("balance") or {}).get("items", {})
+            out["latest_statement"] = {"period_end": lt["report"].get("period_end"), "period_months": lt["report"].get("period_months"),
+                                       "audited": lt["report"].get("audited"), "tracing_no": lt["letter"]["tracing_no"],
+                                       **{k: (inc.get(k) or {}).get("current") for k in ("revenue", "net_profit", "eps")},
+                                       "equity": (bal.get("equity") or {}).get("current"), "unit": "million rial (eps in rial)"}
+            out["profitability"] = {k: r[k] for k in ("gross_margin_pct", "operating_margin_pct", "net_margin_pct", "roe_ttm_pct", "roa_ttm_pct", "revenue_growth_pct", "net_profit_growth_pct", "loss_ratio_pct") if k in r}
+            out["balance_sheet"] = {k: r[k] for k in ("current_ratio", "debt_ratio_pct", "liabilities_to_equity", "financial_debt_to_equity", "free_cash_flow", "loans_to_deposits_pct", "equity_to_assets_pct") if k in r}
+            val: dict[str, Any] = {}
+            ni_ttm, rev_ttm = r.get("net_profit_ttm"), r.get("revenue_ttm")
+            equity = (bal.get("equity") or {}).get("current")
+            if ni_ttm is not None and shares:
+                val["eps_ttm_estimated"] = round(ni_ttm * mult / shares, 1)
+                if price and val["eps_ttm_estimated"] > 0:
+                    val["pe_ttm_estimated"] = round(price / val["eps_ttm_estimated"], 2)
+            if mcap and rev_ttm:
+                val["ps_ttm_estimated"] = round(mcap / (rev_ttm * mult), 2)
+            if mcap and equity:
+                val["pb_estimated"] = round(mcap / (equity * mult), 2)
+            if val:
+                val["note"] = "Computed here from the price and the company's latest Codal statements (trailing twelve months); not published by the exchange."
+                out["valuation"] = val
+        elif isinstance(fs, dict):
+            out["latest_statement"] = {"available": False, "note": fs.get("note")}
+        if isinstance(ma, dict) and ma.get("reports"):
+            out["monthly_sales"] = [{k: m.get(k) for k in ("month_end", "month_sales", "month_change_pct", "ytd_sales", "ytd_growth_pct") if m.get(k) is not None} for m in ma["reports"]]
+        errors = {n: str(e) for n, e in (("quote", quote), ("financial_statements", fs), ("monthly_activity", ma)) if isinstance(e, Exception)}
+        if errors:
+            out["unavailable"] = errors
+        out["units"] = "price and market cap in rial; statement amounts in million rial; sales in million rial"
+        return out
+
     # ------------------------------------------------------------------ everything about one symbol
     async def symbol_overview(self, symbol: str) -> dict:
         inst = await self._inst(symbol)
@@ -1454,6 +1956,11 @@ class Bourse:
 
 
 # ---------------------------------------------------------------------- module helpers
+def _is_fara(row: dict) -> bool:
+    """Fara Bourse? Rows of the exchange feed say so; gateway rows name their market."""
+    return bool(row["fara"] if "fara" in row else "فرابورس" in (row.get("market") or ""))
+
+
 def _real_net_value(rows: list[dict], flows: dict[str, dict]) -> int:
     """Estimated real-person net inflow of a group of symbols: net real volume x each symbol's vwap, rial."""
     total = 0.0

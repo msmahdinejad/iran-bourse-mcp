@@ -9,6 +9,7 @@ snippets come straight from the code so the site can never drift from the packag
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import time
 from pathlib import Path
@@ -37,7 +38,7 @@ async def tools_data() -> list[dict]:
             out.append({
                 "name": name,
                 "group": group,
-                "description": (t.description or "").strip(),
+                "description": inspect.cleandoc(t.description or ""),
                 "fa": FA[name],
                 "params": [
                     {"name": k, "required": k in schema.get("required", []), "description": v.get("description", ""), "default": v.get("default")}

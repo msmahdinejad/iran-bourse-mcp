@@ -331,6 +331,98 @@ def book_timeline(
     return {"snapshots_in_range": len(selected), "samples": samples, "queue_episodes": episodes, **peak_depth}
 
 
+# --------------------------------------------------------------------------- queues on a past day
+
+
+def limit_close_candidates(rows: list[dict], side: str) -> list[dict]:
+    """Rows of a day's end-of-day table (``GetInstrmentsHistoryInDay``) whose last trade was the day's extreme in the
+    queue's direction: for a buy queue the last trade is the day's high and above yesterday, for a sell queue the low
+    and below yesterday. A symbol that closed in a queue meets this; the official limit is checked afterwards.
+
+    Sorted by traded value, largest first.
+    """
+    out = []
+    for row in rows:
+        last, high, low, yesterday = _f(row.get("pDrCotVal")), _f(row.get("priceMax")), _f(row.get("priceMin")), _f(row.get("priceYesterday"))
+        if not (_f(row.get("zTotTran")) and last and yesterday and yesterday > 1):
+            continue
+        if (side == "buy" and last == high and last > yesterday) or (side == "sell" and last == low and last < yesterday):
+            out.append(row)
+    out.sort(key=lambda r: _f(r.get("qTotCap")) or 0, reverse=True)
+    return out
+
+
+def thresholds_on(rows: list[dict], deven: int) -> tuple[float | None, float | None]:
+    """(upper, lower) daily price limits in force on ``deven`` from ``GetStaticThreshold`` (latest record of that day)."""
+    same_day = [r for r in rows if int(r.get("dEven") or 0) == deven]
+    if not same_day:
+        return None, None
+    row = max(same_day, key=lambda r: r.get("hEven") or 0)
+    return _f(row.get("psGelStaMax")), _f(row.get("psGelStaMin"))
+
+
+def queue_holds(rows: list[dict], state: str, upper: float | None, lower: float | None) -> bool:
+    """``queue_state(...)["state"] == state`` for one snapshot's rows (sorted by level), without building the levels.
+
+    Walking back through a day's 10,000+ snapshots is the hot loop of the past-day queue search.
+    """
+    buy = state == "buy_queue"
+    limit = upper if buy else lower
+    if not limit:
+        return False
+    vol_key, price_key, other_vol, other_price = ("qTitMeDem", "pMeDem", "qTitMeOf", "pMeOf") if buy else ("qTitMeOf", "pMeOf", "qTitMeDem", "pMeDem")
+    first: Any = _MISSING
+    for row in sorted(rows, key=lambda r: r.get("number") or 0):
+        if (_i(row.get(other_vol)) or 0) > 0:
+            price = _f(row.get(other_price))
+            beyond = price is not None and (price > limit if buy else price < limit)
+            if not beyond:  # a tradable order on the other side breaks the queue
+                return False
+        if first is _MISSING and (_i(row.get(vol_key)) or 0) > 0:
+            first = _f(row.get(price_key))
+    if first is _MISSING or first is None:
+        return False
+    return first >= limit if buy else first <= limit
+
+
+_MISSING = object()
+
+
+def queue_at_close(
+    snapshots: list[dict],
+    upper: float | None,
+    lower: float | None,
+    *,
+    close: int = 123000,
+    start: int = 83000,
+    held_from: int = 120000,
+) -> dict:
+    """The queue in the rebuilt book at the end of the session, and since when it held without a break.
+
+    The book at the close is the last snapshot at or before ``close`` (later events are next-session orders).
+    ``queue_since`` walks back from there to the first snapshot of the final unbroken queue, looking no earlier than
+    ``start`` (pre-open); ``held_last_30_minutes`` is true when that is at or before ``held_from``.
+    """
+    selected = [s for s in snapshots if s["time"] <= close]
+    if not selected:
+        return {"state": None, "queue_volume": 0, "queue_orders": 0, "queue_value": 0, "book_time": None, "queue_since": None, "held_last_30_minutes": False}
+    final = selected[-1]
+    queue = queue_state(*_levels(final["rows"]), upper, lower)
+    since = None
+    if queue["state"]:
+        since = final["time"]
+        for snap in reversed(selected):
+            if snap["time"] < start or not queue_holds(snap["rows"], queue["state"], upper, lower):
+                break
+            since = snap["time"]
+    return {
+        **queue,
+        "book_time": fmt_time(final["time"]),
+        "queue_since": fmt_time(since) if since is not None else None,
+        "held_last_30_minutes": since is not None and since <= held_from,
+    }
+
+
 # --------------------------------------------------------------------------- ticks
 
 

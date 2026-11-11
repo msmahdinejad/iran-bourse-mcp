@@ -1,11 +1,11 @@
 {
- "tests": 778,
- "version": "0.4.0",
+ "tests": 856,
+ "version": "0.5.0",
  "tools": [
   {
    "name": "market_status",
    "group": "Market",
-   "description": "Is the Tehran market open right now, and when does it open next? Tehran time, today's status (open, before_open, after_close, weekend or holiday),\n    the public holiday if any, next_session (skipping weekends and holidays), the next upcoming_holidays, the bourse state and totals (وضعیت بازار).\n    Holidays come from the official calendar of 1405; days the exchange closes without notice are flagged in calendar_check when its own data disagrees.",
+   "description": "Is the Tehran market open right now, and when does it open next? Tehran time, today's status (open, before_open, after_close, weekend or holiday),\nthe public holiday if any, next_session (skipping weekends and holidays), the next upcoming_holidays, the bourse state and totals (وضعیت بازار).\nHolidays come from the official calendar of 1405; days the exchange closes without notice are flagged in calendar_check when its own data disagrees.",
    "fa": "وضعیت بازار",
    "params": []
   },
@@ -114,7 +114,7 @@
   {
    "name": "top_movers",
    "group": "Market",
-   "description": "Ranked lists: top gainers/losers, most traded, buy/sell queues (صف خرید/فروش, confirmed against each symbol's real order book; about 10 s on a strong day), real-person money inflow/outflow (ورود/خروج پول حقیقی), buyer power.",
+   "description": "Ranked lists of the live session: top gainers/losers, most traded, buy/sell queues (صف خرید/فروش, confirmed against each symbol's real order\nbook; about 10 s on a strong day), real-person money inflow/outflow (ورود/خروج پول حقیقی), buyer power.\nWith date (queues only): the queues at the close of a past session, found from that day's end-of-day table and confirmed against each candidate's\norder-book history, with queue size at the close and since when it held (can take 20-40 s on a strong day; repeated calls are fast).\nBefore 09:00 Tehran time the live lists are empty because the exchange resets the day's data: read `note`, and pass date=<last trading day> for queues.",
    "fa": "بیشترین رشد/ریزش، صف خرید و فروش، ورود پول حقیقی",
    "params": [
     {
@@ -140,6 +140,12 @@
      "required": false,
      "description": "Maximum rows to return (1-100); the server rejects larger values",
      "default": 20
+    },
+    {
+     "name": "date",
+     "required": false,
+     "description": "Only with kind=buy_queue or sell_queue: a past trading day (Gregorian 2026-11-04 or Jalali 1405/08/13) to get the queues at that session's close instead of live ones. Rejected for other kinds (use market_snapshot for past rankings).",
+     "default": null
     }
    ]
   },
@@ -466,7 +472,7 @@
   {
    "name": "option_chain",
    "group": "Derivatives",
-   "description": "Option chain (اختیار معامله) of the Tehran derivatives market: for an underlying ('اهرم', 'شستا', 'وبملت' ...) and expiry, every strike with its call (خرید) and put (فروش) leg - last/close price, bid/ask, volume, value, open interest, change % - plus derived (computed, not published) moneyness ITM/OTM, intrinsic and time value, break-even, bid-ask spread, put/call ratios, top open-interest strikes and an estimated max pain. Omit underlying to list the underlyings that have options. Prices are rial per underlying unit, one contract = contract_size units; legs with no trade today show no price; open interest is the clearing house's daily figure.",
+   "description": "Option chain (اختیار معامله) of the Tehran derivatives market: for an underlying ('اهرم', 'شستا', 'وبملت' ...) and expiry, every strike with its call (خرید) and put (فروش) leg - last/close price, bid/ask, volume, value, open interest, change % - plus derived (computed, not published) moneyness ITM/OTM, intrinsic and time value, break-even, bid-ask spread, put/call ratios, top open-interest strikes and an estimated max pain, and on every call the covered-call figures (net cost, return if called or unchanged, annualized, downside protection). For «کاورد کال برج ۹» pass expiry=9. Omit underlying to list the underlyings that have options. Prices are rial per underlying unit, one contract = contract_size units; legs with no trade today show no price; open interest is the clearing house's daily figure.",
    "fa": "زنجیرهٔ اختیار معامله: خرید و فروش هر قیمت اعمال",
    "params": [
     {
@@ -478,7 +484,7 @@
     {
      "name": "expiry",
      "required": false,
-     "description": "'nearest' (default), 'all', or one expiry date: Gregorian 2026-11-18 or Jalali 1405/08/27.",
+     "description": "'nearest' (default), 'all', one expiry date (Gregorian 2026-11-18 or Jalali 1405/08/27), or a Jalali month for every expiry in it: 9, 'آذر', 'برج ۹' or 1405/09. Underlyings often have 2-3 expiries; the nearest-only result lists the others in expiries_listed and other_expiries.",
      "default": null
     },
     {
@@ -1010,6 +1016,32 @@
    ]
   },
   {
+   "name": "technical_indicators",
+   "group": "Symbol",
+   "description": "Technical analysis indicators of one symbol (اندیکاتورهای تکنیکال) from its daily prices: SMA 20/50/200, EMA 12/26, RSI 14 (Wilder),\nMACD 12/26/9 with signal and histogram, Bollinger 20/2 with %B and bandwidth, ATR 14, stochastic 14/3, OBV trend, volume vs its 20-session\naverage, distance from the 52-week high and low, support and resistance from recent swing lows and highs, recent crosses (MACD/signal,\nSMA50/SMA200) and a plain-language summary (\"RSI 72: overbought\", \"price above SMA50 and SMA200\"). Computed by this server from the\nexchange's adjusted daily closing prices, not published by the exchange.",
+   "fa": "اندیکاتورهای تکنیکال: میانگین متحرک، RSI، MACD، بولینگر، حمایت و مقاومت",
+   "params": [
+    {
+     "name": "symbol",
+     "required": true,
+     "description": "Persian symbol such as 'فولاد', or an insCode",
+     "default": null
+    },
+    {
+     "name": "days",
+     "required": false,
+     "description": "Newest sessions of every indicator series to return (0-250); latest values are always returned",
+     "default": 5
+    },
+    {
+     "name": "adjusted",
+     "required": false,
+     "description": "Use prices back-adjusted for capital increases and dividends (تعدیل شده); recommended",
+     "default": true
+    }
+   ]
+  },
+  {
    "name": "real_legal_flow",
    "group": "Symbol",
    "description": "Real vs legal buying/selling (حقیقی و حقوقی): counts, per-capita, buyer power, net money flow, with daily history.",
@@ -1132,6 +1164,78 @@
    ]
   },
   {
+   "name": "fundamentals",
+   "group": "Fundamentals",
+   "description": "One-call fundamental picture of a company (تحلیل بنیادی): price and market cap, the exchange's EPS and P/E, the latest Codal statements (revenue, net profit, EPS, equity), margins, growth, ROE/ROA, liquidity and leverage, valuation computed on trailing twelve months (EPS, P/E, P/S, P/B, marked estimated), and the last three months of sales from the monthly reports.",
+   "fa": "تحلیل بنیادی یک‌جا: سود، حاشیه سود، ROE، P/E و P/B و فروش ماهانه",
+   "params": [
+    {
+     "name": "symbol",
+     "required": true,
+     "description": "Persian symbol such as 'فولاد', or an insCode",
+     "default": null
+    }
+   ]
+  },
+  {
+   "name": "financial_statements",
+   "group": "Fundamentals",
+   "description": "A company's financial statements from Codal (صورت‌های مالی): income statement, balance sheet and cash flow, each as key items for this period, the same period last year and the last full year (revenue, cost of revenue, gross/operating/net profit, EPS, total assets, equity, debt, cash, operating cash flow, capex, dividends paid...), plus margins, growth, ROE/ROA on trailing twelve months, current ratio and leverage. Banks (loans, customer deposits, loan interest, fee income, loans-to-deposits) and insurers (premiums, claims, technical reserves, loss ratio) are read in their own templates. Amendments and audited re-issues replace earlier versions. Amounts in million rial, EPS in rial. For the full tables of a letter use codal_letter.",
+   "fa": "صورت‌های مالی: سود و زیان، ترازنامه، جریان نقد و نسبت‌ها",
+   "params": [
+    {
+     "name": "symbol",
+     "required": true,
+     "description": "Persian symbol such as 'فولاد', or an insCode",
+     "default": null
+    },
+    {
+     "name": "period",
+     "required": false,
+     "description": "'latest' = the newest statements, interim (3/6/9 months) or annual; 'annual' = the newest full fiscal year",
+     "default": "latest"
+    },
+    {
+     "name": "consolidated",
+     "required": false,
+     "description": "True for the group (تلفیقی) statements; default the company's own",
+     "default": false
+    },
+    {
+     "name": "history",
+     "required": false,
+     "description": "Also return revenue, profits and EPS of this many earlier periods (1 = only the latest)",
+     "default": 1
+    }
+   ]
+  },
+  {
+   "name": "monthly_activity",
+   "group": "Fundamentals",
+   "description": "A company's monthly activity reports from Codal (گزارش فعالیت ماهانه، ن-۳۰): sales of each month and year to date, growth on the same span last year, month-on-month change, and for the newest month each product's production, sales quantity, rate and amount (domestic, export and services). Banks give operating income, loans and deposits at the month end and net interest; insurers premiums and claims; investment companies operating income and their portfolio. Amended reports replace the originals. Amounts in million rial.",
+   "fa": "گزارش فعالیت ماهانه: فروش ماه و از ابتدای سال به تفکیک محصول",
+   "params": [
+    {
+     "name": "symbol",
+     "required": true,
+     "description": "Persian symbol such as 'فولاد', or an insCode",
+     "default": null
+    },
+    {
+     "name": "months",
+     "required": false,
+     "description": "How many recent monthly reports to read (1-12)",
+     "default": 3
+    },
+    {
+     "name": "products",
+     "required": false,
+     "description": "Include the product-by-product lines of the newest month",
+     "default": true
+    }
+   ]
+  },
+  {
    "name": "codal_filings",
    "group": "Codal",
    "description": "Search Codal disclosures (کدال): title, publish time, tracing number and links to the page, PDF, Excel and attachments.",
@@ -1184,6 +1288,26 @@
      "required": false,
      "description": "",
      "default": 1
+    }
+   ]
+  },
+  {
+   "name": "codal_letter",
+   "group": "Codal",
+   "description": "Read the CONTENT of any Codal letter (متن و جدول‌های اطلاعیه کدال): financial statements, monthly activity reports, meeting decisions (DPS, capital increases), explanations and notices. Structured reports come back as tables (columns from the report's own headers, numbers parsed, usually million rial: see unit_note), one sheet per call, with the other sheets listed in 'sheets'; a statement sheet also gets 'key_items' (revenue, profits, EPS, assets, equity, cash flows...) and a monthly report a 'monthly_summary' (month and year-to-date sales, by product). Plain letters come back as text. For the usual questions prefer financial_statements, monthly_activity or fundamentals, which find and read the right letters for you.",
+   "fa": "خواندن متن و جدول‌های هر اطلاعیه کدال",
+   "params": [
+    {
+     "name": "tracing_no",
+     "required": true,
+     "description": "Tracing number (شماره پیگیری) of the letter, from codal_filings or recent_filings",
+     "default": null
+    },
+    {
+     "name": "sheet",
+     "required": false,
+     "description": "Sheet id from the 'sheets' list of a previous call (e.g. the balance sheet or cash flow of a statement); omit for the first sheet",
+     "default": null
     }
    ]
   },
@@ -1483,434 +1607,434 @@
   }
  ],
  "snapshot": {
-  "captured_at_utc": "2026-11-04 17:09 UTC",
-  "tehran_time": "2026-11-04 20:39:01",
+  "captured_at_utc": "2026-11-11 10:03 UTC",
+  "tehran_time": "2026-11-11 13:33:38",
   "market_state": "بسته",
   "index": {
-   "value": 7912741.15,
-   "change": 88137.76,
-   "change_pct": 1.13
+   "value": 8427304.89,
+   "change": 69464.53,
+   "change_pct": 0.83
   },
-  "trades_today": 918002,
-  "value_today": 531221857310766,
+  "trades_today": 1094484,
+  "value_today": 523552289436344,
   "tape": [
    {
     "symbol": "فملی",
-    "last": 29170.0,
-    "pct": 2.97
-   },
-   {
-    "symbol": "شبندر",
-    "last": 12380.0,
-    "pct": -2.83
-   },
-   {
-    "symbol": "فولاد",
-    "last": 4330.0,
-    "pct": 2.85
-   },
-   {
-    "symbol": "شتران",
-    "last": 6150.0,
-    "pct": 2.84
-   },
-   {
-    "symbol": "شپنا",
-    "last": 11780.0,
-    "pct": -1.17
-   },
-   {
-    "symbol": "فکور",
-    "last": 8590.0,
-    "pct": 2.02
+    "last": 28280.0,
+    "pct": -2.98
    },
    {
     "symbol": "وبملت",
-    "last": 1434.0,
-    "pct": 2.94
+    "last": 1499.0,
+    "pct": -1.32
    },
    {
-    "symbol": "جم2",
-    "last": 74120.0,
-    "pct": 2.99
-   },
-   {
-    "symbol": "فخوز2",
-    "last": 3600.0,
-    "pct": 1.41
-   },
-   {
-    "symbol": "فزر",
-    "last": 322500.0,
-    "pct": 2.97
-   },
-   {
-    "symbol": "فپردیس",
-    "last": 101100.0,
-    "pct": -0.79
-   },
-   {
-    "symbol": "انتخاب",
-    "last": 2676.0,
-    "pct": 2.96
-   },
-   {
-    "symbol": "فنقره",
-    "last": 30200.0,
-    "pct": 2.97
-   },
-   {
-    "symbol": "وکغدیر",
-    "last": 9220.0,
-    "pct": 2.9
-   },
-   {
-    "symbol": "تاصیکو",
-    "last": 38710.0,
+    "symbol": "کگل",
+    "last": 4150.0,
     "pct": 2.98
    },
    {
-    "symbol": "وبصادر",
-    "last": 1015.0,
+    "symbol": "شپنا",
+    "last": 12590.0,
     "pct": 2.94
+   },
+   {
+    "symbol": "شتران",
+    "last": 6450.0,
+    "pct": 2.87
+   },
+   {
+    "symbol": "فخوز",
+    "last": 3920.0,
+    "pct": 2.08
+   },
+   {
+    "symbol": "فزر",
+    "last": 299600.0,
+    "pct": -2.98
+   },
+   {
+    "symbol": "وتجارت",
+    "last": 966.0,
+    "pct": 2.99
+   },
+   {
+    "symbol": "شستا",
+    "last": 3690.0,
+    "pct": 2.79
+   },
+   {
+    "symbol": "فکور",
+    "last": 8460.0,
+    "pct": 2.92
+   },
+   {
+    "symbol": "فارس",
+    "last": 16270.0,
+    "pct": 2.97
+   },
+   {
+    "symbol": "فولاد",
+    "last": 4950.0,
+    "pct": 2.91
+   },
+   {
+    "symbol": "شبندر",
+    "last": 12590.0,
+    "pct": 0.48
+   },
+   {
+    "symbol": "ومعادن",
+    "last": 4420.0,
+    "pct": 2.79
+   },
+   {
+    "symbol": "شبریز",
+    "last": 57620.0,
+    "pct": 2.98
+   },
+   {
+    "symbol": "شپدیس",
+    "last": 13890.0,
+    "pct": 2.97
    }
   ],
   "screener": {
    "filter": "(volume > 2 * avg(volume, 20) and close_pct[1] > 1 and close_pct > 0 and value > 5B)",
-   "matched": 35,
-   "universe": 625,
-   "jdate": "1405/08/13",
+   "matched": 49,
+   "universe": 636,
+   "jdate": "1405/08/20",
    "history_days": 20,
-   "seconds": 3.58,
+   "seconds": 5.22,
    "rows": [
     {
-     "symbol": "فخوز2",
-     "yesterday_pct": 2.8902,
-     "today_pct": 1.69,
-     "volume_x": 6.3545,
-     "value_billion_rial": 4752.6651
-    },
-    {
-     "symbol": "انتخاب",
-     "yesterday_pct": 2.9715,
-     "today_pct": 2.85,
-     "volume_x": 9.3554,
-     "value_billion_rial": 3490.3564
-    },
-    {
-     "symbol": "پکرمان",
-     "yesterday_pct": 2.9211,
-     "today_pct": 2.93,
-     "volume_x": 5.0397,
-     "value_billion_rial": 2117.115
-    },
-    {
-     "symbol": "کرماشا",
-     "yesterday_pct": 2.9895,
+     "symbol": "کگل",
+     "yesterday_pct": 2.8061,
      "today_pct": 2.98,
-     "volume_x": 4.1932,
-     "value_billion_rial": 1757.6987
+     "volume_x": 3.6475,
+     "value_billion_rial": 11289.8719
     },
     {
-     "symbol": "خراسان",
-     "yesterday_pct": 2.9864,
+     "symbol": "فخوز",
+     "yesterday_pct": 2.9491,
+     "today_pct": 2.6,
+     "volume_x": 3.5095,
+     "value_billion_rial": 7932.1601
+    },
+    {
+     "symbol": "وتجارت",
+     "yesterday_pct": 2.9638,
+     "today_pct": 2.99,
+     "volume_x": 2.2899,
+     "value_billion_rial": 7333.1706
+    },
+    {
+     "symbol": "پارسان",
+     "yesterday_pct": 2.9811,
+     "today_pct": 3,
+     "volume_x": 2.0189,
+     "value_billion_rial": 3488.2014
+    },
+    {
+     "symbol": "پترول",
+     "yesterday_pct": 2.9942,
+     "today_pct": 2.52,
+     "volume_x": 4.6457,
+     "value_billion_rial": 3256.6976
+    },
+    {
+     "symbol": "غزر",
+     "yesterday_pct": 2.9141,
      "today_pct": 2.98,
-     "volume_x": 4.6904,
-     "value_billion_rial": 1550.8967
-    },
-    {
-     "symbol": "احیا",
-     "yesterday_pct": 2.9982,
-     "today_pct": 2.74,
-     "volume_x": 2.0201,
-     "value_billion_rial": 1401.5816
+     "volume_x": 2.525,
+     "value_billion_rial": 2672.3819
     }
    ]
   },
   "gainers": [
    {
-    "symbol": "وبوعلی4",
-    "name": "سرمایه‌گذاری‌بوعلی‌",
-    "last": 6000.0,
-    "last_pct": 62.6,
-    "close": 6000.0,
-    "close_pct": 62.6,
-    "volume": 360000000,
-    "value": 2160000000000,
-    "trades": 1,
-    "pe": 5.6,
-    "market_cap": 72000000000000,
-    "at_upper_limit": false,
-    "at_lower_limit": true,
-    "industry": "سرمایه گذاریها"
-   },
-   {
-    "symbol": "فسبزوار",
-    "name": "پارس فولاد سبزوار",
-    "last": 101660.0,
-    "last_pct": 3.0,
-    "close": 101660.0,
-    "close_pct": 3.0,
-    "volume": 3304835,
-    "value": 335969526100,
-    "trades": 517,
-    "pe": 5.8,
-    "market_cap": 406640000000000,
+    "symbol": "حفاری",
+    "name": "حفاری شمال",
+    "last": 7180.0,
+    "last_pct": 12.36,
+    "close": 7100.0,
+    "close_pct": 11.11,
+    "volume": 373117432,
+    "value": 2648485188350,
+    "trades": 6484,
+    "pe": 2.2,
+    "market_cap": 127800000000000,
     "at_upper_limit": true,
     "at_lower_limit": false,
-    "industry": "فلزات اساسی"
+    "industry": "استخراج نفت گاز و خدمات جنبی جز اکتشاف"
    },
    {
-    "symbol": "سکرما2",
-    "name": "سیمان‌ کرمان‌",
-    "last": 111340.0,
+    "symbol": "پارسان",
+    "name": "گسترش نفت و گاز پارسیان",
+    "last": 39850.0,
     "last_pct": 3.0,
-    "close": 111340.0,
+    "close": 39850.0,
     "close_pct": 3.0,
-    "volume": 2750000,
-    "value": 306185000000,
-    "trades": 1,
-    "pe": 9.4,
-    "market_cap": 167010000000000,
+    "volume": 87533285,
+    "value": 3488201407250,
+    "trades": 6099,
+    "pe": 11.4,
+    "market_cap": 4841775000000000,
     "at_upper_limit": true,
     "at_lower_limit": false,
-    "industry": "سیمان، آهک و گچ"
+    "industry": "محصولات شیمیایی"
    },
    {
-    "symbol": "شبهرن",
-    "name": "نفت‌ بهران‌",
-    "last": 16490.0,
+    "symbol": "وغدیر",
+    "name": "سرمایه‌گذاری‌غدیر(هلدینگ‌",
+    "last": 24050.0,
     "last_pct": 3.0,
-    "close": 16490.0,
+    "close": 24050.0,
     "close_pct": 3.0,
-    "volume": 12634806,
-    "value": 208347950940,
-    "trades": 526,
-    "pe": 6.6,
-    "market_cap": 1046290500000000,
+    "volume": 122162144,
+    "value": 2937999563200,
+    "trades": 2879,
+    "pe": 12.5,
+    "market_cap": 5194800000000000,
     "at_upper_limit": true,
     "at_lower_limit": false,
-    "industry": "فراورده های نفتی، کک و سوخت هسته ای"
+    "industry": "شرکتهای چند رشته ای صنعتی"
    },
    {
-    "symbol": "سیسکو",
-    "name": "فولاد سیرجان ایرانیان",
-    "last": 6190.0,
+    "symbol": "کچاد",
+    "name": "معدنی‌وصنعتی‌چادرملو",
+    "last": 3231.0,
     "last_pct": 3.0,
-    "close": 6190.0,
+    "close": 3231.0,
     "close_pct": 3.0,
-    "volume": 31157222,
-    "value": 192863204180,
-    "trades": 654,
-    "pe": 6.5,
-    "market_cap": 773750000000000,
+    "volume": 802410534,
+    "value": 2592588435354,
+    "trades": 2467,
+    "pe": 8.4,
+    "market_cap": 1846516500000000,
     "at_upper_limit": true,
     "at_lower_limit": false,
-    "industry": "فلزات اساسی"
+    "industry": "استخراج کانه های فلزی"
+   },
+   {
+    "symbol": "ثالوند",
+    "name": "سرمایه گذاری مسکن الوند",
+    "last": 20610.0,
+    "last_pct": 3.0,
+    "close": 20610.0,
+    "close_pct": 3.0,
+    "volume": 42732075,
+    "value": 880585855340,
+    "trades": 1979,
+    "pe": 89.6,
+    "market_cap": 65952000000000,
+    "at_upper_limit": true,
+    "at_lower_limit": false,
+    "industry": "انبوه سازی، املاک و مستغلات"
    }
   ],
   "buy_queues": [
    {
     "symbol": "شتبریز",
     "name": "پتروشیمی تبریز",
-    "last": 75330.0,
-    "last_pct": 2.99,
-    "close": 75330.0,
-    "close_pct": 2.99,
-    "volume": 2990856,
-    "value": 225301182480,
-    "trades": 11919,
-    "pe": 5.0,
-    "market_cap": 375294060000000,
+    "last": 87290.0,
+    "last_pct": 3.0,
+    "close": 87290.0,
+    "close_pct": 3.0,
+    "volume": 4276285,
+    "value": 373276917650,
+    "trades": 24930,
+    "pe": 5.8,
+    "market_cap": 434878780000000,
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "محصولات شیمیایی",
-    "queue_volume": 175049399,
+    "queue_volume": 129083271,
     "queue_orders": 9999,
-    "queue_value": 13186471226670
+    "queue_value": 11267678725590
    },
    {
-    "symbol": "تابان",
-    "name": "گروه پتروشیمی تابان فردا",
-    "last": 23280.0,
-    "last_pct": 2.96,
-    "close": 23280.0,
-    "close_pct": 2.96,
-    "volume": 115940027,
-    "value": 2699083828560,
-    "trades": 4560,
-    "pe": 25.6,
-    "market_cap": 6984000000000000,
+    "symbol": "وتجارت",
+    "name": "بانک تجارت",
+    "last": 966.0,
+    "last_pct": 2.99,
+    "close": 966.0,
+    "close_pct": 2.99,
+    "volume": 7591273936,
+    "value": 7333170622176,
+    "trades": 6965,
+    "pe": 8.2,
+    "market_cap": 1536522623590626,
     "at_upper_limit": true,
     "at_lower_limit": false,
-    "industry": "محصولات شیمیایی",
-    "queue_volume": 263567252,
-    "queue_orders": 4117,
-    "queue_value": 6135845626560
+    "industry": "بانکها و موسسات اعتباری",
+    "queue_volume": 5036080671,
+    "queue_orders": 2507,
+    "queue_value": 4864853928186
    },
    {
-    "symbol": "فساپ",
-    "name": "سازه پوشش ماموت",
-    "last": 6620.0,
+    "symbol": "فولاد",
+    "name": "فولاد مبارکه اصفهان",
+    "last": 4950.0,
+    "last_pct": 2.91,
+    "close": 4950.0,
+    "close_pct": 2.91,
+    "volume": 1142422228,
+    "value": 5654990028600,
+    "trades": 9998,
+    "pe": 7.1,
+    "market_cap": 9578250000000000,
+    "at_upper_limit": true,
+    "at_lower_limit": false,
+    "industry": "فلزات اساسی",
+    "queue_volume": 916424585,
+    "queue_orders": 4611,
+    "queue_value": 4536301695750
+   },
+   {
+    "symbol": "مبین",
+    "name": "مبین انرژی خلیج فارس",
+    "last": 11170.0,
     "last_pct": 2.95,
-    "close": 6620.0,
+    "close": 11170.0,
     "close_pct": 2.95,
-    "volume": 10769785,
-    "value": 71295976700,
-    "trades": 29744,
-    "pe": 6.1,
-    "market_cap": 48789400000000,
+    "volume": 85478638,
+    "value": 954796386460,
+    "trades": 836,
+    "pe": 5.6,
+    "market_cap": 678170018400000,
     "at_upper_limit": true,
     "at_lower_limit": false,
-    "industry": "ساخت محصولات فلزی",
-    "queue_volume": 542839332,
-    "queue_orders": 3528,
-    "queue_value": 3593596377840
-   },
-   {
-    "symbol": "کرماشا",
-    "name": "صنایع پتروشیمی کرمانشاه",
-    "last": 28380.0,
-    "last_pct": 2.98,
-    "close": 28380.0,
-    "close_pct": 2.98,
-    "volume": 61934416,
-    "value": 1757698726080,
-    "trades": 1408,
-    "pe": 6.1,
-    "market_cap": 592937323440000,
-    "at_upper_limit": true,
-    "at_lower_limit": false,
-    "industry": "محصولات شیمیایی",
-    "queue_volume": 121598278,
-    "queue_orders": 1393,
-    "queue_value": 3450959129640
+    "industry": "عرضه برق، گاز، بخاروآب گرم",
+    "queue_volume": 299153010,
+    "queue_orders": 1241,
+    "queue_value": 3341539121700
    },
    {
     "symbol": "شیراز",
     "name": "پتروشیمی‌شیراز",
-    "last": 67800.0,
+    "last": 78560.0,
     "last_pct": 2.99,
-    "close": 67800.0,
+    "close": 78560.0,
     "close_pct": 2.99,
-    "volume": 12011325,
-    "value": 814367835000,
-    "trades": 867,
-    "pe": 6.4,
-    "market_cap": 1037340000000000,
+    "volume": 1312663,
+    "value": 103122805280,
+    "trades": 196,
+    "pe": 7.4,
+    "market_cap": 1201968000000000,
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "محصولات شیمیایی",
-    "queue_volume": 31603363,
-    "queue_orders": 1129,
-    "queue_value": 2142708011400
+    "queue_volume": 42331619,
+    "queue_orders": 1569,
+    "queue_value": 3325571988640
    }
   ],
   "real_inflow": [
    {
-    "symbol": "تابان",
-    "name": "گروه پتروشیمی تابان فردا",
-    "last": 23280.0,
-    "last_pct": 2.96,
-    "close": 23280.0,
-    "close_pct": 2.96,
-    "volume": 115940027,
-    "value": 2699083828560,
-    "trades": 4560,
-    "pe": 25.6,
-    "market_cap": 6984000000000000,
-    "at_upper_limit": true,
-    "at_lower_limit": false,
-    "industry": "محصولات شیمیایی",
-    "real_net_volume": 97411273,
-    "real_net_value_estimated": 2267734435440,
-    "real_buyer_power": 25.0,
-    "real_buyers": 748,
-    "real_sellers": 2266
-   },
-   {
-    "symbol": "انتخاب",
-    "name": "گروه انتخاب الکترونیک آرمان",
-    "last": 2676.0,
-    "last_pct": 2.96,
-    "close": 2673.0,
-    "close_pct": 2.85,
-    "volume": 1305633654,
-    "value": 3490356381580,
-    "trades": 3511,
+    "symbol": "وتجارت",
+    "name": "بانک تجارت",
+    "last": 966.0,
+    "last_pct": 2.99,
+    "close": 966.0,
+    "close_pct": 2.99,
+    "volume": 7591273936,
+    "value": 7333170622176,
+    "trades": 6965,
     "pe": 8.2,
-    "market_cap": 409879431819000,
+    "market_cap": 1536522623590626,
     "at_upper_limit": true,
     "at_lower_limit": false,
-    "industry": "ماشین آلات و تجهیزات",
-    "real_net_volume": 697587633,
-    "real_net_value_estimated": 1864861019298,
-    "real_buyer_power": 0.95,
-    "real_buyers": 1072,
-    "real_sellers": 433
+    "industry": "بانکها و موسسات اعتباری",
+    "real_net_volume": 5829120533,
+    "real_net_value_estimated": 5630930434878,
+    "real_buyer_power": 3.27,
+    "real_buyers": 2315,
+    "real_sellers": 1437
    },
    {
-    "symbol": "خراسان",
-    "name": "پتروشیمی خراسان",
-    "last": 60730.0,
-    "last_pct": 2.98,
-    "close": 60730.0,
-    "close_pct": 2.98,
-    "volume": 25537572,
-    "value": 1550896747560,
-    "trades": 1810,
-    "pe": 5.6,
-    "market_cap": 728760000000000,
+    "symbol": "فولاد",
+    "name": "فولاد مبارکه اصفهان",
+    "last": 4950.0,
+    "last_pct": 2.91,
+    "close": 4950.0,
+    "close_pct": 2.91,
+    "volume": 1142422228,
+    "value": 5654990028600,
+    "trades": 9998,
+    "pe": 7.1,
+    "market_cap": 9578250000000000,
+    "at_upper_limit": true,
+    "at_lower_limit": false,
+    "industry": "فلزات اساسی",
+    "real_net_volume": 740055765,
+    "real_net_value_estimated": 3663276036750,
+    "real_buyer_power": 8.3,
+    "real_buyers": 1279,
+    "real_sellers": 1866
+   },
+   {
+    "symbol": "فارس",
+    "name": "صنایع پتروشیمی خلیج فارس",
+    "last": 16270.0,
+    "last_pct": 2.97,
+    "close": 16270.0,
+    "close_pct": 2.97,
+    "volume": 373841470,
+    "value": 6082400716900,
+    "trades": 8353,
+    "pe": 9.7,
+    "market_cap": 20337500000000000,
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "محصولات شیمیایی",
-    "real_net_volume": 24875000,
-    "real_net_value_estimated": 1510658750000,
-    "real_buyer_power": 22.35,
-    "real_buyers": 584,
-    "real_sellers": 64
+    "real_net_volume": 211815939,
+    "real_net_value_estimated": 3446245327530,
+    "real_buyer_power": 2.05,
+    "real_buyers": 1279,
+    "real_sellers": 785
    },
    {
-    "symbol": "کرماشا",
-    "name": "صنایع پتروشیمی کرمانشاه",
-    "last": 28380.0,
-    "last_pct": 2.98,
-    "close": 28380.0,
-    "close_pct": 2.98,
-    "volume": 61934416,
-    "value": 1757698726080,
-    "trades": 1408,
-    "pe": 6.1,
-    "market_cap": 592937323440000,
+    "symbol": "شپدیس",
+    "name": "پتروشیمی پردیس",
+    "last": 13890.0,
+    "last_pct": 2.97,
+    "close": 13890.0,
+    "close_pct": 2.97,
+    "volume": 316517407,
+    "value": 4396426783230,
+    "trades": 7280,
+    "pe": 7.4,
+    "market_cap": 3244325803080000,
     "at_upper_limit": true,
     "at_lower_limit": false,
     "industry": "محصولات شیمیایی",
-    "real_net_volume": 52792000,
-    "real_net_value_estimated": 1498236960000,
-    "real_buyer_power": 9.33,
-    "real_buyers": 422,
-    "real_sellers": 139
+    "real_net_volume": 208750732,
+    "real_net_value_estimated": 2899547667480,
+    "real_buyer_power": 3.34,
+    "real_buyers": 1480,
+    "real_sellers": 789
    },
    {
-    "symbol": "تاصیکو",
-    "name": "سرمایه گذاری صدرتامین",
-    "last": 38710.0,
+    "symbol": "پترول",
+    "name": "گ.س.وت.ص.پتروشیمی خلیج فارس",
+    "last": 2940.0,
     "last_pct": 2.98,
-    "close": 38650.0,
-    "close_pct": 2.82,
-    "volume": 85151283,
-    "value": 3291277070430,
-    "trades": 11808,
-    "pe": 69.0,
-    "market_cap": 3691075000000000,
+    "close": 2927.0,
+    "close_pct": 2.52,
+    "volume": 1112533142,
+    "value": 3256697617555,
+    "trades": 5118,
+    "pe": 4.0,
+    "market_cap": 292700000000000,
     "at_upper_limit": true,
     "at_lower_limit": false,
-    "industry": "استخراج کانه های فلزی",
-    "real_net_volume": 37401580,
-    "real_net_value_estimated": 1445649984333,
-    "real_buyer_power": 0.91,
-    "real_buyers": 3938,
-    "real_sellers": 1868
+    "industry": "محصولات شیمیایی",
+    "real_net_volume": 717871696,
+    "real_net_value_estimated": 2101411458266,
+    "real_buyer_power": 3.65,
+    "real_buyers": 1016,
+    "real_sellers": 1050
    }
   ],
   "foolad": {
@@ -1929,57 +2053,57 @@
     "instrument_kind": "stock"
    },
    "quote": {
-    "date": "2026-11-04",
-    "jdate": "1405/08/13",
-    "last_update": "12:30:00",
+    "date": "2026-11-11",
+    "jdate": "1405/08/20",
+    "last_update": "12:29:57",
     "status": {
      "code": "A",
      "title": "مجاز",
      "under_supervision": 0
     },
     "last": {
-     "price": 4330.0,
-     "change": 120.0,
-     "change_pct": 2.85
+     "price": 4950.0,
+     "change": 140.0,
+     "change_pct": 2.91
     },
     "close": {
-     "price": 4290.0,
-     "change": 80.0,
-     "change_pct": 1.9
+     "price": 4950.0,
+     "change": 140.0,
+     "change_pct": 2.91
     },
-    "yesterday_close": 4210.0,
-    "open": 4240.0,
-    "high": 4330.0,
-    "low": 4140.0,
-    "volume": 1397098412,
-    "value": 5996217957060,
-    "trades": 16887,
-    "vwap": 4291.91,
+    "yesterday_close": 4810.0,
+    "open": 4950.0,
+    "high": 4950.0,
+    "low": 4950.0,
+    "volume": 1142422228,
+    "value": 5654990028600,
+    "trades": 9998,
+    "vwap": 4950.0,
     "price_limits": {
-     "upper": 4330.0,
-     "lower": 4090.0
+     "upper": 4950.0,
+     "lower": 4670.0
     },
     "at_upper_limit": true,
     "at_lower_limit": false,
     "ranges": {
      "week": {
-      "low": 4020.0,
-      "high": 4330.0
+      "low": 4430.0,
+      "high": 4810.0
      },
      "year": {
       "low": 2182.0,
-      "high": 4540.0
+      "high": 4810.0
      }
     },
-    "avg_volume": 2815849175,
-    "volume_vs_avg": 0.5,
+    "avg_volume": 2646408719,
+    "volume_vs_avg": 0.43,
     "fundamentals": {
      "eps": 693.0,
-     "pe": 6.19,
-     "sector_pe": 11.46,
+     "pe": 7.14,
+     "sector_pe": 11.61,
      "psr": 2541.02,
      "shares_outstanding": 1935000000000,
-     "market_cap": 8378550000000000,
+     "market_cap": 9578250000000000,
      "note": "eps is the exchange's estimated EPS; pe = last price / eps"
     },
     "units": "rial"
@@ -1988,138 +2112,101 @@
     "bids": [
      {
       "level": 1,
-      "price": 4330.0,
-      "volume": 98499098,
-      "orders": 609
+      "price": 4950.0,
+      "volume": 916424585,
+      "orders": 4611
      },
      {
       "level": 2,
-      "price": 4320.0,
-      "volume": 206062,
-      "orders": 12
+      "price": 4940.0,
+      "volume": 2105660,
+      "orders": 10
      },
      {
       "level": 3,
-      "price": 4310.0,
-      "volume": 99369,
+      "price": 4930.0,
+      "volume": 1634561,
+      "orders": 11
+     },
+     {
+      "level": 4,
+      "price": 4920.0,
+      "volume": 8400,
       "orders": 3
      },
      {
-      "level": 4,
-      "price": 4300.0,
-      "volume": 510911,
-      "orders": 22
-     },
-     {
       "level": 5,
-      "price": 4290.0,
-      "volume": 3090766,
-      "orders": 22
+      "price": 4900.0,
+      "volume": 241344,
+      "orders": 20
      }
     ],
-    "asks": [
-     {
-      "level": 1,
-      "price": 4340.0,
-      "volume": 250526,
-      "orders": 10,
-      "outside_price_limits": true
-     },
-     {
-      "level": 2,
-      "price": 4350.0,
-      "volume": 1200,
-      "orders": 1,
-      "outside_price_limits": true
-     },
-     {
-      "level": 3,
-      "price": 4360.0,
-      "volume": 1035000,
-      "orders": 6,
-      "outside_price_limits": true
-     },
-     {
-      "level": 4,
-      "price": 4370.0,
-      "volume": 12000,
-      "orders": 2,
-      "outside_price_limits": true
-     },
-     {
-      "level": 5,
-      "price": 4400.0,
-      "volume": 50000,
-      "orders": 1,
-      "outside_price_limits": true
-     }
-    ],
-    "best_bid": 4330.0,
-    "best_ask": 4340.0,
-    "spread": 10.0,
-    "spread_pct": 0.23,
-    "total_bid_volume": 102406206,
-    "total_ask_volume": 1348726,
-    "total_bid_orders": 668,
-    "total_ask_orders": 20,
-    "imbalance": 0.974,
+    "asks": [],
+    "best_bid": 4950.0,
+    "best_ask": null,
+    "spread": null,
+    "spread_pct": null,
+    "total_bid_volume": 920414550,
+    "total_ask_volume": 0,
+    "total_bid_orders": 4655,
+    "total_ask_orders": 0,
+    "imbalance": 1.0,
     "queue": {
      "state": "buy_queue",
-     "queue_volume": 98499098,
-     "queue_orders": 609,
-     "queue_value": 426501094340
+     "queue_volume": 916424585,
+     "queue_orders": 4611,
+     "queue_value": 4536301695750
     },
     "price_limits": {
-     "upper": 4330.0,
-     "lower": 4090.0
+     "upper": 4950.0,
+     "lower": 4670.0
     },
-    "units": "price in rial, volume in shares",
-    "note": "5 level(s) are priced outside today's limits (orders for the next session): flagged outside_price_limits."
+    "units": "price in rial, volume in shares"
    },
    "real_legal": {
     "real": {
      "buy": {
-      "volume": 890516129,
-      "count": 2520,
-      "value": 3822015079216,
+      "volume": 897812127,
+      "count": 1279,
+      "value": 4444170028650,
       "value_estimated": true,
-      "avg_per_participant": 1516672650.48,
-      "avg_volume_per_participant": 353379.42
+      "avg_per_participant": 3474722461.81,
+      "avg_volume_per_participant": 701964.13
      },
      "sell": {
-      "volume": 1132192823,
-      "count": 3915,
-      "value": 4859269698961,
+      "volume": 157756362,
+      "count": 1866,
+      "value": 780893991900,
       "value_estimated": true,
-      "avg_per_participant": 1241192771.13,
-      "avg_volume_per_participant": 289193.57
+      "avg_per_participant": 418485526.21,
+      "avg_volume_per_participant": 84542.53
      },
-     "net_volume": -241676694,
-     "net_value": -1037254619745
+     "net_volume": 740055765,
+     "net_value": 3663276036750
     },
     "legal": {
      "buy": {
-      "volume": 506582283,
-      "count": 39,
-      "value": 2174205566230,
+      "volume": 244610101,
+      "count": 78,
+      "value": 1210819999950,
       "value_estimated": true,
-      "avg_per_participant": 55748860672.58,
-      "avg_volume_per_participant": 12989289.31
+      "avg_per_participant": 15523333332.69,
+      "avg_volume_per_participant": 3136026.94
      },
      "sell": {
-      "volume": 264905589,
-      "count": 28,
-      "value": 1136950946484,
+      "volume": 984665866,
+      "count": 19,
+      "value": 4874096036700,
       "value_estimated": true,
-      "avg_per_participant": 40605390945.89,
-      "avg_volume_per_participant": 9460913.89
+      "avg_per_participant": 256531370352.63,
+      "avg_volume_per_participant": 51824519.26
      },
-     "net_volume": 241676694,
-     "net_value": 1037254619746
+     "net_volume": -740055765,
+     "net_value": -3663276036750
     },
-    "real_buyer_power": 1.22,
-    "real_share_of_buy_volume_pct": 63.74,
-    "real_share_of_sell_volume_pct": 81.04,
+    "real_buyer_power": 8.3,
+    "real_share_of_buy_volume_pct": 78.59,
+    "real_share_of_sell_volume_pct": 13.81,
     "reading": "real_buyer_power > 1: the average real-person buyer is larger than the average real-person seller (smart-money accumulation proxy). net_* > 0 on 'real' means money flowed INTO the stock from real persons."
    },
    "holders": {
@@ -2130,553 +2217,674 @@
       "shares": 323334093547,
       "percent": 16.709,
       "change_amount": 0.0,
-      "holder_id": 1442698
+      "holder_id": 1297966
      },
      {
       "name": "شرکت توسعه سرمایه رفاه -سهامی خاص -",
       "shares": 203548440651,
       "percent": 10.519,
       "change_amount": 0.0,
-      "holder_id": 1447025
+      "holder_id": 1292070
      },
      {
       "name": "موسسه صندوق بازنشستگی ،وظیفه ،ازکارافتادگی وپ",
       "shares": 68902471229,
       "percent": 3.56,
       "change_amount": 0.0,
-      "holder_id": 1443785
+      "holder_id": 1297144
      },
      {
       "name": "موسسه صندوق بیمه اجتماعی روستائیان وعشایر",
       "shares": 51974268209,
       "percent": 2.686,
       "change_amount": 0.0,
-      "holder_id": 1447024
+      "holder_id": 1294677
      },
      {
       "name": "شرکت سرمایه گذاری صدرتامین -سهامی عام -",
       "shares": 45059916642,
       "percent": 2.328,
       "change_amount": 0.0,
-      "holder_id": 1446074
+      "holder_id": 1293883
      }
     ]
    },
-   "filings": null,
+   "filings": [
+    {
+     "tracing_no": 1629421,
+     "symbol": "فولاد",
+     "company": "فولاد مبارکه اصفهان",
+     "title": "اطلاعات و صورت‌های مالی میاندوره‌ای دوره ۶ ماهه منتهی به ۱۴۰۵/۰۶/۳۱ (حسابرسی شده) (شرکت صنایع نیرو و انرژی پاک فولاد)",
+     "letter_code": "ن-۱۰",
+     "published": "1405/08/19 08:57:08",
+     "sent": "1405/08/19 08:57:08",
+     "under_supervision": false,
+     "is_estimate": false,
+     "has": {
+      "html": true,
+      "pdf": true,
+      "excel": true,
+      "xbrl": false,
+      "attachment": true
+     },
+     "links": {
+      "page": "https://codal.ir/Reports/Decision.aspx?LetterSerial=Ymf2WWNQQQaQQQdOOObOOOJ6F2Nwl4dxSA%3d%3d&rt=5&let=6&ct=0&ft=-1",
+      "pdf": "https://codal.ir/DownloadFile.aspx?hs=Ymf2WWNQQQaQQQdOOObOOOJ6F2Nwl4dxSA%3d%3d&ft=1005&let=6",
+      "excel": "https://excel.codal.ir/service/Excel/GetAll/Ymf2WWNQQQaQQQdOOObOOOJ6F2Nwl4dxSA%3d%3d/0",
+      "attachments": "https://codal.ir/Reports/Attachment.aspx?LetterSerial=Ymf2WWNQQQaQQQdOOObOOOJ6F2Nwl4dxSA%3d%3d"
+     }
+    },
+    {
+     "tracing_no": 1629336,
+     "symbol": "فولاد",
+     "company": "فولاد مبارکه اصفهان",
+     "title": "اطلاعات و صورت‌های مالی میاندوره‌ای دوره ۶ ماهه منتهی به ۱۴۰۵/۰۶/۳۱ (حسابرسی شده) (شرکت امین طب سپانو)",
+     "letter_code": "ن-۱۰",
+     "published": "1405/08/19 08:48:29",
+     "sent": "1405/08/19 08:48:29",
+     "under_supervision": false,
+     "is_estimate": false,
+     "has": {
+      "html": true,
+      "pdf": true,
+      "excel": true,
+      "xbrl": false,
+      "attachment": true
+     },
+     "links": {
+      "page": "https://codal.ir/Reports/Decision.aspx?LetterSerial=25OOObOOOYB5sux7AdXlvlOOObOOO2bbuw%3d%3d&rt=5&let=6&ct=0&ft=-1",
+      "pdf": "https://codal.ir/DownloadFile.aspx?hs=25OOObOOOYB5sux7AdXlvlOOObOOO2bbuw%3d%3d&ft=1005&let=6",
+      "excel": "https://excel.codal.ir/service/Excel/GetAll/25OOObOOOYB5sux7AdXlvlOOObOOO2bbuw%3d%3d/0",
+      "attachments": "https://codal.ir/Reports/Attachment.aspx?LetterSerial=25OOObOOOYB5sux7AdXlvlOOObOOO2bbuw%3d%3d"
+     }
+    },
+    {
+     "tracing_no": 1629692,
+     "symbol": "فولاد",
+     "company": "فولاد مبارکه اصفهان",
+     "title": "اطلاعات و صورت‌های مالی میاندوره‌ای دوره ۶ ماهه منتهی به ۱۴۰۵/۰۶/۳۱ (حسابرسی شده) (شرکت باشگاه فرهنگی ورزشی سپاهان نوین)",
+     "letter_code": "ن-۱۰",
+     "published": "1405/08/18 13:07:33",
+     "sent": "1405/08/18 13:07:33",
+     "under_supervision": false,
+     "is_estimate": false,
+     "has": {
+      "html": true,
+      "pdf": true,
+      "excel": true,
+      "xbrl": false,
+      "attachment": true
+     },
+     "links": {
+      "page": "https://codal.ir/Reports/Decision.aspx?LetterSerial=yDanjzuBbpuaLah1Z7d7iw%3d%3d&rt=5&let=6&ct=0&ft=-1",
+      "pdf": "https://codal.ir/DownloadFile.aspx?hs=yDanjzuBbpuaLah1Z7d7iw%3d%3d&ft=1005&let=6",
+      "excel": "https://excel.codal.ir/service/Excel/GetAll/yDanjzuBbpuaLah1Z7d7iw%3d%3d/0",
+      "attachments": "https://codal.ir/Reports/Attachment.aspx?LetterSerial=yDanjzuBbpuaLah1Z7d7iw%3d%3d"
+     }
+    },
+    {
+     "tracing_no": 1621524,
+     "symbol": "فولاد",
+     "company": "فولاد مبارکه اصفهان",
+     "title": "گزارش فعالیت ماهانه دوره ۱ ماهه منتهی به ۱۴۰۵/۰۷/۳۰",
+     "letter_code": "ن-۳۰",
+     "published": "1405/08/06 16:01:48",
+     "sent": "1405/08/06 16:01:48",
+     "under_supervision": false,
+     "is_estimate": false,
+     "has": {
+      "html": true,
+      "pdf": true,
+      "excel": true,
+      "xbrl": false,
+      "attachment": true
+     },
+     "links": {
+      "page": "https://codal.ir/Reports/Decision.aspx?LetterSerial=LyQnlYP7OOObOOOIDLto8TGJDkDQ%3d%3d&rt=0&let=58&ct=0&ft=-1",
+      "pdf": "https://codal.ir/DownloadFile.aspx?hs=LyQnlYP7OOObOOOIDLto8TGJDkDQ%3d%3d&ft=1005&let=58",
+      "excel": "https://excel.codal.ir/service/Excel/GetAll/LyQnlYP7OOObOOOIDLto8TGJDkDQ%3d%3d/0",
+      "attachments": "https://codal.ir/Reports/Attachment.aspx?LetterSerial=LyQnlYP7OOObOOOIDLto8TGJDkDQ%3d%3d"
+     }
+    },
+    {
+     "tracing_no": 1618277,
+     "symbol": "فولاد",
+     "company": "فولاد مبارکه اصفهان",
+     "title": "توضیحات در خصوص اطلاعات و صورت های مالی منتشر شده",
+     "letter_code": "ن-۲۶",
+     "published": "1405/07/30 14:40:53",
+     "sent": "1405/07/30 14:40:53",
+     "under_supervision": false,
+     "is_estimate": false,
+     "has": {
+      "html": true,
+      "pdf": true,
+      "excel": false,
+      "xbrl": false,
+      "attachment": true
+     },
+     "links": {
+      "page": "https://codal.ir/Reports/Decision.aspx?LetterSerial=q1TwzvITsscrZmqLPHatbw%3d%3d&rt=0&let=174&ct=0&ft=-1",
+      "pdf": "https://codal.ir/DownloadFile.aspx?hs=q1TwzvITsscrZmqLPHatbw%3d%3d&ft=1005&let=174",
+      "excel": null,
+      "attachments": "https://codal.ir/Reports/Attachment.aspx?LetterSerial=q1TwzvITsscrZmqLPHatbw%3d%3d"
+     }
+    }
+   ],
    "trade_summary": {
     "summary": {
-     "ticks": 16887,
+     "ticks": 7941,
      "cancelled_ticks": 0,
-     "first_trade": "09:00:31",
-     "last_trade": "12:29:59",
-     "volume": 1397098412,
-     "value": 5996217957060,
-     "vwap": 4291.91,
-     "open": 4240.0,
-     "high": 4330.0,
-     "low": 4140.0,
-     "close": 4330.0,
-     "avg_trade_volume": 82732,
-     "median_trade_volume": 43215
+     "first_trade": "09:00:34",
+     "last_trade": "12:29:50",
+     "volume": 1031669812,
+     "value": 4962331795720,
+     "vwap": 4810.0,
+     "open": 4810.0,
+     "high": 4810.0,
+     "low": 4810.0,
+     "close": 4810.0,
+     "avg_trade_volume": 129916,
+     "median_trade_volume": 120428
     },
     "completeness": {
-     "ticks_volume": 1397098412,
-     "ticks_count": 16887,
-     "official_volume": 1397098412,
+     "ticks_volume": 1031669812,
+     "ticks_count": 7941,
+     "official_volume": 1031669812,
      "volume_coverage_pct": 100.0,
-     "official_trade_count": 16887,
+     "official_trade_count": 7941,
      "count_coverage_pct": 100.0,
      "note": "Coverage compares tick data with the exchange's own daily totals; ~100% means nothing is missing."
     },
     "pressure": {
      "method": "classic tick rule: a trade above the previous price counts as up, below as down, and a trade at an unchanged price keeps the previous direction",
-     "uptick_volume_pct": 78.69,
-     "downtick_volume_pct": 16.81,
-     "neutral_volume_pct": 4.5,
+     "uptick_volume_pct": 0.0,
+     "downtick_volume_pct": 0.0,
+     "neutral_volume_pct": 100.0,
      "caveat": "TSETMC does not publish who initiated a trade; this is a heuristic, not exchange data."
     },
     "bars": [
      {
       "from": "09:00",
-      "open": 4240.0,
-      "high": 4250.0,
-      "low": 4160.0,
-      "close": 4230.0,
-      "volume": 135757143,
-      "value": 574314816960,
-      "trades": 1409,
-      "vwap": 4230.46
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 193551790,
+      "value": 930984109900,
+      "trades": 1262,
+      "vwap": 4810.0
      },
      {
       "from": "09:05",
-      "open": 4220.0,
-      "high": 4230.0,
-      "low": 4140.0,
-      "close": 4200.0,
-      "volume": 72572808,
-      "value": 304393824810,
-      "trades": 1040,
-      "vwap": 4194.32
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 19694752,
+      "value": 94731757120,
+      "trades": 201,
+      "vwap": 4810.0
      },
      {
       "from": "09:10",
-      "open": 4200.0,
-      "high": 4270.0,
-      "low": 4200.0,
-      "close": 4210.0,
-      "volume": 56052739,
-      "value": 237807220470,
-      "trades": 826,
-      "vwap": 4242.56
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 102306023,
+      "value": 492091970630,
+      "trades": 797,
+      "vwap": 4810.0
      },
      {
       "from": "09:15",
-      "open": 4200.0,
-      "high": 4260.0,
-      "low": 4200.0,
-      "close": 4250.0,
-      "volume": 25485550,
-      "value": 107718678730,
-      "trades": 437,
-      "vwap": 4226.66
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 2549138,
+      "value": 12261353780,
+      "trades": 57,
+      "vwap": 4810.0
      },
      {
       "from": "09:20",
-      "open": 4250.0,
-      "high": 4290.0,
-      "low": 4230.0,
-      "close": 4290.0,
-      "volume": 89099822,
-      "value": 380212276720,
-      "trades": 973,
-      "vwap": 4267.26
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 550357,
+      "value": 2647217170,
+      "trades": 52,
+      "vwap": 4810.0
      },
      {
       "from": "09:25",
-      "open": 4290.0,
-      "high": 4300.0,
-      "low": 4270.0,
-      "close": 4300.0,
-      "volume": 55792809,
-      "value": 239293065160,
-      "trades": 724,
-      "vwap": 4288.96
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 39736485,
+      "value": 191132492850,
+      "trades": 190,
+      "vwap": 4810.0
      },
      {
       "from": "09:30",
-      "open": 4290.0,
-      "high": 4300.0,
-      "low": 4260.0,
-      "close": 4270.0,
-      "volume": 39159718,
-      "value": 167813858690,
-      "trades": 602,
-      "vwap": 4285.37
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 395649,
+      "value": 1903071690,
+      "trades": 32,
+      "vwap": 4810.0
      },
      {
       "from": "09:35",
-      "open": 4280.0,
-      "high": 4290.0,
-      "low": 4260.0,
-      "close": 4270.0,
-      "volume": 20419024,
-      "value": 87357877440,
-      "trades": 299,
-      "vwap": 4278.26
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 50283066,
+      "value": 241861547460,
+      "trades": 382,
+      "vwap": 4810.0
      },
      {
       "from": "09:40",
-      "open": 4280.0,
-      "high": 4280.0,
-      "low": 4250.0,
-      "close": 4260.0,
-      "volume": 17804928,
-      "value": 75839754870,
-      "trades": 328,
-      "vwap": 4259.48
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 161167265,
+      "value": 775214544650,
+      "trades": 1143,
+      "vwap": 4810.0
      },
      {
       "from": "09:45",
-      "open": 4260.0,
-      "high": 4260.0,
-      "low": 4210.0,
-      "close": 4240.0,
-      "volume": 19363881,
-      "value": 81921303360,
-      "trades": 363,
-      "vwap": 4230.62
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 646642,
+      "value": 3110348020,
+      "trades": 38,
+      "vwap": 4810.0
      },
      {
       "from": "09:50",
-      "open": 4240.0,
-      "high": 4240.0,
-      "low": 4210.0,
-      "close": 4220.0,
-      "volume": 22523955,
-      "value": 95085049770,
-      "trades": 355,
-      "vwap": 4221.51
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 477546,
+      "value": 2296996260,
+      "trades": 22,
+      "vwap": 4810.0
      },
      {
       "from": "09:55",
-      "open": 4230.0,
-      "high": 4280.0,
-      "low": 4220.0,
-      "close": 4270.0,
-      "volume": 20418906,
-      "value": 86719734870,
-      "trades": 357,
-      "vwap": 4247.03
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 588448,
+      "value": 2830434880,
+      "trades": 29,
+      "vwap": 4810.0
      },
      {
       "from": "10:00",
-      "open": 4270.0,
-      "high": 4270.0,
-      "low": 4250.0,
-      "close": 4260.0,
-      "volume": 6918248,
-      "value": 29448395460,
-      "trades": 181,
-      "vwap": 4256.63
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 171345,
+      "value": 824169450,
+      "trades": 19,
+      "vwap": 4810.0
      },
      {
       "from": "10:05",
-      "open": 4260.0,
-      "high": 4280.0,
-      "low": 4250.0,
-      "close": 4260.0,
-      "volume": 20467300,
-      "value": 87449769880,
-      "trades": 271,
-      "vwap": 4272.66
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 411514,
+      "value": 1979382340,
+      "trades": 24,
+      "vwap": 4810.0
      },
      {
       "from": "10:10",
-      "open": 4260.0,
-      "high": 4310.0,
-      "low": 4260.0,
-      "close": 4300.0,
-      "volume": 49641591,
-      "value": 213256160430,
-      "trades": 682,
-      "vwap": 4295.92
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 975590,
+      "value": 4692587900,
+      "trades": 30,
+      "vwap": 4810.0
      },
      {
       "from": "10:15",
-      "open": 4300.0,
-      "high": 4330.0,
-      "low": 4300.0,
-      "close": 4330.0,
-      "volume": 116537583,
-      "value": 503662527820,
-      "trades": 1375,
-      "vwap": 4321.89
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 12133613,
+      "value": 58362678530,
+      "trades": 100,
+      "vwap": 4810.0
      },
      {
       "from": "10:20",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4320.0,
-      "close": 4330.0,
-      "volume": 243347843,
-      "value": 1053692979500,
-      "trades": 2462,
-      "vwap": 4329.99
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 1554049,
+      "value": 7474975690,
+      "trades": 32,
+      "vwap": 4810.0
      },
      {
       "from": "10:25",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 59222124,
-      "value": 256431796920,
-      "trades": 499,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 297507,
+      "value": 1431008670,
+      "trades": 24,
+      "vwap": 4810.0
      },
      {
       "from": "10:30",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 7836530,
-      "value": 33932174900,
-      "trades": 114,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 595596,
+      "value": 2864816760,
+      "trades": 28,
+      "vwap": 4810.0
      },
      {
       "from": "10:35",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 32677331,
-      "value": 141492843230,
-      "trades": 306,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 734703,
+      "value": 3533921430,
+      "trades": 23,
+      "vwap": 4810.0
      },
      {
       "from": "10:40",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 11471648,
-      "value": 49672235840,
-      "trades": 163,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 1308778,
+      "value": 6295222180,
+      "trades": 31,
+      "vwap": 4810.0
      },
      {
       "from": "10:45",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 10914590,
-      "value": 47260174700,
-      "trades": 119,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 600389,
+      "value": 2887871090,
+      "trades": 34,
+      "vwap": 4810.0
      },
      {
       "from": "10:50",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 28280747,
-      "value": 122455634510,
-      "trades": 239,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 631865,
+      "value": 3039270650,
+      "trades": 20,
+      "vwap": 4810.0
      },
      {
       "from": "10:55",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 7777124,
-      "value": 33674946920,
-      "trades": 122,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 1485945,
+      "value": 7147395450,
+      "trades": 24,
+      "vwap": 4810.0
      },
      {
       "from": "11:00",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 3617780,
-      "value": 15664987400,
-      "trades": 76,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 4467785,
+      "value": 21490045850,
+      "trades": 48,
+      "vwap": 4810.0
      },
      {
       "from": "11:05",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 7641542,
-      "value": 33087876860,
-      "trades": 118,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 86484460,
+      "value": 415990252600,
+      "trades": 625,
+      "vwap": 4810.0
      },
      {
       "from": "11:10",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 3417840,
-      "value": 14799247200,
-      "trades": 58,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 1085983,
+      "value": 5223578230,
+      "trades": 27,
+      "vwap": 4810.0
      },
      {
       "from": "11:15",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 729340,
-      "value": 3158042200,
-      "trades": 33,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 70681491,
+      "value": 339977971710,
+      "trades": 498,
+      "vwap": 4810.0
      },
      {
       "from": "11:20",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 53469561,
-      "value": 231523199130,
-      "trades": 450,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 2026092,
+      "value": 9745502520,
+      "trades": 32,
+      "vwap": 4810.0
      },
      {
       "from": "11:25",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 20285187,
-      "value": 87834859710,
-      "trades": 246,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 2544566,
+      "value": 12239362460,
+      "trades": 33,
+      "vwap": 4810.0
      },
      {
       "from": "11:30",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 2295162,
-      "value": 9938051460,
-      "trades": 56,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 270280,
+      "value": 1300046800,
+      "trades": 20,
+      "vwap": 4810.0
      },
      {
       "from": "11:35",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 1084663,
-      "value": 4696590790,
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 859273,
+      "value": 4133103130,
       "trades": 33,
-      "vwap": 4330.0
+      "vwap": 4810.0
      },
      {
       "from": "11:40",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 1205975,
-      "value": 5221871750,
-      "trades": 33,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 195882,
+      "value": 942192420,
+      "trades": 13,
+      "vwap": 4810.0
      },
      {
       "from": "11:45",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 29676405,
-      "value": 128498833650,
-      "trades": 272,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 173071,
+      "value": 832471510,
+      "trades": 16,
+      "vwap": 4810.0
      },
      {
       "from": "11:50",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 2928951,
-      "value": 12682357830,
-      "trades": 64,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 2476832,
+      "value": 11913561920,
+      "trades": 33,
+      "vwap": 4810.0
      },
      {
       "from": "11:55",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 1634325,
-      "value": 7076627250,
-      "trades": 58,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 774639,
+      "value": 3726013590,
+      "trades": 19,
+      "vwap": 4810.0
      },
      {
       "from": "12:00",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 41663159,
-      "value": 180401478470,
-      "trades": 434,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 210083141,
+      "value": 1010499908210,
+      "trades": 1453,
+      "vwap": 4810.0
      },
      {
       "from": "12:05",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 12452347,
-      "value": 53918662510,
-      "trades": 212,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 1718477,
+      "value": 8265874370,
+      "trades": 36,
+      "vwap": 4810.0
      },
      {
       "from": "12:10",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 4533189,
-      "value": 19628708370,
-      "trades": 74,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 158569,
+      "value": 762716890,
+      "trades": 14,
+      "vwap": 4810.0
      },
      {
       "from": "12:15",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 4166839,
-      "value": 18042412870,
-      "trades": 71,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 848854,
+      "value": 4082987740,
+      "trades": 25,
+      "vwap": 4810.0
      },
      {
       "from": "12:20",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 18578562,
-      "value": 80445173460,
-      "trades": 178,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 51319583,
+      "value": 246847194230,
+      "trades": 378,
+      "vwap": 4810.0
      },
      {
       "from": "12:25",
-      "open": 4330.0,
-      "high": 4330.0,
-      "low": 4330.0,
-      "close": 4330.0,
-      "volume": 18173643,
-      "value": 78691874190,
-      "trades": 175,
-      "vwap": 4330.0
+      "open": 4810.0,
+      "high": 4810.0,
+      "low": 4810.0,
+      "close": 4810.0,
+      "volume": 2652779,
+      "value": 12759866990,
+      "trades": 44,
+      "vwap": 4810.0
      }
     ],
     "biggest": [
      {
-      "time": "12:05:06",
-      "price": 4330.0,
-      "volume": 299992,
-      "value": 1298965360
+      "time": "09:00:34",
+      "price": 4810.0,
+      "volume": 300000,
+      "value": 1443000000
      },
      {
-      "time": "10:22:29",
-      "price": 4330.0,
-      "volume": 299850,
-      "value": 1298350500
+      "time": "09:00:34",
+      "price": 4810.0,
+      "volume": 300000,
+      "value": 1443000000
      },
      {
-      "time": "12:05:04",
-      "price": 4330.0,
-      "volume": 299766,
-      "value": 1297986780
+      "time": "09:00:34",
+      "price": 4810.0,
+      "volume": 300000,
+      "value": 1443000000
      }
     ]
    },
@@ -2688,119 +2896,119 @@
      "market": "bourse"
     },
     "latest_session": {
-     "date": "2026-11-04",
+     "date": "2026-11-11",
      "real": {
       "buy": {
-       "volume": 890516129,
-       "count": 2520,
-       "value": 3822013365627,
+       "volume": 897812127,
+       "count": 1279,
+       "value": 4444170028650,
        "value_estimated": true,
-       "avg_per_participant": 1516671970.49,
-       "avg_volume_per_participant": 353379.42
+       "avg_per_participant": 3474722461.81,
+       "avg_volume_per_participant": 701964.13
       },
       "sell": {
-       "volume": 1132192823,
-       "count": 3915,
-       "value": 4859267520323,
+       "volume": 157756362,
+       "count": 1866,
+       "value": 780893991900,
        "value_estimated": true,
-       "avg_per_participant": 1241192214.64,
-       "avg_volume_per_participant": 289193.57
+       "avg_per_participant": 418485526.21,
+       "avg_volume_per_participant": 84542.53
       },
-      "net_volume": -241676694,
-      "net_value": -1037254154696
+      "net_volume": 740055765,
+      "net_value": 3663276036750
      },
      "legal": {
       "buy": {
-       "volume": 506582283,
-       "count": 39,
-       "value": 2174204591432,
+       "volume": 244610101,
+       "count": 78,
+       "value": 1210819999950,
        "value_estimated": true,
-       "avg_per_participant": 55748835677.75,
-       "avg_volume_per_participant": 12989289.31
+       "avg_per_participant": 15523333332.69,
+       "avg_volume_per_participant": 3136026.94
       },
       "sell": {
-       "volume": 264905589,
-       "count": 28,
-       "value": 1136950436736,
+       "volume": 984665866,
+       "count": 19,
+       "value": 4874096036700,
        "value_estimated": true,
-       "avg_per_participant": 40605372740.59,
-       "avg_volume_per_participant": 9460913.89
+       "avg_per_participant": 256531370352.63,
+       "avg_volume_per_participant": 51824519.26
       },
-      "net_volume": 241676694,
-      "net_value": 1037254154696
+      "net_volume": -740055765,
+      "net_value": -3663276036750
      },
-     "real_buyer_power": 1.22,
-     "real_share_of_buy_volume_pct": 63.74,
-     "real_share_of_sell_volume_pct": 81.04,
+     "real_buyer_power": 8.3,
+     "real_share_of_buy_volume_pct": 78.59,
+     "real_share_of_sell_volume_pct": 13.81,
      "reading": "real_buyer_power > 1: the average real-person buyer is larger than the average real-person seller (smart-money accumulation proxy). net_* > 0 on 'real' means money flowed INTO the stock from real persons."
     },
     "history": [
      {
-      "date": "2026-10-28",
-      "jdate": "1405/08/06",
-      "real_net_volume": -92887888,
-      "real_net_value": -388245130720,
-      "real_buy_value": 2571369056520,
-      "real_sell_value": 2959614187240,
-      "real_buy_count": 2446,
-      "real_sell_count": 4731,
-      "real_buyer_power": 1.68,
-      "legal_net_value": 388245130720
+      "date": "2026-11-04",
+      "jdate": "1405/08/13",
+      "real_net_volume": -241676694,
+      "real_net_value": -1035909985130,
+      "real_buy_value": 3816143707080,
+      "real_sell_value": 4852053692210,
+      "real_buy_count": 2520,
+      "real_sell_count": 3915,
+      "real_buyer_power": 1.22,
+      "legal_net_value": 1035909985130
      },
      {
-      "date": "2026-10-31",
-      "jdate": "1405/08/09",
-      "real_net_volume": -1102983090,
-      "real_net_value": -4727175787150,
-      "real_buy_value": 4918073964410,
-      "real_sell_value": 9645249751560,
-      "real_buy_count": 4978,
-      "real_sell_count": 4268,
-      "real_buyer_power": 0.44,
-      "legal_net_value": 4727175787150
+      "date": "2026-11-07",
+      "jdate": "1405/08/16",
+      "real_net_volume": 512845249,
+      "real_net_value": 2261647548090,
+      "real_buy_value": 2714303861640,
+      "real_sell_value": 452656313550,
+      "real_buy_count": 435,
+      "real_sell_count": 1455,
+      "real_buyer_power": 20.06,
+      "legal_net_value": -2261647548090
      },
      {
-      "date": "2026-11-01",
-      "jdate": "1405/08/10",
-      "real_net_volume": -1551469198,
-      "real_net_value": -6393196426360,
-      "real_buy_value": 1450707902800,
-      "real_sell_value": 7843904329160,
-      "real_buy_count": 3619,
-      "real_sell_count": 3947,
-      "real_buyer_power": 0.2,
-      "legal_net_value": 6393196426360
+      "date": "2026-11-08",
+      "jdate": "1405/08/17",
+      "real_net_volume": -735692507,
+      "real_net_value": -3337426146490,
+      "real_buy_value": 11069183538930,
+      "real_sell_value": 14406609685420,
+      "real_buy_count": 5027,
+      "real_sell_count": 6316,
+      "real_buyer_power": 0.97,
+      "legal_net_value": 3337426146490
      },
      {
-      "date": "2026-11-02",
-      "jdate": "1405/08/11",
-      "real_net_volume": -226662060,
-      "real_net_value": -929876343200,
-      "real_buy_value": 2057504906860,
-      "real_sell_value": 2987381250060,
-      "real_buy_count": 3790,
-      "real_sell_count": 2881,
-      "real_buyer_power": 0.52,
-      "legal_net_value": 929876343200
+      "date": "2026-11-09",
+      "jdate": "1405/08/18",
+      "real_net_volume": 544045717,
+      "real_net_value": 2540845003610,
+      "real_buy_value": 4083060481770,
+      "real_sell_value": 1542215478160,
+      "real_buy_count": 749,
+      "real_sell_count": 2268,
+      "real_buyer_power": 8.02,
+      "legal_net_value": -2540845003610
      },
      {
-      "date": "2026-11-03",
-      "jdate": "1405/08/12",
-      "real_net_volume": -189148381,
-      "real_net_value": -795831735270,
-      "real_buy_value": 1120371817710,
-      "real_sell_value": 1916203552980,
-      "real_buy_count": 426,
-      "real_sell_count": 2060,
-      "real_buyer_power": 2.83,
-      "legal_net_value": 795831735270
+      "date": "2026-11-10",
+      "jdate": "1405/08/19",
+      "real_net_volume": 798580439,
+      "real_net_value": 3841171911590,
+      "real_buy_value": 4338955795720,
+      "real_sell_value": 497783884130,
+      "real_buy_count": 947,
+      "real_sell_count": 1168,
+      "real_buyer_power": 10.75,
+      "legal_net_value": -3841171911590
      }
     ],
     "history_summary": {
      "days": 5,
-     "real_net_value_total": -13234325422700,
-     "days_with_real_inflow": 0,
-     "days_with_real_outflow": 5
+     "real_net_value_total": 4270328331670,
+     "days_with_real_inflow": 3,
+     "days_with_real_outflow": 2
     },
     "units": "value in rial, volume in shares. history rows are published by the exchange; latest_session values are estimated (net volume x VWAP) because the live table has volumes and counts only"
    },

@@ -1,0 +1,705 @@
+"""Pure parsing of Codal letter pages (codal.ir/Reports/Decision.aspx) into tables, statements and monthly activity.
+
+A structured Codal letter (financial statements, monthly activity reports, ...) is an ASP.NET page that carries its
+whole content as JSON in ``var datasource = {...}``: one sheet per page (other sheets are other ``sheetId`` URLs,
+listed in the ``ddlTable`` drop-down), each sheet a list of tables, each table a flat list of cells with
+``rowSequence``/``columnSequence``/``colSpan``/``cellGroupName`` (Header or Body) and a string ``value``.
+Plain letters (meeting decisions, explanations, notices) have no datasource and are read as visible text.
+
+Everything here is pure (no I/O) so it is tested against recorded pages.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+from html import unescape
+from html.parser import HTMLParser
+from typing import Any
+
+# ------------------------------------------------------------------------------ text helpers
+
+_ZW = dict.fromkeys(map(ord, "‌‍‎‏­ـًٌٍَُِّْٰٔ"), None)
+_LETTERS = str.maketrans({"ي": "ی", "ك": "ک", "ى": "ی", "ة": "ه", "ۀ": "ه", "أ": "ا", "إ": "ا", "ؤ": "و"})
+_DIGITS = str.maketrans("۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
+
+
+def tidy(s: Any) -> str:
+    """Human text: Arabic letters to Persian, digits to ASCII, collapsed spaces."""
+    if s is None:
+        return ""
+    s = unescape(str(s)).translate(_LETTERS).translate(_DIGITS).replace("­", "")
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def key(s: Any) -> str:
+    """Matching key: tidy text without spaces, joiners, diacritics or a trailing colon."""
+    return re.sub(r"[\s:：]+", "", tidy(s).translate(_ZW)).rstrip(".")
+
+
+def number(v: Any) -> float | int | None:
+    """Codal cell value -> number. '--', '' and text give None; '(123)' is negative; integers stay int."""
+    if v is None:
+        return None
+    if isinstance(v, (int, float)):
+        return v
+    t = tidy(v)
+    if not t or not re.fullmatch(r"[\d,٬.()/\-+ ]+", t):
+        return None
+    s = t.replace(",", "").replace("٬", "").replace("/", ".").replace(" ", "")
+    if s in {"-", "--", "."}:
+        return None
+    neg = s.startswith("(") and s.endswith(")")
+    s = s.strip("()")
+    try:
+        f = float(s)
+    except ValueError:
+        return None
+    f = -f if neg else f
+    return int(f) if f.is_integer() and abs(f) < 1e18 else round(f, 6)
+
+
+# ------------------------------------------------------------------------------ the page
+
+
+def datasource(html: str) -> dict | None:
+    i = html.find("var datasource = ")
+    if i < 0:
+        return None
+    try:
+        d, _ = json.JSONDecoder().raw_decode(html, i + len("var datasource = "))
+    except ValueError:
+        return None
+    return d if isinstance(d, dict) else None
+
+
+def sheets(html: str) -> list[dict]:
+    m = re.search(r'<select[^>]*name="ctl00\$ddlTable".*?</select>', html, re.S)
+    if not m:
+        return []
+    return [{"sheet": int(v), "name": tidy(n)} for v, n in re.findall(r'<option[^>]*value="(-?\d+)"[^>]*>([^<]*)', m[0])]
+
+
+def selected_sheet(html: str) -> int | None:
+    m = re.search(r'<option[^>]*selected="selected"[^>]*value="(-?\d+)"', html) or re.search(
+        r'<option[^>]*value="(-?\d+)"[^>]*selected="selected"', html
+    )
+    return int(m[1]) if m else None
+
+
+def label(html: str, element_id: str) -> str | None:
+    m = re.search(rf'id="{element_id}"[^>]*>([^<]*)<', html)
+    if not m:
+        return None
+    return tidy(m[1]) or None
+
+
+class _Text(HTMLParser):
+    SKIP = {"script", "style", "head", "select", "option", "noscript"}
+    BREAK = {"p", "div", "br", "tr", "li", "table", "h1", "h2", "h3", "h4", "td"}
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.parts: list[str] = []
+        self._skip = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in self.SKIP:
+            self._skip += 1
+        elif tag in self.BREAK:
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag):
+        if tag in self.SKIP and self._skip:
+            self._skip -= 1
+
+    def handle_data(self, data):
+        if not self._skip:
+            self.parts.append(data)
+
+
+def visible_text(html: str, limit: int = 12000) -> tuple[str, bool]:
+    """The readable text of a plain letter, ASP.NET form noise removed; (text, truncated)."""
+    body = html.find("<body")
+    p = _Text()
+    p.feed(html[body:] if body >= 0 else html)
+    lines = [tidy(x) for x in "".join(p.parts).split("\n")]
+    noise = re.compile(r"^(چاپ|بازگشت|صفحه اصلی|ورود|انتخاب گزارش|نمایش)$")
+    text = "\n".join(x for x in lines if x and not noise.match(x))
+    return (text, False) if len(text) <= limit else (text[:limit], True)
+
+
+# ------------------------------------------------------------------------------ tables
+
+
+def _rows(table: dict) -> dict[int, list[dict]]:
+    rows: dict[int, list[dict]] = {}
+    for c in table.get("cells") or []:
+        if isinstance(c, dict):
+            rows.setdefault(c.get("rowSequence") or 0, []).append(c)
+    for r in rows.values():
+        r.sort(key=lambda c: c.get("columnSequence") or 0)
+    return rows
+
+
+def grid(table: dict) -> dict:
+    """One Codal table as columns + rows.
+
+    Header rows (possibly two, with column spans) become one label per column, e.g. ``دوره یک ماهه منتهی به
+    1405/07/30 | مبلغ فروش (میلیون ریال)``. Body rows become ``{"label", "values"}`` with numbers parsed; rows the
+    page hides (every cell invisible) are dropped.
+    """
+    rows = _rows(table)
+    width = 0
+    for cells in rows.values():
+        width = max(width, max(((c.get("columnSequence") or 1) + (c.get("colSpan") or 1) - 1) for c in cells))
+    headers: list[list[str]] = []
+    body: list[list[dict]] = []
+    for seq in sorted(rows):
+        cells = rows[seq]
+        if cells[0].get("cellGroupName") == "Header":
+            line = [""] * width
+            for c in cells:
+                start, span = (c.get("columnSequence") or 1) - 1, c.get("colSpan") or 1
+                for k in range(start, min(width, start + span)):
+                    line[k] = tidy(c.get("value"))
+            headers.append(line)
+        elif any(c.get("isVisible", True) for c in cells):
+            body.append(cells)
+    columns = []
+    for k in range(width):
+        parts = []
+        for line in headers:
+            if line[k] and line[k] not in parts:
+                parts.append(line[k])
+        columns.append(" | ".join(parts))
+    out_rows = []
+    for cells in body:
+        values: list[Any] = [None] * width
+        for c in cells:
+            k = (c.get("columnSequence") or 1) - 1
+            if 0 <= k < width:
+                raw = tidy(c.get("value"))
+                n = number(raw)
+                values[k] = n if n is not None else (raw or None)
+        lab = values[0] if isinstance(values[0], str) else None
+        if lab is None and not any(v is not None for v in values[1:]):
+            continue
+        out_rows.append({"label": lab, "values": values[1:]})
+    return {
+        "title": tidy(table.get("title_Fa")) or None,
+        "title_en": tidy(table.get("title_En")) or None,
+        "code": table.get("code"),
+        "unit_note": tidy(table.get("description")) or None,
+        "columns": columns[1:],
+        "rows": out_rows,
+    }
+
+
+def grids(ds: dict) -> list[dict]:
+    out = []
+    for sheet in ds.get("sheets") or []:
+        for t in sheet.get("tables") or []:
+            g = grid(t)
+            if g["rows"]:
+                out.append(g)
+    return out
+
+
+def meta(ds: dict) -> dict:
+    return {
+        "report": tidy(ds.get("title_Fa")) or None,
+        "report_en": tidy(ds.get("title_En")) or None,
+        "period_months": ds.get("period"),
+        "period_end": tidy(ds.get("periodEndToDate")) or None,
+        "fiscal_year_end": tidy(ds.get("yearEndToDate")) or None,
+        "audited": ds.get("isAudited"),
+        "consolidated": ds.get("isConsolidated"),
+        "published": tidy(ds.get("publishDateTime")) or None,
+        "tracing_no": ds.get("tracingNo"),
+    }
+
+
+def unit_multiplier(note: str | None) -> int:
+    """'کليه مبالغ به ميليون ريال است' -> 1_000_000 (to Rial)."""
+    k = key(note or "")
+    if "میلیاردریال" in k:
+        return 1_000_000_000
+    if "میلیونریال" in k:
+        return 1_000_000
+    if "هزارریال" in k:
+        return 1_000
+    return 1_000_000 if not k else 1
+
+
+# ------------------------------------------------------------------------------ financial statements
+
+# concept -> label patterns (keys, see key()); "=" means the label must equal it, otherwise it must start with it
+INCOME = {
+    "revenue": ["=درآمدهایعملیاتی", "=درآمدعملیاتی", "=درآمدهایبیمهای", "=فروشخالص", "=فروشخالصودرآمدارائهخدمات", "=جمعدرآمدهایعملیاتی", "=جمعدرآمدها"],
+    "cost_of_revenue": ["بهایتمامشدهدرآمدهایعملیاتی", "بهایتمامشدهدرآمد", "=بهایتمامشدهکالایفروشرفته", "بهایتمامشده", "=هزینهسودسپردهها"],
+    "gross_profit": ["=سود(زیان)ناخالص", "=سود(زیان)ناخالصفعالیتهایبیمهای"],
+    "selling_admin_expenses": ["هزینههایفروش،اداریوعمومی", "هزینههایفروشاداریوعمومی", "=هزینههایاداریوعمومی"],
+    "operating_profit": ["=سود(زیان)عملیاتی"],
+    "finance_costs": ["=هزینههایمالی"],
+    "pretax_profit": ["سود(زیان)عملیاتدرحالتداومقبلازمالیات", "=سود(زیان)قبلازمالیات"],
+    "net_profit": ["=سود(زیان)خالص"],
+    "eps": ["=سود(زیان)پایههرسهم", "=سود(زیان)پایههرسهم(ریال)"],
+    "eps_operating": ["=عملیاتی(ریال)"],
+    "net_profit_per_share": ["=سود(زیان)خالصهرسهم–ریال", "=سود(زیان)خالصهرسهم-ریال"],
+    "capital": ["=سرمایه"],
+    "income_tax": ["=هزینهمالیاتبردرآمد", "=مالیاتبردرآمد"],
+    # banks
+    "loan_interest_income": ["=درآمدتسهیلاتاعطایی"],
+    "fee_income": ["=درآمدکارمزد"],
+    "loan_loss_provisions": ["=هزینهمطالباتمشکوکالوصول"],
+    # insurers
+    "gross_premiums": ["=درآمدحقبیمهناخالص"],
+    "net_premiums": ["=حقبیمهخالص(سهمنگهداری)", "=حقبیمهخالص"],
+    "claims_net": ["=خسارتومزایایپرداختیخالص"],
+}
+BALANCE = {
+    "total_assets": ["=جمعداراییها"],
+    "current_assets": ["=جمعداراییهایجاری"],
+    "non_current_assets": ["=جمعداراییهایغیرجاری"],
+    "fixed_assets": ["=داراییهایثابتمشهود"],
+    "cash": ["=موجودینقد"],
+    "short_term_investments": ["=سرمایهگذاریهایکوتاهمدت"],
+    "trade_receivables": ["دریافتنیهایتجاری"],
+    "inventory": ["=موجودیموادوکالا"],
+    "total_liabilities": ["=جمعبدهیها"],
+    "current_liabilities": ["=جمعبدهیهایجاری"],
+    "borrowings_current": ["=تسهیلاتمالی"],
+    "borrowings_long_term": ["=تسهیلاتمالیبلندمدت"],
+    "equity": ["=جمعحقوقمالکانه", "=جمعحقوقصاحبانسهام"],
+    "capital": ["=سرمایه"],
+    "retained_earnings": ["=سود(زیان)انباشته"],
+    # banks
+    "customer_deposits": ["=سپردههایمشتریان"],
+    "loans": ["تسهیلاتاعطاییومطالباتازاشخاص"],  # government and private rows, summed
+    "due_to_banks": ["=بدهیبهبانکهاوموسساتاعتباریغیربانکی"],
+    "statutory_deposit": ["=سپردهقانونی"],
+    # insurers
+    "receivables_from_policyholders": ["=مطالباتازبیمهگذارانونمایندگان"],
+    "technical_reserves": ["ذخیرهخسارتمعوق", "ذخیرهریسکهایمنقضینشده", "ذخیرهحقبیمهعایدنشده", "ذخیرهریاضی", "=سایرذخایرفنی"],  # summed
+}
+CASH_FLOW = {
+    "operating_cash_flow": ["جریانخالصورود(خروج)نقدحاصلازفعالیتهایعملیاتی"],
+    "investing_cash_flow": ["جریانخالصورود(خروج)نقدحاصلازفعالیتهایسرمایهگذاری"],
+    "financing_cash_flow": ["جریانخالصورود(خروج)نقدحاصلازفعالیتهایتامینمالی", "جریانخالصورود(خروج)نقدناشیازفعالیتهایتامینمالی"],
+    "capex": ["پرداختهاینقدیبرایخریدداراییهایثابتمشهود", "پرداختهاینقدیبرایتحصیلداراییثابتمشهود",
+              "پرداختهاینقدیبرایتحصیلداراییهایثابتمشهود"],
+    "dividends_paid": ["پرداختهاینقدیبابتسودسهام"],
+    "cash_at_end": ["ماندهموجودینقددرپایان"],
+}
+KINDS = {"income": INCOME, "balance": BALANCE, "cashflow": CASH_FLOW}
+OPTIONAL = {"income_tax", "loan_interest_income", "fee_income", "loan_loss_provisions", "customer_deposits", "loans", "due_to_banks",
+            "statutory_deposit", "gross_premiums", "net_premiums", "claims_net", "receivables_from_policyholders",
+            "technical_reserves"}  # not every template has them: never reported as missing
+SUMMED = {"loans", "technical_reserves"}  # every matching row is added up
+BANK_MARKS = {"customer_deposits", "loan_interest_income"}
+INSURER_MARKS = {"gross_premiums", "net_premiums", "receivables_from_policyholders", "technical_reserves"}
+NOT_IN_BANK_BALANCE = {"current_assets", "non_current_assets", "short_term_investments", "trade_receivables", "inventory",
+                       "current_liabilities", "borrowings_current", "borrowings_long_term"}  # a bank's balance sheet has no current/non-current split
+SHEET_NAMES = {  # sheet drop-down names, matched with key()
+    "income": ["صورتسودوزیان", "سودوزیان"],
+    "balance": ["صورتوضعیتمالی", "ترازنامه"],
+    "cashflow": ["صورتجریانهاینقدی", "جریانوجوهنقد"],
+}
+
+
+def pick_sheet(options: list[dict], kind: str) -> int | None:
+    for want in SHEET_NAMES[kind]:
+        for o in options:
+            k = key(o["name"])
+            if k.startswith(want) and "جامع" not in k and "تلفیقی" not in k:
+                return o["sheet"]
+    return None
+
+
+def _match(lab: str, patterns: list[str]) -> bool:
+    k = key(lab)
+    return any((k == p[1:]) if p.startswith("=") else k.startswith(p) for p in patterns)
+
+
+def _columns_roles(columns: list[str], fiscal_year_end: str | None = None) -> dict[str, int]:
+    """Which value column is this period, the same period last year and the last full fiscal year.
+
+    Decided by the dates in the headers: the first dated column is this period; a column ending on the same month and
+    day a year earlier is the same period last year; a column ending on the fiscal year-end day is the last full year.
+    Change-% columns are skipped.
+    """
+    dated = []
+    for i, c in enumerate(columns):
+        k = key(c)
+        d = re.search(r"\d{4}/\d{2}/\d{2}", c or "")
+        if c and "درصد" not in k and d:
+            dated.append((i, d[0]))
+    roles: dict[str, int] = {}
+    if not dated:
+        plain = [i for i, c in enumerate(columns) if c and "درصد" not in key(c)]
+        return {"current": plain[0]} if plain else {}
+    cur_i, cur_d = dated[0]
+    roles["current"] = cur_i
+    fy_md = (fiscal_year_end or "")[5:]
+    for i, d in dated[1:]:
+        if d[5:] == cur_d[5:] and "previous" not in roles:
+            roles["previous"] = i
+        elif fy_md and d[5:] == fy_md and "last_year" not in roles:
+            roles["last_year"] = i
+    return roles
+
+
+def halves(g: dict) -> list[dict]:
+    """A table laid out side by side (assets left, liabilities and equity right, as insurers file it) as two tables.
+
+    Such a table has, in some row, a label among the values: a text cell followed by numbers. Everything from that
+    position on is the right-hand table, with that cell as its label."""
+    split = None
+    for row in g["rows"]:
+        vals = row["values"]
+        for j, v in enumerate(vals):
+            if j > 0 and isinstance(v, str) and v.strip() and any(isinstance(x, (int, float)) for x in vals[j + 1:]):
+                split = j
+                break
+        if split is not None:
+            break
+    if split is None:
+        return [g]
+    left = {**g, "columns": g["columns"][:split], "rows": [{"label": r["label"], "values": r["values"][:split]} for r in g["rows"]]}
+    right_rows = []
+    for r in g["rows"]:
+        vals = r["values"]
+        lab = vals[split] if len(vals) > split and isinstance(vals[split], str) else None
+        right_rows.append({"label": tidy(lab) if lab else None, "values": vals[split + 1:]})
+    right = {**g, "columns": g["columns"][split + 1:], "rows": right_rows}
+    return [left, right]
+
+
+def statement(g: dict, kind: str, fiscal_year_end: str | None = None) -> dict:
+    """Key items of one statement table: {concept: {current, previous, last_year}} plus the column labels used."""
+    concepts = KINDS[kind]
+    parts = halves(g)
+    roles = _columns_roles(parts[0]["columns"], fiscal_year_end)
+    items: dict[str, dict] = {}
+    for row in (r for part in parts for r in part["rows"]):
+        lab = row["label"]
+        if not lab:
+            continue
+        for concept, patterns in concepts.items():
+            if (concept in items and concept not in SUMMED) or not _match(lab, patterns):
+                continue
+            vals = {r: row["values"][i] for r, i in roles.items() if i < len(row["values"]) and isinstance(row["values"][i], (int, float))}
+            if not vals:
+                continue
+            if concept in items:
+                items[concept] = {r: items[concept].get(r, 0) + v for r, v in vals.items()}
+            else:
+                items[concept] = vals
+    notes = []
+    if kind == "income" and "net_profit_per_share" in items and not any((items.get("eps") or {}).values()):
+        items["eps"] = dict(items["net_profit_per_share"])  # banks leave «پایه هر سهم» empty or 0 and report the net figure
+        notes.append("eps is the report's «سود خالص هر سهم» row: its basic-EPS row is empty or 0.")
+    missing = [c for c in concepts if c not in items and c not in OPTIONAL]
+    layout = "bank" if BANK_MARKS & set(items) else "insurer" if INSURER_MARKS & set(items) else None
+    if layout and kind == "balance":
+        missing = [c for c in missing if c not in NOT_IN_BANK_BALANCE]
+    if layout == "insurer" and kind == "income":
+        missing = [c for c in missing if c != "cost_of_revenue"]  # premiums less claims and insurance costs: no single cost line
+    out = {
+        "items": items,
+        "columns": {r: parts[0]["columns"][i] for r, i in roles.items()},
+        "unit": g.get("unit_note"),
+        "missing": missing,
+    }
+    if layout:
+        out["layout"] = layout
+    if notes:
+        out["notes"] = notes
+    return out
+
+
+def _div(a, b):
+    return None if a is None or not b else a / b
+
+
+def _pct(a, b, digits=1):
+    v = _div(a, b)
+    return None if v is None else round(v * 100, digits)
+
+
+def ttm(items: dict, concept: str, period_months: int | None) -> float | None:
+    """Trailing twelve months from an interim statement: last full year + this period − same period last year."""
+    v = items.get(concept) or {}
+    if period_months == 12:
+        return v.get("current")
+    if None in (v.get("current"), v.get("previous"), v.get("last_year")):
+        return None
+    if v["last_year"] == 0 and v["current"]:  # some templates (banks) leave the full-year column as 0 in interim reports
+        return None
+    return v["last_year"] + v["current"] - v["previous"]
+
+
+def ratios(income: dict, balance: dict, cash: dict, period_months: int | None) -> dict:
+    """Margins, returns and leverage from the key items (ratios in %, returns on trailing twelve months)."""
+    inc, bal, cf = income.get("items", {}), balance.get("items", {}), cash.get("items", {})
+    cur = lambda d, k: (d.get(k) or {}).get("current")  # noqa: E731
+    rev, ni = cur(inc, "revenue"), cur(inc, "net_profit")
+    rev_ttm, ni_ttm = ttm(inc, "revenue", period_months), ttm(inc, "net_profit", period_months)
+    eq, ta = cur(bal, "equity"), cur(bal, "total_assets")
+    debt = sum(x for x in (cur(bal, "borrowings_current"), cur(bal, "borrowings_long_term")) if x)
+    ocf, capex = cur(cf, "operating_cash_flow"), cur(cf, "capex")
+    out = {
+        "gross_margin_pct": _pct(cur(inc, "gross_profit"), rev),
+        "operating_margin_pct": _pct(cur(inc, "operating_profit"), rev),
+        "net_margin_pct": _pct(ni, rev),
+        "revenue_growth_pct": _pct((cur(inc, "revenue") or 0) - ((inc.get("revenue") or {}).get("previous") or 0), (inc.get("revenue") or {}).get("previous")) if (inc.get("revenue") or {}).get("previous") else None,
+        "net_profit_growth_pct": _pct((ni or 0) - ((inc.get("net_profit") or {}).get("previous") or 0), abs((inc.get("net_profit") or {}).get("previous") or 0)) if (inc.get("net_profit") or {}).get("previous") else None,
+        "roe_ttm_pct": _pct(ni_ttm, eq),
+        "roa_ttm_pct": _pct(ni_ttm, ta),
+        "current_ratio": round(_div(cur(bal, "current_assets"), cur(bal, "current_liabilities")), 2) if _div(cur(bal, "current_assets"), cur(bal, "current_liabilities")) is not None else None,
+        "debt_ratio_pct": _pct(cur(bal, "total_liabilities"), ta),
+        "liabilities_to_equity": round(_div(cur(bal, "total_liabilities"), eq), 2) if _div(cur(bal, "total_liabilities"), eq) is not None else None,
+        "financial_debt_to_equity": round(_div(debt, eq), 2) if debt and eq else None,
+        "free_cash_flow": (ocf + capex) if ocf is not None and capex is not None else None,
+        "loans_to_deposits_pct": _pct(cur(bal, "loans"), cur(bal, "customer_deposits")),
+        "loss_ratio_pct": _pct(-(cur(inc, "claims_net") or 0), cur(inc, "net_premiums")) if cur(inc, "claims_net") and cur(inc, "net_premiums") else None,
+        "equity_to_assets_pct": _pct(eq, ta) if cur(bal, "customer_deposits") or cur(bal, "technical_reserves") else None,
+        "revenue_ttm": rev_ttm,
+        "net_profit_ttm": ni_ttm,
+    }
+    return {k: v for k, v in out.items() if v is not None}
+
+
+# ------------------------------------------------------------------------------ monthly activity
+
+
+def _sales_table(gs: list[dict]) -> dict | None:
+    for want in ("تولیدوفروش", "فروش", "درآمد"):
+        for g in gs:
+            if want in key(g.get("title") or ""):
+                return g
+    return None
+
+
+def _col(columns: list[str], group: str, sub: str, after: int = -1) -> int | None:
+    for i, c in enumerate(columns):
+        if i <= after:
+            continue
+        parts = [key(p) for p in c.split("|")]
+        if len(parts) >= 2 and group in parts[0] and sub in parts[-1]:
+            return i
+    return None
+
+
+def _bank_col(columns: list[str], *parts: str) -> int | None:
+    for i, c in enumerate(columns):
+        k = key(c)
+        if all(p in k for p in parts):
+            return i
+    return None
+
+
+def _bank_monthly(gs: list[dict], out: dict) -> dict | None:
+    """A bank's monthly report: operating income realised in the month and year to date, loans and deposits at the
+    month end, loans granted and deposits taken in the month, deposit interest. None if this is not that template."""
+    income = next((g for g in gs if "درآمدهایعملیاتیمحققشده" in key(g.get("title") or "")), None)
+    if income is None:
+        return None
+    cols = income["columns"]
+    m_col = _bank_col(cols, "طیدورهیکماهه")
+    ytd_col = next((i for i, c in enumerate(cols) if key(c).startswith("جمع") and "ازابتدایسال" in key(c)), None)
+    end = re.search(r"\d{4}/\d{2}/\d{2}", cols[m_col] if m_col is not None else "")
+    val = lambda row, i: (row["values"][i] if i is not None and i < len(row["values"]) and isinstance(row["values"][i], (int, float)) else None)  # noqa: E731
+    lines = [{"item": r["label"], "month_amount": val(r, m_col), "ytd_amount": val(r, ytd_col)}
+             for r in income["rows"] if r["label"] and val(r, m_col) is not None]
+    month = sum(x["month_amount"] or 0 for x in lines) if lines else None
+    ytd = sum(x["ytd_amount"] or 0 for x in lines) if lines and ytd_col is not None else None
+
+    def total_row(title_part: str) -> tuple[dict | None, list[str]]:
+        g = next((t for t in gs if title_part in key(t.get("title") or "")), None)
+        if g is None:
+            return None, []
+        row = next((r for r in g["rows"] if key(r["label"] or "") == "جمع"), None)
+        return row, g["columns"]
+
+    balances: dict[str, Any] = {}
+    loans, lcols = total_row("وضعیتتسهیلاتاعطایی")
+    if loans:
+        balances["loans_end"] = val(loans, _bank_col(lcols, "ماندهتسهیلاتاعطاییپایاندوره"))
+        balances["loans_granted_month"] = val(loans, _bank_col(lcols, "تسهیلاتاعطاییطیدوره"))
+        balances["loans_repaid_month"] = val(loans, _bank_col(lcols, "تسهیلاتوصولیطیدوره"))
+        balances["loan_interest_month"] = val(loans, _bank_col(lcols, "درآمدتسهیلاتاعطاییطیدورهیکماهه"))
+    deposits, dcols = total_row("وضعیتسپردهها")
+    if deposits:
+        balances["deposits_end"] = val(deposits, _bank_col(dcols, "ماندهسپردههایسرمایهگذاریپایاندوره"))
+        balances["deposit_interest_month"] = val(deposits, _bank_col(dcols, "سودسپردههایسرمایهگذاریطیدورهیکماهه"))
+    if balances.get("loan_interest_month") is not None and balances.get("deposit_interest_month") is not None:
+        balances["net_interest_month"] = balances["loan_interest_month"] - balances["deposit_interest_month"]
+    if balances.get("loans_end") and balances.get("deposits_end"):
+        balances["loans_to_deposits_pct"] = _pct(balances["loans_end"], balances["deposits_end"])
+    out.update({
+        "template": "bank",
+        "month_end": end[0] if end else out.get("period_end"),
+        "unit": income.get("unit_note") or "million rial",
+        "month_sales": month,
+        "ytd_sales": ytd,
+        "bank": {k: v for k, v in balances.items() if v is not None},
+        "products": lines,
+        "note": "Bank template: month_sales / ytd_sales are the operating income lines the report lists (loan interest, deposits placed, "
+                "bonds, investments, fees); the report says they are not every operating income line. The template has no same period last year.",
+    })
+    return {k: v for k, v in out.items() if v not in (None, {}, [])}
+
+
+def _generic_monthly(gs: list[dict]) -> dict | None:
+    """Month and year-to-date totals of the first table that has a «جمع» row and a one-month column (insurers'
+    premiums and claims, investment companies' operating income ...). Columns are grouped by their middle header
+    (e.g. «حق بیمه صادره», «خسارت پرداختی»); share-% columns are skipped. None when no table fits."""
+    for g in gs:
+        cols = g["columns"]
+        total = next((r for r in g["rows"] if key(r["label"] or "") == "جمع"), None)
+        if total is None:
+            continue
+        month_cols = [i for i, c in enumerate(cols) if ("یکماهه" in key(c) or "1ماهه" in key(c)) and "درصد" not in key(c)]
+        if not month_cols:
+            continue
+        end = re.search(r"\d{4}/\d{2}/\d{2}", cols[month_cols[0]])
+        if not end:
+            continue
+        ytd_cols = [i for i, c in enumerate(cols) if "ازابتدایسال" in key(c.split("|")[0]) and end[0] in c and "اصلاح" not in key(c) and "درصد" not in key(c)]
+        group = lambda c: tidy(c.split("|")[1]) if c.count("|") >= 1 and len(c.split("|")) > 2 else tidy(c.split("|")[-1]) if "|" in c else ""  # noqa: E731
+        vals = total["values"]
+        val = lambda i, vals=vals: vals[i] if i < len(vals) and isinstance(vals[i], (int, float)) else None  # noqa: E731
+        totals: dict[str, dict] = {}
+        for i in month_cols:
+            name = group(cols[i]) or "total"
+            ytd = next((j for j in ytd_cols if (group(cols[j]) or "total") == name), None)
+            totals[name] = {"month_amount": val(i), "ytd_amount": val(ytd) if ytd is not None else None}
+        first = next(iter(totals.values()))
+        lines = []
+        for r in g["rows"]:
+            if not r["label"] or key(r["label"]).startswith("جمع"):
+                continue
+            v = r["values"][month_cols[0]] if month_cols[0] < len(r["values"]) else None
+            if isinstance(v, (int, float)):
+                lines.append({"item": r["label"], "month_amount": v})
+        return {
+            "month_end": end[0], "unit": g.get("unit_note") or "million rial", "table": g.get("title"),
+            "month_sales": first["month_amount"], "ytd_sales": first["ytd_amount"],
+            "totals": totals if len(totals) > 1 else None, "products": lines,
+        }
+    return None
+
+
+def monthly(ds: dict) -> dict:
+    """A monthly activity report (ن-۳۰): month and year-to-date sales by product, with totals.
+
+    Production templates name their column groups 'دوره یک ماهه منتهی به ...' (the month) and 'از ابتدای سال مالی
+    تا تاریخ ...' (year to date, this year and the same span last year); amounts are million Rial.
+    """
+    gs = grids(ds)
+    out: dict[str, Any] = {**meta(ds)}
+    bank = _bank_monthly(gs, dict(out))
+    if bank is not None:
+        return bank
+    g = _sales_table(gs)
+    if g and _col(g["columns"], "یکماهه", "مبلغ") is None:
+        g = None  # a table about income or sales, but not the production-and-sales layout this parser reads
+    if not g:
+        out["tables"] = gs
+        summary = _generic_monthly(gs)
+        if summary:
+            out.update({k: v for k, v in summary.items() if v is not None})
+            out["note"] = (f"No production-and-sales table in this report template: month_sales / ytd_sales are the «جمع» row of the table "
+                           f"«{summary.get('table')}» (the first column group when it has several, all in totals), and every table is in tables.")
+        else:
+            out["note"] = "No production-and-sales table in this report template; the tables are returned as they are."
+        return out
+    cols = g["columns"]
+    m_amt = _col(cols, "یکماهه", "مبلغ")
+    month_group = cols[m_amt].split("|")[0] if m_amt is not None else ""
+    end = re.search(r"\d{4}/\d{2}/\d{2}", month_group)
+    end_date = end[0] if end else out.get("period_end")
+    ytd_amt = ytd_prev_amt = None
+    for i, c in enumerate(cols):
+        head = c.split("|")[0]
+        if "ازابتدایسالمالی" in key(head) and "مبلغ" in key(c.split("|")[-1]) and "اصلاح" not in key(head):
+            d = re.search(r"\d{4}/\d{2}/\d{2}", head)
+            if d and end_date and d[0] == end_date:
+                ytd_amt = i
+            elif d and end_date and d[0][:4] < end_date[:4]:
+                ytd_prev_amt = i
+    m_prod, m_qty, m_rate = _col(cols, "یکماهه", "تولید"), _col(cols, "یکماهه", "تعدادفروش"), _col(cols, "یکماهه", "نرخ")
+    val = lambda row, i: (row["values"][i] if i is not None and i < len(row["values"]) and isinstance(row["values"][i], (int, float)) else None)  # noqa: E731
+    products, section, totals = [], None, {}
+    for row in g["rows"]:
+        lab = row["label"] or ""
+        k = key(lab)
+        unit = row["values"][0] if row["values"] and isinstance(row["values"][0], str) else None
+        if lab.endswith(":"):
+            section = lab.rstrip(":").strip()
+            continue
+        if k.startswith("جمع"):
+            totals[lab] = {"month_amount": val(row, m_amt), "ytd_amount": val(row, ytd_amt), "ytd_last_year_amount": val(row, ytd_prev_amt)}
+            continue
+        if not lab or unit is None:
+            continue
+        p = {
+            "product": lab,
+            "unit": tidy(unit),
+            "section": section,
+            "month_production": val(row, m_prod),
+            "month_sales_qty": val(row, m_qty),
+            "month_rate_rial": val(row, m_rate),
+            "month_amount": val(row, m_amt),
+            "ytd_amount": val(row, ytd_amt),
+            "ytd_last_year_amount": val(row, ytd_prev_amt),
+        }
+        if any(p[x] for x in ("month_production", "month_sales_qty", "month_amount", "ytd_amount")):
+            products.append({k2: v for k2, v in p.items() if v is not None})
+    grand = totals.get("جمع") or (list(totals.values())[-1] if totals else {})
+    out.update(
+        {
+            "month_end": end_date,
+            "unit": g.get("unit_note") or "million rial",
+            "month_sales": grand.get("month_amount"),
+            "ytd_sales": grand.get("ytd_amount"),
+            "ytd_sales_last_year": grand.get("ytd_last_year_amount"),
+            "ytd_growth_pct": _pct((grand.get("ytd_amount") or 0) - (grand.get("ytd_last_year_amount") or 0), grand.get("ytd_last_year_amount")) if grand.get("ytd_last_year_amount") else None,
+            "subtotals": {k2: {x: y for x, y in v.items() if y is not None} for k2, v in totals.items() if k2 != "جمع"},
+            "products": products,
+        }
+    )
+    return {k2: v for k2, v in out.items() if v not in (None, {}, [])}
+
+
+# ------------------------------------------------------------------------------ recording support
+
+
+CELL_KEYS = ("cellGroupName", "rowSequence", "columnSequence", "colSpan", "isVisible", "value")
+
+
+def slim_page(html: str) -> str:
+    """A Codal letter page cut down to what this module reads (for lean test recordings): the datasource with only
+    the cell fields used, the sheet drop-down and the unit / capital labels. Plain-text letters keep their body text."""
+    ds = datasource(html)
+    select = re.search(r'<select[^>]*name="ctl00\$ddlTable".*?</select>', html, re.S)
+    if ds is None:
+        text, _ = visible_text(html, limit=20000)
+        lines = "".join(f"<p>{line}</p>" for line in text.split("\n"))
+        return "<html><body>" + (select[0] if select else "") + lines + "</body></html>"
+    for sheet in ds.get("sheets") or []:
+        for t in sheet.get("tables") or []:
+            t["cells"] = [{k: c.get(k) for k in CELL_KEYS} for c in t.get("cells") or [] if isinstance(c, dict)]
+    labels = "".join(
+        m[0] for m in re.finditer(r'<[^>]+id="ctl00_(?:pPriceNote|lblListedCapital)"[^>]*>[^<]*<', html)
+    )
+    return (
+        "<html><body>"
+        + (select[0] if select else "")
+        + labels
+        + "<script>var datasource = "
+        + json.dumps(ds, ensure_ascii=False, separators=(",", ":"))
+        + ";</script></body></html>"
+    )

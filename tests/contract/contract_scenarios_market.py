@@ -150,12 +150,13 @@ def _indices(run):
 @scenario("market_watch", "market_watch", limit=10)
 def _market_watch(run):
     out, raw = run.out, watch_rows(run)
-    assert_keys(out, "total_instruments source matched returned sorted_by rows units")
-    assert (out["source"], out["sorted_by"], out["units"], out["returned"]) == (
+    assert_keys(out, "total_instruments source matched returned sorted_by rows units note")
+    assert (out["source"], out["sorted_by"], out["units"], out["returned"], out["note"]) == (
         "tsetmc",
         "value",
         "rial",
         10,
+        None,
     )
     assert out["total_instruments"] == len(
         raw
@@ -234,6 +235,78 @@ def _top_movers_buy_queue(run):
     assert top["queue_volume"] == sum(level["qTitMeDem"] for level in at_limit)
     assert top["queue_orders"] == sum(level["zOrdMeDem"] for level in at_limit)
     assert top["queue_value"] == top["queue_volume"] * market["pMax"]
+
+
+def rebuilt_close(rows, close=123000):
+    """The book levels at the close, rebuilt from the recorded delta feed (each level keeps its newest row)."""
+    levels = {}
+    for row in sorted(rows, key=lambda r: r["refID"]):
+        if row["hEven"] <= close:
+            levels[row["number"]] = row
+    return [levels[n] for n in sorted(levels)]
+
+
+@scenario(
+    "top_movers_buy_queue_past", "top_movers", kind="buy_queue", date="2026-11-04", market="fara", limit=10
+)
+def _top_movers_buy_queue_past(run):
+    out = run.out
+    table = run.rec.body("GetInstrmentsHistoryInDay/20261104")["closingPriceDailyHistoryWithInstDetails"]
+    assert_keys(out, "kind date jdate count confirmed rows candidates method units note")
+    assert (out["kind"], out["date"], out["jdate"]) == ("buy_queue", "2026-11-04", "1405/08/13")
+    assert out["count"] == len(out["rows"]) == min(out["confirmed"], 10) and out["count"] > 0
+    c = out["candidates"]
+    assert_keys(
+        c,
+        "traded_instruments last_trade_at_day_extreme limits_checked closed_at_official_limit order_books_checked",
+    )
+    assert (
+        out["confirmed"]
+        <= c["order_books_checked"]
+        <= c["closed_at_official_limit"]
+        <= c["limits_checked"]
+        <= c["last_trade_at_day_extreme"]
+        < c["traded_instruments"]
+        <= len(table)
+    )
+    assert "GetStaticThreshold" in out["method"] and "rial" in out["units"]
+    assert descending(r["queue_value"] for r in out["rows"])  # biggest queue at the close first
+    for row in out["rows"]:
+        assert_keys(
+            row,
+            "symbol name industry last last_pct close close_pct yesterday volume value trades price_limits "
+            "queue_volume queue_orders queue_value book_time queue_since held_last_30_minutes",
+        )
+        day = by_symbol(table, row["symbol"], "lVal18AFC")
+        assert (row["last"], row["close"], row["yesterday"], row["value"], row["trades"]) == (
+            day["pDrCotVal"],
+            day["pClosing"],
+            day["priceYesterday"],
+            int(day["qTotCap"]),
+            int(day["zTotTran"]),
+        )
+        assert row["last"] == day["priceMax"]
+        assert row["last_pct"] == pct(day["pDrCotVal"], day["priceYesterday"])
+        code = day["insCode"]
+        limits = [
+            r
+            for r in run.rec.body(f"GetStaticThreshold/{code}/20261104")["staticThreshold"]
+            if r["dEven"] == 20261104
+        ][-1]
+        assert row["price_limits"] == {"upper": limits["psGelStaMax"], "lower": limits["psGelStaMin"]}
+        assert row["last"] >= limits["psGelStaMax"]  # the last trade was at the ceiling
+        levels = rebuilt_close(run.rec.body(f"/BestLimits/{code}/20261104")["bestLimitsHistory"])
+        top = next(level for level in levels if level["qTitMeDem"] > 0)
+        assert top["pMeDem"] >= limits["psGelStaMax"]  # the best bid sits at the ceiling ...
+        assert all(  # ... and nothing tradable is offered
+            level["qTitMeOf"] == 0 or level["pMeOf"] > limits["psGelStaMax"] for level in levels
+        )
+        assert (row["queue_volume"], row["queue_orders"], row["queue_value"]) == (
+            top["qTitMeDem"],
+            top["zOrdMeDem"],
+            int(top["qTitMeDem"] * top["pMeDem"]),
+        )
+        assert row["held_last_30_minutes"] == (row["queue_since"] <= "12:00:00")
 
 
 @scenario("industry_summary", "industry_summary", limit=10)
@@ -886,7 +959,7 @@ def _option_chain_underlyings(run):
     top = out["underlyings"][0]
     assert_keys(
         top,
-        "underlying underlying_ins_code spot_close expiries nearest_expiry nearest_expiry_jalali days_to_nearest_expiry strikes open_interest put_call_oi_ratio volume value",
+        "underlying underlying_ins_code spot_close expiries expiries_jalali nearest_expiry nearest_expiry_jalali days_to_nearest_expiry strikes open_interest put_call_oi_ratio volume value",
     )
     rows = [r for r in raw if r["uaInsCode"] == top["underlying_ins_code"]]
     assert top["open_interest"] == sum(r["oP_C"] + r["oP_P"] for r in rows)
@@ -904,7 +977,7 @@ def _option_chain(run):
     out, raw = run.out, run.rec.body("GetInstrumentOptionMarketWatch")["instrumentOptMarketWatch"]
     assert_keys(
         out,
-        "mode market underlying underlying_ins_code sorted_by groups other_expiries units notes",
+        "mode market underlying underlying_ins_code sorted_by expiries_listed expiry_note groups other_expiries units notes",
     )
     assert (out["mode"], out["underlying"], out["sorted_by"]) == ("chain", "اهرم", "strike")
     rows = [r for r in raw if r["uaInsCode"] == out["underlying_ins_code"]]

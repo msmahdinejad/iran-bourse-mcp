@@ -1,0 +1,23 @@
+{
+ "scenario": "top_movers_buy_queue_past",
+ "tool": "top_movers",
+ "recorded_at": "2026-11-11T09:25:59",
+ "requests": [
+  "cdn__api_BestLimits_10236455588057352_20261104-03be88e7",
+  "cdn__api_BestLimits_1625149423498289_20261104-ccef2249",
+  "cdn__api_BestLimits_20092044608974663_20261104-94dfc7c4",
+  "cdn__api_BestLimits_30199365830132996_20261104-05274da1",
+  "cdn__api_BestLimits_35026822153186010_20261104-403ac5e6",
+  "cdn__api_BestLimits_8175784894140974_20261104-6300234c",
+  "cdn__api_ClosingPrice_GetInstrmentsHistoryInDay_20261104-a8178d22",
+  "cdn__api_ClosingPrice_GetMarketWatch-f1595858",
+  "cdn__api_MarketData_GetStaticThreshold_10236455588057352_2026-c167081c",
+  "cdn__api_MarketData_GetStaticThreshold_1625149423498289_20261-ead60278",
+  "cdn__api_MarketData_GetStaticThreshold_20092044608974663_2026-c50a3125",
+  "cdn__api_MarketData_GetStaticThreshold_30199365830132996_2026-42273404",
+  "cdn__api_MarketData_GetStaticThreshold_35026822153186010_2026-77a61386",
+  "cdn__api_MarketData_GetStaticThreshold_8175784894140974_20261-7cc01909",
+  "cdn__api_StaticData_GetStaticData-fe76bd40",
+  "webgw__InstrumentProvider_api_v1_MarketWatch_MarketWatchCash_fa-cd561d07"
+ ]
+}

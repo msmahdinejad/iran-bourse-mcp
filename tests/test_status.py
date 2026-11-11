@@ -201,3 +201,17 @@ def test_symbol_without_state_records():
     out = S.shape_symbol_history([], instrument={"symbol": "نو"})
     assert out["records"] == 0 and out["history"] == [] and "current" not in out and "no state records" in out["notes"][-1]
     assert S.shape_symbol_history(None)["records"] == 0
+
+
+def test_idle_market_note_explains_an_empty_live_list():
+    from iran_bourse_mcp.status import idle_market_note
+
+    note = idle_market_note("before_open", 0, "2026-11-10", "1405/08/19", "pass that date.")
+    assert "has not started yet" in note and "09:00" in note and "resets" in note
+    assert "2026-11-10 (1405/08/19); pass that date." in note
+    assert "before_open" not in note
+    assert idle_market_note("before_open", 3000, "2026-11-10", "1405/08/19", "x") is not None
+    assert "nothing has traded yet today" in idle_market_note("open", 0, "2026-11-10", "1405/08/19", "x")
+    assert idle_market_note("open", 12, "2026-11-10", "1405/08/19", "x") is None
+    assert idle_market_note("after_close", 1, "2026-11-10", "1405/08/19", "x") is None
+    assert "closed today" in idle_market_note("weekend", 0, "2026-11-11", "1405/08/20", "x")

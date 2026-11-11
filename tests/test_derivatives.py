@@ -320,8 +320,57 @@ def test_unlisted_expiry_is_an_error_that_lists_the_listed_ones(opts):
 
 @pytest.mark.parametrize("expiry", ["next month", "1405/13/40", "2026-02-30", "tomorrow"])
 def test_unreadable_expiry_says_how_to_write_one(opts, expiry):
-    with pytest.raises(ValueError, match=r"is not 'nearest', 'all' or a date\. Use 2026-11-18 or 20261118 \(Gregorian\) or 1405/08/27 \(Jalali\)"):
+    with pytest.raises(ValueError, match=r"is not 'nearest', 'all', a date or a Jalali month\. Use 2026-11-18 or 20261118 \(Gregorian\), 1405/08/27 \(Jalali\)"):
         D.option_chain(opts, AHRM, expiry)
+
+
+@pytest.mark.parametrize("expiry", ["10", "۱۰", "برج ۱۰", "ماه 10", "دی", "دی ۱۴۰۵", "1405/10", "۱۴۰۵/۱۰"])
+def test_expiry_accepts_a_jalali_month(opts, expiry):
+    # «کاورد کال‌های برج ۱۰»: every expiry in that Jalali month, not the nearest one
+    result = D.option_chain(opts, AHRM, expiry)
+    assert [g["expiry_jalali"] for g in result["groups"]] == ["1405/10/30"]
+    assert [o["expiry_jalali"] for o in result["other_expiries"]] == ["1405/08/27"]
+
+
+def test_month_with_no_expiry_lists_the_listed_ones(opts):
+    with pytest.raises(ValueError, match=r"اهرم has no option expiring in Jalali month 9\. Listed expiries: 2026-11-18 \(1405/08/27\), 2027-01-20 \(1405/10/30\)"):
+        D.option_chain(opts, AHRM, "آذر")
+    with pytest.raises(ValueError, match=r"month 10 of 1404"):
+        D.option_chain(opts, AHRM, "1404/10")
+
+
+def test_month_narrows_the_underlyings_list(opts):
+    result = D.option_chain(opts, expiry="9")
+    assert sorted((u["underlying"], u["expiries_jalali"]) for u in result["underlyings"]) == [(SHASTA, ["1405/09/11"]), (FARA, ["1405/09/29"])]
+    assert "Jalali month 12" in D.option_chain(opts, expiry="اسفند")["note"]
+
+
+def test_nearest_result_lists_every_expiry_up_front_and_says_what_it_hides(opts):
+    result = D.option_chain(opts, AHRM)
+    keys = list(result)
+    assert keys.index("expiries_listed") < keys.index("expiry_note") < keys.index("groups")
+    assert result["expiries_listed"] == ["2026-11-18 (1405/08/27)", "2027-01-20 (1405/10/30)"]
+    assert "has 2 expiries; this result shows only 2026-11-18 (1405/08/27)" in result["expiry_note"]
+    assert "expiry_note" not in D.option_chain(opts, AHRM, "all")
+
+
+def test_covered_call_figures():
+    cc = D.covered_call(strike=100_000, spot=93_736, premium=4_000, days=35)
+    net = 93_736 - 4_000
+    assert cc["net_cost"] == net
+    assert cc["return_if_called_pct"] == round((100_000 - net) / net * 100, 2)
+    assert cc["return_if_unchanged_pct"] == round((93_736 - net) / net * 100, 2)  # out of the money: keeps the premium
+    assert cc["annualized_if_called_pct"] == round((100_000 - net) / net * 100 * 365 / 35, 2)
+    assert cc["protection_pct"] == round(4_000 / 93_736 * 100, 2)
+    itm = D.covered_call(strike=90_000, spot=93_736, premium=7_443, days=7)
+    assert itm["return_if_unchanged_pct"] == itm["return_if_called_pct"]  # in the money: called either way
+    assert D.covered_call(100_000, 93_736, None, 35) is None and D.covered_call(100_000, None, 4_000, 35) is None
+    assert D.covered_call(100_000, 93_736, 4_000, 0)["annualized_if_called_pct"] is None
+
+
+def test_covered_call_is_on_calls_only(opts):
+    row = strike_row(group(D.option_chain(opts, AHRM)), 50000)
+    assert "covered_call" in row["call"]["derived"] and "covered_call" not in row["put"]["derived"]
 
 
 # ------------------------------------------------------------------------------ filters
@@ -456,7 +505,7 @@ def test_summary_mode_lists_underlyings_with_expiries_open_interest_and_volume(o
     shasta = result["underlyings"][0]
     assert shasta == {
         "underlying": SHASTA, "underlying_ins_code": "2400322364771558", "spot_close": 3260, "expiries": 2,
-        "nearest_expiry": "2026-11-04", "nearest_expiry_jalali": "1405/08/13", "days_to_nearest_expiry": 0, "strikes": 11,
+        "expiries_jalali": ["1405/08/13", "1405/09/11"], "nearest_expiry": "2026-11-04", "nearest_expiry_jalali": "1405/08/13", "days_to_nearest_expiry": 0, "strikes": 11,
         "open_interest": 14295137 + 2653560 + 4643503 + 455181, "put_call_oi_ratio": 0.164,  # (2,653,560 + 455,181) / (14,295,137 + 4,643,503)
         "volume": 47291096 + 20107765 + 5242720 + 494974, "value": 5488034719000 + 1164882897000 + 932720511000 + 60637840000,
     }
@@ -634,7 +683,7 @@ def test_futures_bad_sort_and_empty_feed(futs):
 def test_every_derived_label_is_in_a_derived_key_or_named_as_an_estimate(opts, futs):
     chain = D.option_chain(opts, AHRM)
     leg = strike_row(group(chain), 50000)["call"]
-    assert set(leg["derived"]) == {"moneyness", "intrinsic", "time_value", "breakeven", "breakeven_pct", "spread_pct"}
+    assert set(leg["derived"]) == {"moneyness", "intrinsic", "time_value", "breakeven", "breakeven_pct", "spread_pct", "covered_call"}
     assert "max_pain_estimate" in group(chain)["derived"]
     assert "annualized_basis_pct_estimate" in D.futures_market(futs)["contracts"][0]["derived"]
 

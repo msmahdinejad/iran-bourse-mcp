@@ -242,6 +242,16 @@ def is_trading_day(day: dt.date) -> bool:
     return is_trading_weekday(day) and holiday_name(day) is None
 
 
+def previous_trading_day(day: dt.date) -> dt.date:
+    """The last calendar trading day before ``day`` (closures the exchange decides itself are not known)."""
+    cursor = day - dt.timedelta(days=1)
+    for _ in range(400):
+        if is_trading_day(cursor):
+            return cursor
+        cursor -= dt.timedelta(days=1)
+    raise DateError(f"No trading day found before {day}")
+
+
 def next_trading_day(day: dt.date, *, include_today: bool = False) -> dt.date:
     cursor = day if include_today else day + dt.timedelta(days=1)
     for _ in range(400):

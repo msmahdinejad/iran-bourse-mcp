@@ -3,6 +3,7 @@
     uv run python scripts/record_contract.py                       # list scenarios and their recordings (offline)
     uv run python scripts/record_contract.py --record              # record every scenario, then verify it by replay
     uv run python scripts/record_contract.py --record --only quote,top_movers_real_inflow
+    uv run python scripts/record_contract.py --record --only technical_indicators --reuse   # add one scenario, keep the rest
     uv run python scripts/record_contract.py --show quote          # replay a recorded scenario, print the output (offline)
 
 Every scenario (tests/contract/contract_scenarios_*.py) calls one MCP tool through the real server stack on top of a
@@ -14,7 +15,8 @@ the file), and only the status, the content type and the body are stored: no req
 that sends a JSON body (the IME's POSTs) is recorded with that body, which is part of its identity.
 
 Re-record everything (no --only) when you want a consistent snapshot: scenarios share their requests, so recording one
-scenario alone refreshes the requests it uses for the others too.
+scenario alone refreshes the requests it uses for the others too. With --reuse a request that already has a recording is
+served from disk instead, so a new scenario can be added without touching what the others replay.
 """
 
 from __future__ import annotations
@@ -39,12 +41,16 @@ sys.path.insert(0, str(ROOT / "tests" / "contract"))
 
 import contract_replay as cr  # noqa: E402
 
-from iran_bourse_mcp import market, service  # noqa: E402
+from iran_bourse_mcp import (  # noqa: E402
+    codal_reports,  # noqa: E402
+    market,
+    service,
+)
 from iran_bourse_mcp.dates import from_date, tehran_now  # noqa: E402
 from iran_bourse_mcp.text import clean  # noqa: E402
 
 MARKET_WATCH = "https://cdn.tsetmc.com/api/ClosingPrice/GetMarketWatch?market=0&industrialGroup=&showTraded=false&withBestLimits=true&hEven=0&RefID=0"
-DELAYS = {"default": 0.5, "search.codal.ir": 6.0}  # seconds between two requests to a host
+DELAYS = {"default": 0.5, "search.codal.ir": 6.0, "www.codal.ir": 5.0}  # seconds between two requests to a host (www.codal.ir shows a captcha to bursts of report pages)
 RETRY_STATUS = {403, 408, 425, 429, 502, 503, 504}
 WAIT_429 = (30, 60, 120, 180, 240)  # seconds before each retry of a rate-limited request
 WAIT_OTHER = (3, 10, 30, 60)
@@ -111,6 +117,7 @@ def build_universe(rows: list[dict]) -> Universe:
 class TrimContext:
     universe: Universe | None
     now: Any
+    tool: str | None = None  # the tool of the scenario being recorded
 
 
 def _list(body: Any, key: str) -> list:
@@ -234,6 +241,39 @@ def cap_rows(key: str, n: int) -> Callable[[Any, TrimContext], list[dict]]:
     return lambda body, ctx: keep_first(body, key, n)
 
 
+BOOK_ROWS = 4000  # order_book_history: the first rows of the day
+CLOSE_WINDOW = (122500, 123000)  # top_movers on a past day reads the book at 12:30: keep what rebuilds its last minutes
+
+
+def trim_book_history(body: Any, ctx: TrimContext) -> list[dict]:
+    """``BestLimits/{ins}/{date}``: the first rows for order_book_history; for a past-day queue scan, the rows that rebuild
+    the book from 12:25 to the close (each level's last row before 12:25, then every row up to 12:30)."""
+    if ctx.tool != "top_movers":
+        return keep_first(body, "bestLimitsHistory", BOOK_ROWS)
+    rows = _list(body, "bestLimitsHistory")
+    start, end = CLOSE_WINDOW
+    before: dict[int, int] = {}  # level -> index of its newest row before the window
+    for i, row in enumerate(rows):
+        if (row.get("hEven") or 0) < start and (
+            row["number"] not in before or row["refID"] >= rows[before[row["number"]]]["refID"]
+        ):
+            before[row["number"]] = i
+    keep = sorted(
+        set(before.values()) | {i for i, row in enumerate(rows) if start <= (row.get("hEven") or 0) <= end}
+    )
+    if len(keep) == len(rows):
+        return []
+    body["bestLimitsHistory"] = [rows[i] for i in keep]
+    return [
+        {
+            "path": "bestLimitsHistory",
+            "kept": len(keep),
+            "of": len(rows),
+            "rule": "each level's last row before 12:25:00, then every row from 12:25:00 to 12:30:00",
+        }
+    ]
+
+
 POWER_HELD_KEPT = 3
 
 
@@ -344,7 +384,7 @@ RULES = (
     ),
     Rule(r"/Trade/GetTrade/\d+$", cap_rows("trade", 3000)),
     Rule(r"/Trade/GetTradeHistory/", cap_rows("tradeHistory", 3000)),
-    Rule(r"/BestLimits/\d+/\d+$", cap_rows("bestLimitsHistory", 4000)),
+    Rule(r"/BestLimits/\d+/\d+$", trim_book_history),
     Rule(r"imedata\.asmx/GetAmareMoamelatList$", trim_ime_trades),
     Rule(r"/PowerMarket/GetPowerMarketAuctionAnnouncements$", trim_power_announcements),
 )
@@ -392,6 +432,7 @@ class RecordingTransport(httpx.AsyncBaseTransport):
         self.cache: dict[str, cr.Recorded] = {}
         self.used: dict[str, cr.Recorded] = {}
         self.errors: list[str] = []
+        self.tool: str | None = None
         self.upstream_requests = 0
         self._universe: Universe | None = None
         self._raw: dict[
@@ -401,8 +442,15 @@ class RecordingTransport(httpx.AsyncBaseTransport):
         self._lock = asyncio.Lock()
         self._universe_lock = asyncio.Lock()
 
-    def begin(self) -> None:
-        self.used, self.errors = {}, []
+    def begin(self, tool: str | None = None) -> None:
+        self.used, self.errors, self.tool = {}, [], tool
+
+    def reuse_recordings(self) -> int:
+        """Serve every request that already has a recording on disk from that recording (``--reuse``)."""
+        for path in cr.REQUESTS.glob("*.json"):
+            rec = cr.Recorded.from_file(path.read_text(encoding="utf-8"))
+            self.cache.setdefault(cr.request_key(rec.method, rec.url, rec.request_body), rec)
+        return len(self.cache)
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         key = cr.request_key(request.method, str(request.url), request_body(request))
@@ -436,11 +484,16 @@ class RecordingTransport(httpx.AsyncBaseTransport):
                 pass
         if not is_json:
             rec.text = text
+            if status == 200 and "codal.ir/Reports/" in str(request.url) and "var datasource" in text:
+                # a Codal letter page is up to ~1 MB of ASP.NET markup; keep only what codal_reports reads
+                slim = codal_reports.slim_page(text)
+                rec.trimmed = [{"rule": "codal page: datasource cells, sheet list and unit labels only", "kept_bytes": len(slim), "original_bytes": len(text)}]
+                rec.text = slim
         elif status == 200:
             rule = next((r for r in RULES if r.matches(request.url)), None)
             if rule and rule.universe:
                 await self._ensure_universe()
-            rec.trimmed = trim(request.url, rec.json, TrimContext(self._universe, self.now))
+            rec.trimmed = trim(request.url, rec.json, TrimContext(self._universe, self.now, self.tool))
         size = len(rec.to_file().encode("utf-8"))
         if size > MAX_BODY_BYTES:
             raise RecordingError(
@@ -498,6 +551,21 @@ class RecordingTransport(httpx.AsyncBaseTransport):
                     )
                 self.log(f"  HTTP {status}: waiting {waits[attempt]} s before asking again")
                 await self.sleep(waits[attempt])
+            location = response.headers.get("location")
+            if status in (301, 302, 303, 307, 308) and location and request.method == "GET":
+                # recordings keep no headers, so a redirect could not be replayed: record where it leads instead
+                # (Codal sends some monthly reports from Decision.aspx on to MonthlyActivity.aspx)
+                target = httpx.Request("GET", request.url.join(location), headers=request.headers)
+                self.log(f"  following the redirect to {str(target.url)[:150]}")
+                self.upstream_requests += 1
+                gap = self.delays.get(host, self.delays["default"]) - (self.clock() - self._last.get(host, float("-inf")))
+                if gap > 0:
+                    await self.sleep(gap)
+                followed = await self.inner.handle_async_request(target)
+                content = await followed.aread()
+                await followed.aclose()
+                self._last[host] = self.clock()
+                status, response = followed.status_code, followed
             self._raw[key] = (status, response.headers.get("content-type"), content)
             return self._raw[key]
 
@@ -534,7 +602,7 @@ async def verify(sc: cr.Scenario) -> None:
 
 
 async def record_one(sc: cr.Scenario, transport: RecordingTransport, now: Any) -> int:
-    transport.begin()
+    transport.begin(sc.tool)
     await cr.call_tool(sc.tool, sc.args, transport, now)
     if transport.errors:
         raise RecordingError("; ".join(transport.errors[:3]))
@@ -573,6 +641,8 @@ async def record(scenarios: list[cr.Scenario], args: argparse.Namespace) -> int:
         transport = RecordingTransport(
             inner, now=now, delays=delays, log=print if args.verbose else (lambda line: None)
         )
+        if args.reuse:
+            print(f"reusing {transport.reuse_recordings()} recordings already on disk")
         pending, failed = scenarios, {}
         for round_no in range(1, args.rounds + 1):
             failed = {}
@@ -672,6 +742,11 @@ def main() -> int:
     )
     parser.add_argument("--proxy", help="HTTP(S) proxy (default: IRAN_BOURSE_PROXY or HTTPS_PROXY)")
     parser.add_argument("--verbose", action="store_true", help="print every upstream request")
+    parser.add_argument(
+        "--reuse",
+        action="store_true",
+        help="serve requests that already have a recording from disk (add a scenario without refreshing the others)",
+    )
     args = parser.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")

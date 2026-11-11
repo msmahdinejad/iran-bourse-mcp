@@ -443,6 +443,61 @@ def _trade_summary(run):
 
 
 # ----------------------------------------------------------------------------- history and flows
+@scenario("technical_indicators", "technical_indicators", symbol="فولاد", days=3)
+def _technical_indicators(run):
+    out = run.out
+    raw = run.rec.body("GetClosingPriceDailyList")["closingPriceDaily"]
+    traded = sorted((r for r in raw if r["zTotTran"] > 0), key=lambda r: r["dEven"])
+    assert_keys(
+        out,
+        "instrument as_of adjusted sessions_used price latest recent_crosses summary series "
+        "adjustment_events_last_year units note",
+    )
+    instrument(out["instrument"], "فولاد", "46348559193224090")
+    newest = traded[-1]
+    assert out["as_of"]["date"] == iso(newest["dEven"]) and is_jdate(out["as_of"]["jdate"])
+    assert out["adjusted"] is True and out["sessions_used"] == len(traded)
+    assert "does not publish" in out["note"] and "rial" in out["units"]
+    # the newest session is never scaled by the adjustment: its prices are the exchange's own
+    assert (out["price"]["close"], out["price"]["high"], out["price"]["low"], out["price"]["volume"]) == (
+        newest["pClosing"],
+        newest["priceMax"],
+        newest["priceMin"],
+        int(newest["qTotTran5J"]),
+    )
+    latest = out["latest"]
+    assert_keys(
+        latest,
+        "date close sma ema rsi_14 macd bollinger atr_14 stochastic obv volume range_52w resistance support",
+    )
+    assert latest["close"] == newest["pClosing"] and latest["volume"]["latest"] == int(newest["qTotTran5J"])
+    # SMA20 of the adjusted closes: the last 20 sessions, each scaled by the factor of every adjustment after it
+    events = out["adjustment_events_last_year"]
+    closes = []
+    for r in traded[-20:]:
+        scale = 1.0
+        for event in events:
+            if event["date"] > iso(r["dEven"]):
+                scale *= event["factor"]
+        closes.append(r["pClosing"] * scale)
+    assert isclose(latest["sma"]["20"], sum(closes) / 20, abs_tol=0.02)
+    previous = [int(r["qTotTran5J"]) for r in traded[-21:-1]]
+    assert latest["volume"]["avg_20"] == round(sum(previous) / 20)  # the 20 sessions before the latest
+    assert 0 <= latest["rsi_14"] <= 100 and 0 <= latest["stochastic"]["k"] <= 100
+    bands = latest["bollinger"]
+    assert bands["lower"] < bands["middle"] == latest["sma"]["20"] < bands["upper"]
+    m = latest["macd"]
+    assert isclose(m["histogram"], m["macd"] - m["signal"], abs_tol=0.02)
+    assert all(level["price"] > latest["close"] for level in latest["resistance"])
+    assert all(level["price"] < latest["close"] for level in latest["support"])
+    r52 = latest["range_52w"]
+    assert r52["low"] <= latest["close"] <= r52["high"]
+    assert [row["date"] for row in out["series"]] == [iso(r["dEven"]) for r in traded[-3:]]
+    assert out["series"][-1]["rsi_14"] == latest["rsi_14"]
+    assert out["series"][-1]["sma_200"] == latest["sma"]["200"]
+    assert out["summary"][0].startswith(f"RSI {latest['rsi_14']:.0f}: ")
+
+
 @scenario(
     "price_history",
     "price_history",

@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-2EC4B6.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%E2%80%933.13-5B7CFA.svg)](pyproject.toml)
 [![MCP SDK 1.x and 2.x](https://img.shields.io/badge/MCP%20SDK-1.x%20%7C%202.x-F5B53D.svg)](https://modelcontextprotocol.io)
-[![Tools](https://img.shields.io/badge/tools-40%20read--only-2EC4B6.svg)](docs/TOOLS.md)
+[![Tools](https://img.shields.io/badge/tools-45%20read--only-2EC4B6.svg)](docs/TOOLS.md)
 [![Stars](https://img.shields.io/github/stars/msmahdinejad/iran-bourse-mcp?style=flat&color=F5B53D)](https://github.com/msmahdinejad/iran-bourse-mcp/stargazers)
 
 **[Website](https://msmahdinejad.github.io/iran-bourse-mcp/)** · **[Install](#install)** · **[Benchmarks](#benchmarks)** · **[Tools](docs/TOOLS.md)** · **[Screener](docs/SCREENER.md)** · **[Real examples](docs/EXAMPLES.md)** · **[Data notes](docs/DATA_SOURCES.md)** · **[راهنمای فارسی](docs/GUIDE.fa.md)** · **[فارسی](README.fa.md)**
@@ -381,22 +381,24 @@ The language is a safe expression grammar (parsed with `ast`, never `eval`), acc
 | Data | Tools |
 |---|---|
 | Market state, indices, industry indices | `market_status` `market_overview` `indices` `industry_summary` `index_contributors` |
-| Whole-market tables (~3,700 instruments: shares, funds, bonds, options, futures) | `market_watch` `top_movers` (gainers, losers, buy/sell queues, real-money inflow/outflow, buyer power) `market_snapshot` |
+| Whole-market tables (~3,700 instruments: shares, funds, bonds, options, futures) | `market_watch` `top_movers` (gainers, losers, buy/sell queues live or at the close of a past day, real-money inflow/outflow, buyer power) `market_snapshot` |
 | **Stock screener** (filter language, history, presets) | `screen_stocks` `screener_reference` |
 | Index history, members and their effect | `index_history` (daily since 2008, or today's 5-minute path) `index_constituents` |
-| Options and futures | `option_chain` (calls and puts by strike and expiry, moneyness, intrinsic value, open interest) `futures_market` (basis) |
+| Options and futures | `option_chain` (calls and puts by strike and expiry, moneyness, intrinsic value, open interest, covered-call returns, expiry by Jalali month) `futures_market` (basis) |
 | The exchange's own best-of lists (برترین‌ها) | `top_lists` (69 lists: blocks, rights, ETFs, queues, options ...) |
 | Corporate-action calendar | `capital_calendar` (upcoming capital increases, price adjustments) |
 | Halts and supervision | `trading_status` (suspended, under caution, state changes, one symbol's history) |
 | One-call symbol dossier | `symbol_overview` |
 | Price, limits, VWAP, P/E, market cap | `quote` `price_history` (optionally **back-adjusted**) `symbol_statistics` `corporate_actions` |
+| Technical indicators (computed from adjusted daily prices) | `technical_indicators` (SMA, EMA, RSI, MACD, Bollinger, ATR, stochastic, OBV, 52-week range, support/resistance, plain-language summary) |
 | Order book and queues (صف خرید/فروش) | `order_book` `order_book_history` (rebuilt from every event, with queue episodes) |
 | Tick-by-tick trades (ریز معاملات) | `trades` (filterable) `trade_summary` (bars, VWAP, biggest trades, price levels, pressure estimate, **coverage check**) |
 | Real vs legal investors (حقیقی/حقوقی) | `real_legal_flow` (per-capita, buyer power, net flow, daily history) |
 | Shareholders (سهامداران عمده) | `shareholders` `shareholder_history` (also one holder's position over time) `shareholder_portfolio` `market_holder_moves` |
 | Commodity and energy exchanges | `commodity_market` (IME physical trades by contract, roll-ups, dollar rate) `energy_market` (Iran Energy Exchange: trades, announced offers, one auction's order levels) |
 | Funds | `fund_ranking` (579 funds: NAV, returns, size, portfolio mix) `etf_nav` (premium/discount to issue and redemption NAV) |
-| Codal | `codal_filings` (links to page, PDF, Excel) `codal_company` |
+| Fundamentals (read from Codal) | `fundamentals` (EPS, P/E, P/S, P/B on trailing twelve months, margins, ROE, leverage, recent sales) `financial_statements` (income statement, balance sheet, cash flow, ratios) `monthly_activity` (monthly sales by product) |
+| Codal | `codal_filings` (links to page, PDF, Excel) `codal_letter` (any letter's tables or text) `codal_company` |
 | Supervisor notices | `supervisor_messages` |
 | Vocabulary | `glossary` (Persian ↔ English market terms) |
 

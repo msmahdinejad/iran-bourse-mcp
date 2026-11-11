@@ -338,3 +338,25 @@ async def test_an_untrimmed_giant_is_refused_instead_of_stored():
     )
     with pytest.raises(rc.RecordingError, match="add a rule to RULES"):
         await get(transport, f"{CDN}/Unknown/Endpoint")
+
+
+def test_past_day_books_keep_what_rebuilds_the_close_for_top_movers_only():
+    def event(ref, number, time):
+        return {"refID": ref, "number": number, "hEven": time, "qTitMeDem": ref, "pMeDem": 100.0}
+
+    rows = [event(1, 1, 90000), event(2, 2, 90000), event(3, 1, 110000), event(4, 1, 122600), event(5, 2, 122900), event(6, 1, 140000)]
+    body = {"bestLimitsHistory": list(rows)}
+    notes = rc.trim_book_history(body, rc.TrimContext(None, NOW, "top_movers"))
+    # level 1's newest row before 12:25 is ref 3, level 2's is ref 2; then refs 4 and 5; nothing after 12:30
+    assert [r["refID"] for r in body["bestLimitsHistory"]] == [2, 3, 4, 5]
+    assert notes[0]["kept"] == 4 and notes[0]["of"] == 6
+    other = {"bestLimitsHistory": list(rows)}
+    assert rc.trim_book_history(other, rc.TrimContext(None, NOW, "order_book_history")) == []  # under the 4000-row cap
+    assert other["bestLimitsHistory"] == rows
+
+
+def test_reuse_serves_recordings_already_on_disk():
+    transport = rc.RecordingTransport(httpx.MockTransport(lambda request: httpx.Response(500)), now=NOW)
+    loaded = transport.reuse_recordings()
+    assert loaded == len(list(rc.cr.REQUESTS.glob("*.json"))) > 0
+    assert all(key.startswith(("GET ", "POST ")) for key in transport.cache)

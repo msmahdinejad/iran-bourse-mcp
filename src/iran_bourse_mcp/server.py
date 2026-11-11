@@ -152,9 +152,20 @@ async def top_movers(
     market: Market = None,
     security_type: Annotated[str | None, Field(description="'stock' (default, سهام), 'fund', 'option', 'bond', 'all' ...")] = "سهام",
     limit: Annotated[int, Field(ge=1, le=100, description="Maximum rows to return (1-100); the server rejects larger values")] = 20,
+    date: Annotated[
+        str | None,
+        Field(
+            description="Only with kind=buy_queue or sell_queue: a past trading day (Gregorian 2026-11-04 or Jalali 1405/08/13) to get the queues "
+            "at that session's close instead of live ones. Rejected for other kinds (use market_snapshot for past rankings)."
+        ),
+    ] = None,
 ) -> dict:
-    """Ranked lists: top gainers/losers, most traded, buy/sell queues (صف خرید/فروش, confirmed against each symbol's real order book; about 10 s on a strong day), real-person money inflow/outflow (ورود/خروج پول حقیقی), buyer power."""
-    return await svc().top_movers(kind, market, security_type, limit)
+    """Ranked lists of the live session: top gainers/losers, most traded, buy/sell queues (صف خرید/فروش, confirmed against each symbol's real order
+    book; about 10 s on a strong day), real-person money inflow/outflow (ورود/خروج پول حقیقی), buyer power.
+    With date (queues only): the queues at the close of a past session, found from that day's end-of-day table and confirmed against each candidate's
+    order-book history, with queue size at the close and since when it held (can take 20-40 s on a strong day; repeated calls are fast).
+    Before 09:00 Tehran time the live lists are empty because the exchange resets the day's data: read `note`, and pass date=<last trading day> for queues."""
+    return await svc().top_movers(kind, market, security_type, limit, date)
 
 
 @tool()
@@ -311,6 +322,20 @@ async def price_history(
 
 
 @tool()
+async def technical_indicators(
+    symbol: Symbol,
+    days: Annotated[int, Field(ge=0, le=250, description="Newest sessions of every indicator series to return (0-250); latest values are always returned")] = 5,
+    adjusted: Annotated[bool, Field(description="Use prices back-adjusted for capital increases and dividends (تعدیل شده); recommended")] = True,
+) -> dict:
+    """Technical analysis indicators of one symbol (اندیکاتورهای تکنیکال) from its daily prices: SMA 20/50/200, EMA 12/26, RSI 14 (Wilder),
+    MACD 12/26/9 with signal and histogram, Bollinger 20/2 with %B and bandwidth, ATR 14, stochastic 14/3, OBV trend, volume vs its 20-session
+    average, distance from the 52-week high and low, support and resistance from recent swing lows and highs, recent crosses (MACD/signal,
+    SMA50/SMA200) and a plain-language summary ("RSI 72: overbought", "price above SMA50 and SMA200"). Computed by this server from the
+    exchange's adjusted daily closing prices, not published by the exchange."""
+    return await svc().technical_indicators(symbol, days, adjusted)
+
+
+@tool()
 async def real_legal_flow(
     symbol: Symbol,
     days: Annotated[int, Field(ge=0, le=90, description="How many past trading days of history to add (0 = latest session only) (max 90)")] = 10,
@@ -445,7 +470,7 @@ async def trading_status(
 @tool()
 async def option_chain(
     underlying: Annotated[str | None, Field(description="Underlying symbol or fragment, e.g. 'اهرم', 'شستا', 'وبملت', 'شپنا' (or one of its option symbols such as 'ضهرم8029'). Omit to list the underlyings that have options, with expiries, open interest and volume.")] = None,
-    expiry: Annotated[str | None, Field(description="'nearest' (default), 'all', or one expiry date: Gregorian 2026-11-18 or Jalali 1405/08/27.")] = None,
+    expiry: Annotated[str | None, Field(description="'nearest' (default), 'all', one expiry date (Gregorian 2026-11-18 or Jalali 1405/08/27), or a Jalali month for every expiry in it: 9, 'آذر', 'برج ۹' or 1405/09. Underlyings often have 2-3 expiries; the nearest-only result lists the others in expiries_listed and other_expiries.")] = None,
     market: Market = None,
     option_type: Annotated[str | None, Field(description="'call' (خرید), 'put' (فروش) or omit for both")] = None,
     moneyness: Annotated[str | None, Field(description="'itm' (in the money), 'otm' or 'atm' (the strike nearest the underlying's price). Applies to each leg: an ITM call at 50,000 pairs with an OTM put.")] = None,
@@ -455,7 +480,7 @@ async def option_chain(
     sort_by: Annotated[str | None, Field(description="Chain: strike (default), distance (from the underlying's price), volume, open_interest, value. Underlyings list: open_interest (default), volume, value, name, expiry.")] = None,
     limit: Annotated[int | None, Field(ge=1, le=60, description="Chain: maximum strike rows over all expiries (default 15; the strikes nearest the underlying's price, or the top by sort_by, are kept). Underlyings list: maximum underlyings (default 30). (max 60)")] = None,
 ) -> dict:
-    """Option chain (اختیار معامله) of the Tehran derivatives market: for an underlying ('اهرم', 'شستا', 'وبملت' ...) and expiry, every strike with its call (خرید) and put (فروش) leg - last/close price, bid/ask, volume, value, open interest, change % - plus derived (computed, not published) moneyness ITM/OTM, intrinsic and time value, break-even, bid-ask spread, put/call ratios, top open-interest strikes and an estimated max pain. Omit underlying to list the underlyings that have options. Prices are rial per underlying unit, one contract = contract_size units; legs with no trade today show no price; open interest is the clearing house's daily figure."""
+    """Option chain (اختیار معامله) of the Tehran derivatives market: for an underlying ('اهرم', 'شستا', 'وبملت' ...) and expiry, every strike with its call (خرید) and put (فروش) leg - last/close price, bid/ask, volume, value, open interest, change % - plus derived (computed, not published) moneyness ITM/OTM, intrinsic and time value, break-even, bid-ask spread, put/call ratios, top open-interest strikes and an estimated max pain, and on every call the covered-call figures (net cost, return if called or unchanged, annualized, downside protection). For «کاورد کال برج ۹» pass expiry=9. Omit underlying to list the underlyings that have options. Prices are rial per underlying unit, one contract = contract_size units; legs with no trade today show no price; open interest is the clearing house's daily figure."""
     return await svc().option_chain(underlying, expiry, market, option_type, moneyness, min_volume, min_open_interest, strike_window_pct, sort_by, limit)
 
 
@@ -520,6 +545,42 @@ async def codal_filings(
 async def codal_company(symbol: Symbol) -> dict:
     """Issuer profile from Codal: CEO, ISIC, address, activity description (اطلاعات ناشر)."""
     return await svc().codal_company(symbol)
+
+
+@tool()
+async def codal_letter(
+    tracing_no: Annotated[int, Field(ge=1, description="Tracing number (شماره پیگیری) of the letter, from codal_filings or recent_filings")],
+    sheet: Annotated[int | None, Field(description="Sheet id from the 'sheets' list of a previous call (e.g. the balance sheet or cash flow of a statement); omit for the first sheet")] = None,
+) -> dict:
+    """Read the CONTENT of any Codal letter (متن و جدول‌های اطلاعیه کدال): financial statements, monthly activity reports, meeting decisions (DPS, capital increases), explanations and notices. Structured reports come back as tables (columns from the report's own headers, numbers parsed, usually million rial: see unit_note), one sheet per call, with the other sheets listed in 'sheets'; a statement sheet also gets 'key_items' (revenue, profits, EPS, assets, equity, cash flows...) and a monthly report a 'monthly_summary' (month and year-to-date sales, by product). Plain letters come back as text. For the usual questions prefer financial_statements, monthly_activity or fundamentals, which find and read the right letters for you."""
+    return await svc().codal_letter(tracing_no, sheet)
+
+
+@tool()
+async def financial_statements(
+    symbol: Symbol,
+    period: Annotated[str, Field(description="'latest' = the newest statements, interim (3/6/9 months) or annual; 'annual' = the newest full fiscal year")] = "latest",
+    consolidated: Annotated[bool, Field(description="True for the group (تلفیقی) statements; default the company's own")] = False,
+    history: Annotated[int, Field(ge=1, le=6, description="Also return revenue, profits and EPS of this many earlier periods (1 = only the latest)")] = 1,
+) -> dict:
+    """A company's financial statements from Codal (صورت‌های مالی): income statement, balance sheet and cash flow, each as key items for this period, the same period last year and the last full year (revenue, cost of revenue, gross/operating/net profit, EPS, total assets, equity, debt, cash, operating cash flow, capex, dividends paid...), plus margins, growth, ROE/ROA on trailing twelve months, current ratio and leverage. Banks (loans, customer deposits, loan interest, fee income, loans-to-deposits) and insurers (premiums, claims, technical reserves, loss ratio) are read in their own templates. Amendments and audited re-issues replace earlier versions. Amounts in million rial, EPS in rial. For the full tables of a letter use codal_letter."""
+    return await svc().financial_statements(symbol, period, consolidated, history)
+
+
+@tool()
+async def monthly_activity(
+    symbol: Symbol,
+    months: Annotated[int, Field(ge=1, le=12, description="How many recent monthly reports to read (1-12)")] = 3,
+    products: Annotated[bool, Field(description="Include the product-by-product lines of the newest month")] = True,
+) -> dict:
+    """A company's monthly activity reports from Codal (گزارش فعالیت ماهانه، ن-۳۰): sales of each month and year to date, growth on the same span last year, month-on-month change, and for the newest month each product's production, sales quantity, rate and amount (domestic, export and services). Banks give operating income, loans and deposits at the month end and net interest; insurers premiums and claims; investment companies operating income and their portfolio. Amended reports replace the originals. Amounts in million rial."""
+    return await svc().monthly_activity(symbol, months, products)
+
+
+@tool()
+async def fundamentals(symbol: Symbol) -> dict:
+    """One-call fundamental picture of a company (تحلیل بنیادی): price and market cap, the exchange's EPS and P/E, the latest Codal statements (revenue, net profit, EPS, equity), margins, growth, ROE/ROA, liquidity and leverage, valuation computed on trailing twelve months (EPS, P/E, P/S, P/B, marked estimated), and the last three months of sales from the monthly reports."""
+    return await svc().fundamentals(symbol)
 
 
 # ----------------------------------------------------------------------------- misc
