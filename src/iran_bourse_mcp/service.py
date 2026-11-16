@@ -1438,6 +1438,8 @@ class Bourse:
         strike_window_pct: float | None = None,
         sort_by: str | None = None,
         limit: int | None = None,
+        include_greeks: bool = False,
+        risk_free_rate: float = 0.30,
     ) -> dict:
         try:
             flow = derivatives.option_flow(market)
@@ -1448,6 +1450,57 @@ class Bourse:
             return derivatives.option_chain(
                 rows, underlying, expiry, market=market, option_type=option_type, moneyness=moneyness, min_volume=min_volume,
                 min_open_interest=min_open_interest, strike_window_pct=strike_window_pct, sort_by=sort_by, limit=limit,
+                include_greeks=include_greeks, risk_free_rate=risk_free_rate,
+            )
+        except ValueError as exc:
+            raise InputError(str(exc)) from exc
+
+    async def option_strategy(
+        self,
+        underlying: str,
+        strategy: str = "covered_call",
+        expiry: str | None = None,
+        contracts: int = 1,
+        lower_strike: float | None = None,
+        upper_strike: float | None = None,
+        strike: float | None = None,
+        legs: list[dict] | None = None,
+        spot_price: float | None = None,
+        market: str | None = None,
+    ) -> dict:
+        try:
+            flow = derivatives.option_flow(market)
+        except ValueError as exc:
+            raise InputError(str(exc)) from exc
+        rows = await self.api.option_market_watch(flow)
+        try:
+            return derivatives.option_strategy(
+                rows, underlying, strategy=strategy, expiry=expiry, contracts=contracts,
+                lower_strike=lower_strike, upper_strike=upper_strike, strike=strike,
+                legs=legs, spot_price=spot_price, market=market,
+            )
+        except ValueError as exc:
+            raise InputError(str(exc)) from exc
+
+    async def option_arbitrage(
+        self,
+        underlying: str | None = None,
+        max_days: int = 35,
+        min_yield_pct: float = 30.0,
+        risk_free_rate: float = 0.30,
+        min_volume: int = 0,
+        market: str | None = None,
+    ) -> dict:
+        try:
+            flow = derivatives.option_flow(market)
+        except ValueError as exc:
+            raise InputError(str(exc)) from exc
+        rows = await self.api.option_market_watch(flow)
+        try:
+            return derivatives.option_arbitrage(
+                rows, max_days=max_days, min_yield_pct=min_yield_pct,
+                risk_free_rate=risk_free_rate, min_volume=min_volume,
+                underlying=underlying, market=market,
             )
         except ValueError as exc:
             raise InputError(str(exc)) from exc
