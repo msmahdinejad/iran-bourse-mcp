@@ -178,7 +178,7 @@ Ranking and screening of the investment-fund registry (صندوق‌های سر�
 
 ### `option_chain`
 
-Option chain (اختیار معامله) of the Tehran derivatives market: for an underlying ('اهرم', 'شستا', 'وبملت' ...) and expiry, every strike with its call (خرید) and put (فروش) leg - last/close price, bid/ask, volume, value, open interest, change % - plus derived (computed, not published) moneyness ITM/OTM, intrinsic and time value, break-even, bid-ask spread, put/call ratios, top open-interest strikes and an estimated max pain, and on every call the covered-call figures (net cost, return if called or unchanged, annualized, downside protection). For «کاورد کال برج ۹» pass expiry=9. Omit underlying to list the underlyings that have options. Prices are rial per underlying unit, one contract = contract_size units; legs with no trade today show no price; open interest is the clearing house's daily figure.
+Option chain (اختیار معامله) of the Tehran derivatives market: for an underlying ('اهرم', 'شستا', 'وبملت' ...) and expiry, every strike with its call (خرید) and put (فروش) leg - last/close price, bid/ask, volume, value, open interest, change % - plus derived (computed, not published) moneyness ITM/OTM, intrinsic and time value, break-even, bid-ask spread, put/call ratios, top open-interest strikes, estimated max pain, and optional Black-Scholes Greeks and Implied Volatility. For «کاورد کال برج ۹» pass expiry=9. Omit underlying to list the underlyings that have options. Prices are rial per underlying unit, one contract = contract_size units; legs with no trade today show no price; open interest is the clearing house's daily figure.
 
 | parameter | type | description |
 |---|---|---|
@@ -192,6 +192,37 @@ Option chain (اختیار معامله) of the Tehran derivatives market: for a
 | `strike_window_pct` | number | Only strikes within this percent of the underlying's price, e.g. 10 |
 | `sort_by` | string | Chain: strike (default), distance (from the underlying's price), volume, open_interest, value. Underlyings list: open_interest (default), volume, value, name, expiry. |
 | `limit` | integer | Chain: maximum strike rows over all expiries (default 15; the strikes nearest the underlying's price, or the top by sort_by, are kept). Underlyings list: maximum underlyings (default 30). (max 60) |
+| `include_greeks` | boolean | Include Black-Scholes Greeks (Delta, Gamma, Theta, Vega, Rho) and implied volatility % (default False) (default `False`) |
+| `risk_free_rate` | number | Annual risk-free interest rate benchmark (default 0.30 = 30% Akhza rate) (default `0.3`) |
+
+### `option_strategy`
+
+Option strategy payoff evaluator and visualizer (استراتژی‌های اختیار معامله): models single and multi-leg setups (covered call, bull/bear spreads, straddle, strangle, box spread, protective put). Returns net premium (debit/credit), max profit, max loss, risk/reward ratio, break-even points, return on risk, annualized return, a 31-point payoff curve, an ASCII terminal graph, and a standalone responsive SVG chart.
+
+| parameter | type | description |
+|---|---|---|
+| `underlying`* | string | Underlying symbol or fragment, e.g. 'اهرم', 'شستا', 'فولاد', 'وبملت' |
+| `strategy` | string | Strategy name: 'covered_call', 'protective_put', 'cash_secured_put', 'bull_call_spread', 'bear_put_spread', 'long_straddle', 'short_straddle', 'long_strangle', 'short_strangle', 'box_spread', or 'custom' (default 'covered_call') (default `covered_call`) |
+| `expiry` | string | Expiry date or Jalali month, e.g. 'nearest', '1405/09', 'برج ۹', or a Gregorian/Jalali date (default 'nearest') |
+| `contracts` | integer | Number of contracts to simulate (default 1) (default `1`) |
+| `lower_strike` | number | Lower strike price for spreads / box spreads |
+| `upper_strike` | number | Upper strike price for spreads / box spreads |
+| `strike` | number | Target strike for single-strike strategies (covered call, straddle, etc.) |
+| `spot_price` | number | Override underlying spot price in Rial (defaults to live/closing spot) |
+| `market` | string | 'bourse' or 'fara' (Fara Bourse). Omit for both where applicable. |
+
+### `option_arbitrage`
+
+Near-deadline option arbitrage scanner (اسکنر آربیتراژ اختیار معامله): scans for risk-free or mispriced arbitrage opportunities in contracts approaching expiry. Detects: (1) Below Intrinsic Value Arbitrage (خرید زیر ارزش ذاتی) where deep ITM options trade below exercise value; (2) Box Spread Synthetic Loan Arbitrage (باکس اسپرد) delivering risk-free annualized yield above the Akhza benchmark; (3) Put-Call Parity Deviations (انحراف از برابری کال و پوت). Returns ranked opportunities sorted by annualized yield and profit in Rial.
+
+| parameter | type | description |
+|---|---|---|
+| `underlying` | string | Filter by underlying symbol, e.g. 'اهرم', or omit to scan all listed underlyings |
+| `max_days` | integer | Maximum days to expiry (deadline) to scan (default 35 days) (default `35`) |
+| `min_yield_pct` | number | Minimum annualized yield threshold for box spreads (default 30.0%) (default `30.0`) |
+| `risk_free_rate` | number | Annual risk-free interest rate benchmark (default 0.30 = 30% Akhza rate) (default `0.3`) |
+| `min_volume` | integer | Minimum traded volume today (default 0 to also inspect quoted order book) (default `0`) |
+| `market` | string | 'bourse' or 'fara' (Fara Bourse). Omit for both where applicable. |
 
 ### `futures_market`
 

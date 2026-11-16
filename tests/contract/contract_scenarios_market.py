@@ -1017,6 +1017,32 @@ def _option_chain(run):
     assert call["derived"]["moneyness"] == ("ITM" if spot > row["strikePrice"] else "OTM")
 
 
+@scenario("option_strategy", "option_strategy", underlying="اهرم", strategy="bull_call_spread")
+def _option_strategy(run):
+    out = run.out
+    assert_keys(
+        out,
+        "strategy underlying spot days_to_expiry legs summary ascii_chart svg_chart payoff_curve",
+    )
+    assert out["strategy"] == "bull_call_spread"
+    assert out["underlying"] == "اهرم"
+    assert "max_profit_rial" in out["summary"]
+    assert "max_loss_rial" in out["summary"]
+    assert "breakevens" in out["summary"]
+    assert "<svg" in out["svg_chart"]
+
+
+@scenario("option_arbitrage", "option_arbitrage", underlying="اهرم", max_days=90)
+def _option_arbitrage(run):
+    out = run.out
+    assert_keys(
+        out,
+        "max_days_filter risk_free_rate total_below_intrinsic total_box_spreads total_parity_discrepancies below_intrinsic_opportunities box_spread_opportunities parity_discrepancies note",
+    )
+    assert out["max_days_filter"] == 90
+    assert isinstance(out["box_spread_opportunities"], list)
+
+
 @scenario("futures_market", "futures_market", limit=10)
 def _futures_market(run):
     out, raw = run.out, run.rec.body("GetInstrumentFutureMarketWatch")["instrumentFtMarketWatch"]

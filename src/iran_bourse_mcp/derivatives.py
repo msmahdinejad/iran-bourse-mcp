@@ -28,6 +28,14 @@ from collections import defaultdict
 from typing import Any
 
 from .dates import DateError, fmt_date, jdate, parse_date
+from .option_strategies import (
+    DEFAULT_RISK_FREE_RATE,
+    bs_greeks,
+    build_preset_strategy,
+    evaluate_strategy,
+    implied_volatility,
+    scan_option_arbitrage,
+)
 from .shape import _f, _i, _r, pct_change
 from .text import ascii_digits, clean, match_key
 
@@ -292,7 +300,15 @@ def covered_call(strike: float, spot: float | None, premium: float | None, days:
     }
 
 
-def _derived(side: str, strike: float, spot: float | None, leg: dict, days: int | None = None) -> dict:
+def _derived(
+    side: str,
+    strike: float,
+    spot: float | None,
+    leg: dict,
+    days: int | None = None,
+    include_greeks: bool = False,
+    risk_free_rate: float = DEFAULT_RISK_FREE_RATE,
+) -> dict:
     """Moneyness, intrinsic value, time value, break-even and spread of one leg. None where an input is missing."""
     intrinsic, close = _intrinsic(side, strike, spot), leg["close"]
     time_value = _n(close - intrinsic) if close is not None and intrinsic is not None else None
@@ -313,6 +329,17 @@ def _derived(side: str, strike: float, spot: float | None, leg: dict, days: int 
     }
     if side == "C":
         out["covered_call"] = covered_call(strike, spot, close, days)
+    if include_greeks:
+        if spot and close and days is not None and days >= 0:
+            t_years = max(days, 0.5) / DAYS_PER_YEAR
+            is_call = side == "C"
+            iv = implied_volatility(spot, strike, t_years, risk_free_rate, close, is_call)
+            out["iv_pct"] = iv
+            vol = (iv / 100.0) if iv else 0.40
+            out["greeks"] = bs_greeks(spot, strike, t_years, risk_free_rate, vol, is_call)
+        else:
+            out["iv_pct"] = None
+            out["greeks"] = None
     return out
 
 
@@ -439,11 +466,17 @@ def _expiry_info(group: list[dict]) -> dict:
 # ------------------------------------------------------------------------------------------------ chain output
 
 
-def _leg_out(side: str, p: dict, spot: float | None) -> dict:
+def _leg_out(
+    side: str, p: dict, spot: float | None, include_greeks: bool = False, risk_free_rate: float = DEFAULT_RISK_FREE_RATE
+) -> dict:
     leg = p[side]
-    derived = _derived(side, p["strike"], spot, leg, p["days"])
+    derived = _derived(side, p["strike"], spot, leg, p["days"], include_greeks=include_greeks, risk_free_rate=risk_free_rate)
     if not leg["active"]:
-        return {"symbol": leg["symbol"], "active": False, "derived": {"moneyness": derived["moneyness"], "intrinsic": derived["intrinsic"]}}
+        active_derived: dict[str, Any] = {"moneyness": derived["moneyness"], "intrinsic": derived["intrinsic"]}
+        if include_greeks:
+            active_derived["iv_pct"] = None
+            active_derived["greeks"] = None
+        return {"symbol": leg["symbol"], "active": False, "derived": active_derived}
     return {
         "symbol": leg["symbol"],
         "last": leg["last"], "close": leg["close"], "close_pct": pct_change(leg["close"], leg["yesterday"]),
@@ -458,7 +491,7 @@ def _entry_metric(entry: dict, field: str) -> float:
 
 
 def _group_out(group: list[dict], *, side: str | None, money: str | None, min_volume: float, min_oi: float, window: float | None,
-               sort_by: str, budget: int) -> dict:
+               sort_by: str, budget: int, include_greeks: bool = False, risk_free_rate: float = DEFAULT_RISK_FREE_RATE) -> dict:
     first = group[0]
     spot, size = first["spot"], first["size"]
     totals, derived = _group_totals(group, spot, size)
@@ -478,7 +511,7 @@ def _group_out(group: list[dict], *, side: str | None, money: str | None, min_vo
                 continue
             if leg["volume"] < min_volume or leg["open_interest"] < min_oi:
                 continue
-            legs[_SIDE_NAMES[s]] = _leg_out(s, p, spot)
+            legs[_SIDE_NAMES[s]] = _leg_out(s, p, spot, include_greeks=include_greeks, risk_free_rate=risk_free_rate)
         if not legs:
             continue
         entry: dict[str, Any] = {"strike": _n(k), "strike_vs_spot_pct": pct_change(k, spot)}
@@ -519,6 +552,8 @@ def option_chain(
     strike_window_pct: float | None = None,
     sort_by: str | None = None,
     limit: int | None = None,
+    include_greeks: bool = False,
+    risk_free_rate: float = DEFAULT_RISK_FREE_RATE,
 ) -> dict:
     """The option chain of one underlying, or (without ``underlying``) the list of underlyings that have options.
 
@@ -562,7 +597,7 @@ def option_chain(
     budget = max(1, count // len(chosen))
     groups = [
         _group_out(sorted(by_expiry[end], key=lambda p: p["strike"]), side=side, money=money, min_volume=min_volume, min_oi=min_open_interest,
-                   window=strike_window_pct, sort_by=sort, budget=budget)
+                   window=strike_window_pct, sort_by=sort, budget=budget, include_greeks=include_greeks, risk_free_rate=risk_free_rate)
         for end in chosen
     ]
     filters = {k: v for k, v in {
@@ -587,7 +622,12 @@ def option_chain(
     if not any(g["strikes"] for g in groups):
         result["note"] = "No strike matches these filters; loosen them or call without filters."
     result["units"] = UNITS
-    result["notes"] = CHAIN_NOTES
+    if include_greeks:
+        result["notes"] = list(CHAIN_NOTES) + [
+            f"greeks (derived) = Black-Scholes Delta, Gamma, Theta (1-day decay), Vega (1% vol) and Rho (1% rate), calibrated with Iran risk-free rate {risk_free_rate*100:.1f}%. iv_pct = estimated Implied Volatility %."
+        ]
+    else:
+        result["notes"] = CHAIN_NOTES
     return result
 
 
@@ -722,3 +762,79 @@ def futures_market(
     if not total:
         result["note"] = "The exchange lists no futures right now."
     return result
+
+
+def option_strategy(
+    rows: list[dict] | None,
+    underlying: str,
+    strategy: str = "covered_call",
+    *,
+    expiry: str | int | None = None,
+    contracts: int = 1,
+    lower_strike: float | None = None,
+    upper_strike: float | None = None,
+    strike: float | None = None,
+    legs: list[dict] | None = None,
+    spot_price: float | None = None,
+    market: str | None = None,
+) -> dict[str, Any]:
+    """Evaluates an option strategy using live market quotes, returning payoff metrics, break-evens, ASCII chart and SVG graph."""
+    parsed = _parse_option_rows(rows)
+    if not parsed:
+        raise ValueError("No option rows in feed.")
+    ua_code, ua_name, hint = resolve_underlying(parsed, underlying)
+    ua_rows = [p for p in parsed if p["ua_code"] == ua_code]
+    if not ua_rows:
+        raise ValueError(f"No option contracts found for '{underlying}'.")
+
+    available_ends = sorted(set(p["end"] for p in ua_rows))
+    mode, date = _expiry_arg(expiry)
+    picked_ends = _pick_expiries(available_ends, mode, date, hint, ua_name)
+    target_end = picked_ends[0]
+    expiry_rows = [p for p in ua_rows if p["end"] == target_end]
+
+    if strategy.strip().lower() == "custom":
+        if not legs:
+            raise ValueError("custom strategy requires 'legs' list of dicts.")
+        first = expiry_rows[0]
+        spot = spot_price or first["spot"] or first["spot_close"] or first["spot_last"]
+        return evaluate_strategy(
+            ua_name, spot, legs, strategy_name="custom", contract_size=first["size"], days_to_expiry=first["days"]
+        )
+
+    return build_preset_strategy(
+        strategy,
+        expiry_rows,
+        ua_name,
+        contracts=contracts,
+        lower_strike=lower_strike,
+        upper_strike=upper_strike,
+        strike=strike,
+        spot_override=spot_price,
+    )
+
+
+def option_arbitrage(
+    rows: list[dict] | None,
+    *,
+    max_days: int = 35,
+    min_yield_pct: float = 30.0,
+    risk_free_rate: float = DEFAULT_RISK_FREE_RATE,
+    min_volume: int = 0,
+    underlying: str | None = None,
+    market: str | None = None,
+) -> dict[str, Any]:
+    """Scans for near-deadline arbitrage: discounted ITM options, box spread loans, and Put-Call parity deviations."""
+    parsed = _parse_option_rows(rows)
+    ua_filter = None
+    if underlying and str(underlying).strip():
+        _, ua_filter, _ = resolve_underlying(parsed, underlying)
+    return scan_option_arbitrage(
+        parsed,
+        max_days=max_days,
+        min_yield_pct=min_yield_pct,
+        risk_free_rate=risk_free_rate,
+        min_volume=min_volume,
+        underlying_filter=ua_filter,
+    )
+
