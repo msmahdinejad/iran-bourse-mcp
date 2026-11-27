@@ -335,8 +335,8 @@ def _derived(
             is_call = side == "C"
             iv = implied_volatility(spot, strike, t_years, risk_free_rate, close, is_call)
             out["iv_pct"] = iv
-            vol = (iv / 100.0) if iv else 0.40
-            out["greeks"] = bs_greeks(spot, strike, t_years, risk_free_rate, vol, is_call)
+            # No implied volatility (price outside the no-arbitrage bounds): no Greeks, rather than Greeks of an invented volatility.
+            out["greeks"] = bs_greeks(spot, strike, t_years, risk_free_rate, iv / 100.0, is_call) if iv else None
         else:
             out["iv_pct"] = None
             out["greeks"] = None

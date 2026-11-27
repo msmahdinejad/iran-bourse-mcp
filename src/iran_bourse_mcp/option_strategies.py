@@ -13,6 +13,7 @@ Pure mathematics and data transformations; no network I/O.
 
 from __future__ import annotations
 
+import html
 import math
 from typing import Any
 
@@ -207,6 +208,7 @@ def evaluate_strategy(
     if range_max <= range_min:
         range_max = range_min + 10000
 
+    position_units = max(int(leg.get("contracts", 1)) for leg in legs)
     num_points = 31
     step = (range_max - range_min) / (num_points - 1)
     curve_spots = [round(range_min + i * step) for i in range(num_points)]
@@ -219,7 +221,7 @@ def evaluate_strategy(
     payoff_curve: list[dict[str, Any]] = []
     for s_eval in curve_spots:
         profit = sum(_leg_payoff(leg, s_eval) for leg in legs)
-        profit_pct = round((profit / (spot * contract_size)) * 100, 2)
+        profit_pct = round((profit / (spot * contract_size * position_units)) * 100, 2)
         payoff_curve.append({
             "spot": s_eval,
             "profit_rial": round(profit),
@@ -242,9 +244,12 @@ def evaluate_strategy(
         breakevens.append(payoff_curve[-1]["spot"])
     breakevens = sorted(set(breakevens))
 
-    # Max profit / loss checks
-    profits = [p["profit_rial"] for p in payoff_curve]
-    min_profit, max_profit = min(profits), max(profits)
+    # Max profit / loss. The payoff is piecewise linear with kinks at the strikes, so its extremes sit at S = 0 or at a strike
+    # (or run off to infinity, handled by the slope check below). The plotted window (70%-130%) must not decide them: a covered call
+    # or a short put loses most when the underlying goes to zero, far outside it.
+    extreme_points = {0.0, float(spot)} | {float(leg_item["strike"]) for leg_item in legs if leg_item.get("strike")}
+    extremes = [sum(_leg_payoff(leg, s_eval) for leg in legs) for s_eval in sorted(extreme_points)]
+    min_profit, max_profit = min(extremes), max(extremes)
 
     # Check for unbounded profits / losses using slope as spot -> infinity
     slope_inf = 0
@@ -433,7 +438,7 @@ def generate_svg_payoff(
         '    </linearGradient>',
         '  </defs>',
         # Header / Title
-        f'  <text x="{pad_left}" y="24" fill="#f3f4f6" font-size="13" font-weight="bold">{strategy_name.upper()} ({underlying})</text>',
+        f'  <text x="{pad_left}" y="24" fill="#f3f4f6" font-size="13" font-weight="bold">{html.escape(strategy_name.upper())} ({html.escape(str(underlying))})</text>',
         f'  <text x="{w - pad_right}" y="24" fill="#9ca3af" font-size="11" text-anchor="end">Max Profit: <tspan fill="#10b981">{max_prof_str}</tspan> | Max Loss: <tspan fill="#ef4444">{max_loss_str}</tspan></text>',
         # Axes & Zero Line
         f'  <line x1="{pad_left}" y1="{pad_top}" x2="{pad_left}" y2="{pad_top + plot_h}" stroke="#374151" stroke-width="1"/>',

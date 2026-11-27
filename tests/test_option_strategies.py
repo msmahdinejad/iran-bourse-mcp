@@ -186,3 +186,47 @@ def test_derivatives_option_arbitrage_entrypoint(opts):
     arb = D.option_arbitrage(opts, max_days=90)
     assert "total_box_spreads" in arb
     assert "box_spread_opportunities" in arb
+
+
+# ------------------------------------------------------------------------------------------------ regressions found in review
+
+
+def test_max_loss_and_profit_are_exact_not_clipped_to_the_plotted_window():
+    """The payoff curve only shows 70%-130% of the strikes; the extremes are at S = 0 and must not be read from it."""
+    covered_call = [
+        {"type": "stock", "action": "buy", "entry_price": 74000, "contracts": 1, "size": 1000},
+        {"type": "call", "action": "sell", "strike": 80000, "premium": 2500, "contracts": 1, "size": 1000},
+    ]
+    s = opt.evaluate_strategy("x", 74000.0, covered_call, "covered_call")["summary"]
+    assert s["max_profit_rial"] == 8_500_000
+    assert s["max_loss_rial"] == -71_500_000  # the stock goes to zero, keeping the call premium
+
+    short_put = [{"type": "put", "action": "sell", "strike": 70000, "premium": 2000, "contracts": 1, "size": 1000}]
+    s = opt.evaluate_strategy("x", 74000.0, short_put, "cash_secured_put")["summary"]
+    assert s["max_profit_rial"] == 2_000_000 and s["max_loss_rial"] == -68_000_000
+
+    long_put = [{"type": "put", "action": "buy", "strike": 70000, "premium": 2000, "contracts": 1, "size": 1000}]
+    s = opt.evaluate_strategy("x", 74000.0, long_put, "long_put")["summary"]
+    assert s["max_profit_rial"] == 68_000_000 and s["max_loss_rial"] == -2_000_000
+
+
+def test_profit_pct_is_relative_to_the_whole_position():
+    leg = {"type": "stock", "action": "buy", "entry_price": 74000, "contracts": 5, "size": 1000}
+    one = opt.evaluate_strategy("x", 74000.0, [{**leg, "contracts": 1}])["payoff_curve"]
+    five = opt.evaluate_strategy("x", 74000.0, [leg])["payoff_curve"]
+    assert [p["profit_pct"] for p in one] == [p["profit_pct"] for p in five]
+
+
+def test_greeks_are_withheld_when_there_is_no_implied_volatility():
+    """A price below the no-arbitrage bound has no IV; Greeks of an invented volatility would look precise and be wrong."""
+    leg = {"close": 100.0, "bid": None, "ask": None}  # a deep in-the-money call priced far below its intrinsic value
+    out = D._derived("C", 70000.0, 74000.0, leg, days=20, include_greeks=True)
+    assert out["iv_pct"] is None and out["greeks"] is None
+    sane = {"close": opt.bs_price(74000.0, 70000.0, 20 / 365, 0.30, 0.45, True), "bid": None, "ask": None}
+    out = D._derived("C", 70000.0, 74000.0, sane, days=20, include_greeks=True)
+    assert abs(out["iv_pct"] - 45.0) < 0.3 and out["greeks"]["delta"] > 0.5
+
+
+def test_svg_text_is_escaped():
+    svg = opt.generate_svg_payoff("custom", "<script>x</script>", [{"spot": 1, "profit_rial": 0}, {"spot": 2, "profit_rial": 5}], 1, [], 5, 0)
+    assert "<script>" not in svg and "&lt;script&gt;" in svg
