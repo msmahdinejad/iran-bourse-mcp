@@ -1,5 +1,5 @@
 {
- "tests": 856,
+ "tests": 873,
  "version": "0.5.0",
  "tools": [
   {
@@ -472,7 +472,7 @@
   {
    "name": "option_chain",
    "group": "Derivatives",
-   "description": "Option chain (اختیار معامله) of the Tehran derivatives market: for an underlying ('اهرم', 'شستا', 'وبملت' ...) and expiry, every strike with its call (خرید) and put (فروش) leg - last/close price, bid/ask, volume, value, open interest, change % - plus derived (computed, not published) moneyness ITM/OTM, intrinsic and time value, break-even, bid-ask spread, put/call ratios, top open-interest strikes and an estimated max pain, and on every call the covered-call figures (net cost, return if called or unchanged, annualized, downside protection). For «کاورد کال برج ۹» pass expiry=9. Omit underlying to list the underlyings that have options. Prices are rial per underlying unit, one contract = contract_size units; legs with no trade today show no price; open interest is the clearing house's daily figure.",
+   "description": "Option chain (اختیار معامله) of the Tehran derivatives market: for an underlying ('اهرم', 'شستا', 'وبملت' ...) and expiry, every strike with its call (خرید) and put (فروش) leg - last/close price, bid/ask, volume, value, open interest, change % - plus derived (computed, not published) moneyness ITM/OTM, intrinsic and time value, break-even, bid-ask spread, put/call ratios, top open-interest strikes, estimated max pain, and optional Black-Scholes Greeks and Implied Volatility. For «کاورد کال برج ۹» pass expiry=9. Omit underlying to list the underlyings that have options. Prices are rial per underlying unit, one contract = contract_size units; legs with no trade today show no price; open interest is the clearing house's daily figure.",
    "fa": "زنجیرهٔ اختیار معامله: خرید و فروش هر قیمت اعمال",
    "params": [
     {
@@ -533,6 +533,124 @@
      "name": "limit",
      "required": false,
      "description": "Chain: maximum strike rows over all expiries (default 15; the strikes nearest the underlying's price, or the top by sort_by, are kept). Underlyings list: maximum underlyings (default 30). (max 60)",
+     "default": null
+    },
+    {
+     "name": "include_greeks",
+     "required": false,
+     "description": "Include Black-Scholes Greeks (Delta, Gamma, Theta, Vega, Rho) and implied volatility % (default False)",
+     "default": false
+    },
+    {
+     "name": "risk_free_rate",
+     "required": false,
+     "description": "Annual risk-free interest rate benchmark (default 0.30 = 30% Akhza rate)",
+     "default": 0.3
+    }
+   ]
+  },
+  {
+   "name": "option_strategy",
+   "group": "Derivatives",
+   "description": "Option strategy payoff evaluator and visualizer (استراتژی‌های اختیار معامله): models single and multi-leg setups (covered call, bull/bear spreads, straddle, strangle, box spread, protective put). Returns net premium (debit/credit), max profit, max loss, risk/reward ratio, break-even points, return on risk, annualized return, a 31-point payoff curve, an ASCII terminal graph, and a standalone responsive SVG chart.",
+   "fa": "تحلیل و نمودار بازده استراتژی‌های اختیار معامله (کاورد کال، اسپرد، استرادل و ...)",
+   "params": [
+    {
+     "name": "underlying",
+     "required": true,
+     "description": "Underlying symbol or fragment, e.g. 'اهرم', 'شستا', 'فولاد', 'وبملت'",
+     "default": null
+    },
+    {
+     "name": "strategy",
+     "required": false,
+     "description": "Strategy name: 'covered_call', 'protective_put', 'cash_secured_put', 'bull_call_spread', 'bear_put_spread', 'long_straddle', 'short_straddle', 'long_strangle', 'short_strangle', 'box_spread', or 'custom' (default 'covered_call')",
+     "default": "covered_call"
+    },
+    {
+     "name": "expiry",
+     "required": false,
+     "description": "Expiry date or Jalali month, e.g. 'nearest', '1405/09', 'برج ۹', or a Gregorian/Jalali date (default 'nearest')",
+     "default": null
+    },
+    {
+     "name": "contracts",
+     "required": false,
+     "description": "Number of contracts to simulate (default 1)",
+     "default": 1
+    },
+    {
+     "name": "lower_strike",
+     "required": false,
+     "description": "Lower strike price for spreads / box spreads",
+     "default": null
+    },
+    {
+     "name": "upper_strike",
+     "required": false,
+     "description": "Upper strike price for spreads / box spreads",
+     "default": null
+    },
+    {
+     "name": "strike",
+     "required": false,
+     "description": "Target strike for single-strike strategies (covered call, straddle, etc.)",
+     "default": null
+    },
+    {
+     "name": "spot_price",
+     "required": false,
+     "description": "Override underlying spot price in Rial (defaults to live/closing spot)",
+     "default": null
+    },
+    {
+     "name": "market",
+     "required": false,
+     "description": "'bourse' or 'fara' (Fara Bourse). Omit for both where applicable.",
+     "default": null
+    }
+   ]
+  },
+  {
+   "name": "option_arbitrage",
+   "group": "Derivatives",
+   "description": "Near-deadline option arbitrage scanner (اسکنر آربیتراژ اختیار معامله): scans for risk-free or mispriced arbitrage opportunities in contracts approaching expiry. Detects: (1) Below Intrinsic Value Arbitrage (خرید زیر ارزش ذاتی) where deep ITM options trade below exercise value; (2) Box Spread Synthetic Loan Arbitrage (باکس اسپرد) delivering risk-free annualized yield above the Akhza benchmark; (3) Put-Call Parity Deviations (انحراف از برابری کال و پوت). Returns ranked opportunities sorted by annualized yield and profit in Rial.",
+   "fa": "اسکنر فرصت‌های آربیتراژ اختیار معامله (سررسید نزدیک، خرید زیر ارزش ذاتی، باکس اسپرد)",
+   "params": [
+    {
+     "name": "underlying",
+     "required": false,
+     "description": "Filter by underlying symbol, e.g. 'اهرم', or omit to scan all listed underlyings",
+     "default": null
+    },
+    {
+     "name": "max_days",
+     "required": false,
+     "description": "Maximum days to expiry (deadline) to scan (default 35 days)",
+     "default": 35
+    },
+    {
+     "name": "min_yield_pct",
+     "required": false,
+     "description": "Minimum annualized yield threshold for box spreads (default 30.0%)",
+     "default": 30.0
+    },
+    {
+     "name": "risk_free_rate",
+     "required": false,
+     "description": "Annual risk-free interest rate benchmark (default 0.30 = 30% Akhza rate)",
+     "default": 0.3
+    },
+    {
+     "name": "min_volume",
+     "required": false,
+     "description": "Minimum traded volume today (default 0 to also inspect quoted order book)",
+     "default": 0
+    },
+    {
+     "name": "market",
+     "required": false,
+     "description": "'bourse' or 'fara' (Fara Bourse). Omit for both where applicable.",
      "default": null
     }
    ]

@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+Option analytics (47 tools in total), contributed in #23 by @mrafatpanah.
+
+- **`option_strategy`**: payoff analysis of covered call, protective put, cash-secured put, bull call and bear put spreads, straddles, strangles, box spreads and custom legs: net premium, break-evens, maximum profit and loss, return on risk, an ASCII chart and an SVG chart.
+- **`option_arbitrage`**: scans contracts near expiry for options below intrinsic value, box spreads and put-call parity deviations, ranked by annualized yield. Estimates from quoted or closing prices, before commissions and margin.
+- **`option_chain(include_greeks=true)`**: Black-Scholes Greeks and implied volatility per leg (risk-free rate defaults to 30%); no Greeks when the price has no implied volatility.
+
+### Fixed (found in review of #23)
+- Maximum profit and loss of strategies with stock or put legs were read from the plotted 70%-130% price window instead of the true extremes at a zero price (a covered call showed a loss of 19.7 million rial instead of 71.5 million).
+- Greeks were computed from an invented 40% volatility when no implied volatility existed.
+
 ## 0.5.0 (2026-11-11)
 
 Fundamental analysis from Codal (45 tools in total): financial statements, monthly activity and fundamentals for industrial companies, banks, insurers and investment companies; technical indicators; market-wide queues of a past day; option chains by Jalali month with covered-call figures.
